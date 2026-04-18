@@ -1,0 +1,10 @@
+.DS_Store
+*.log
+
+storage/uploads/*
+!storage/uploads/.gitkeep
+
+vben-admin/node_modules
+vben-admin/apps/*/node_modules
+vben-admin/apps/*/dist
+vben-admin/apps/*/package-lock.json

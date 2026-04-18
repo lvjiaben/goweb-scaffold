@@ -1,0 +1,12 @@
+{
+  "name": "goweb-vben-admin",
+  "private": true,
+  "packageManager": "pnpm@10.14.0",
+  "scripts": {
+    "dev:admin": "pnpm --filter @goweb/admin dev",
+    "dev:user": "pnpm --filter @goweb/user dev",
+    "build:admin": "pnpm --filter @goweb/admin build",
+    "build:user": "pnpm --filter @goweb/user build",
+    "typecheck": "pnpm -r run typecheck"
+  }
+}

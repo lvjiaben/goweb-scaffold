@@ -1,0 +1,36 @@
+app:
+  name: goweb-scaffold
+  addr: ":8080"
+
+log:
+  level: info
+  format: text
+
+database:
+  dsn: postgres://postgres:postgres@127.0.0.1:5432/goweb_scaffold?sslmode=disable
+  max_idle_conns: 10
+  max_open_conns: 20
+  conn_max_lifetime: 30m
+  conn_max_idle_time: 10m
+  log_level: warn
+
+jwt:
+  admin:
+    issuer: goweb-admin
+    secret: change-this-admin-secret
+    expire: 24h
+  app:
+    issuer: goweb-app-user
+    secret: change-this-app-secret
+    expire: 72h
+
+cors:
+  allow_origins:
+    - http://localhost:5173
+    - http://localhost:5174
+  allow_credentials: true
+  max_age_seconds: 600
+
+storage:
+  upload_dir: storage/uploads
+  public_prefix: /uploads
