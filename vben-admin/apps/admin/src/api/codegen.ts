@@ -4,8 +4,11 @@ import type {
   CodegenDiffResult,
   CodegenGenerateResult,
   CodegenHistoryItem,
+  CodegenManagedModule,
   CodegenPayloadBody,
   CodegenPreview,
+  CodegenRemovePayload,
+  CodegenRemoveResult,
   CodegenTableInfo,
 } from '@/types';
 
@@ -29,8 +32,14 @@ export type CodegenRegeneratePayload = {
   upsert_menu: boolean;
 };
 
+export type CodegenRemoveModulePayload = CodegenRemovePayload;
+
 export function fetchCodegenHistory() {
   return request.get<{ list: CodegenHistoryItem[] }>('/codegen/list');
+}
+
+export function fetchCodegenModules() {
+  return request.get<{ list: CodegenManagedModule[] }>('/codegen/modules');
 }
 
 export function fetchCodegenTables() {
@@ -57,6 +66,10 @@ export function generateCodegenFiles(payload: CodegenGeneratePayload) {
 
 export function regenerateCodegenFiles(payload: CodegenRegeneratePayload) {
   return request.post<CodegenGenerateResult>('/codegen/regenerate', payload);
+}
+
+export function removeCodegenModule(payload: CodegenRemoveModulePayload) {
+  return request.post<CodegenRemoveResult>('/codegen/remove', payload);
 }
 
 export function saveCodegenHistory(payload: CodegenPayload) {

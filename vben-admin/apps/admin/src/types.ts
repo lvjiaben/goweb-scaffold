@@ -224,6 +224,15 @@ export interface CodegenGenerateResult {
   warnings: string[];
 }
 
+export interface CodegenMenuRecord {
+  id: number;
+  name: string;
+  title: string;
+  path?: string;
+  menu_type: string;
+  permission_code?: string;
+}
+
 export interface CodegenDiffFileSummary {
   path: string;
   status: string;
@@ -240,5 +249,57 @@ export interface CodegenDiffResult {
   module_name: string;
   route_path: string;
   permission_codes: string[];
+  warnings: string[];
+}
+
+export interface CodegenPreviewSummary {
+  table_comment?: string;
+  page: {
+    route_path: string;
+    page_name: string;
+    view_file: string;
+  };
+  api: {
+    module_code: string;
+    list: string;
+    detail: string;
+    save: string;
+    delete: string;
+  };
+  inferred_fields: CodegenInferredField[];
+  form_schema: CodegenSchemaItem[];
+  list_schema: CodegenSchemaItem[];
+  search_schema: CodegenSchemaItem[];
+}
+
+export interface CodegenManagedModule {
+  module_name: string;
+  table_name: string;
+  generated_at: string;
+  template_version: string;
+  route_path: string;
+  permission_codes: string[];
+  files: string[];
+  payload: CodegenPayloadBody;
+  preview_summary: CodegenPreviewSummary;
+}
+
+export interface CodegenRemovePayload {
+  module_name: string;
+  remove_files: boolean;
+  unregister_module: boolean;
+  remove_menu: boolean;
+  remove_history: boolean;
+  remove_lock: boolean;
+}
+
+export interface CodegenRemoveResult {
+  module_name: string;
+  removed_files: string[];
+  skipped_files: string[];
+  removed_menu_records: CodegenMenuRecord[];
+  removed_role_menu_links: number;
+  removed_history_ids: number[];
+  regenerated_registry_files: string[];
   warnings: string[];
 }

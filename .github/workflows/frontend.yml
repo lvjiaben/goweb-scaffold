@@ -1,0 +1,33 @@
+name: Frontend
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install admin dependencies
+        working-directory: vben-admin/apps/admin
+        run: npm install
+
+      - name: Build admin
+        working-directory: vben-admin/apps/admin
+        run: npm run build
+
+      - name: Install user dependencies
+        working-directory: vben-admin/apps/user
+        run: npm install
+
+      - name: Build user
+        working-directory: vben-admin/apps/user
+        run: npm run build

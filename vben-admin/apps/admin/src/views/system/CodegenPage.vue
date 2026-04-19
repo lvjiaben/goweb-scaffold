@@ -1,23 +1,25 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue';
 
-import AppTable from '@/components/AppTable.vue';
-import FormField from '@/components/FormField.vue';
-import PermissionButton from '@/components/PermissionButton.vue';
 import {
   deleteCodegenHistory,
   fetchCodegenDiff,
   fetchCodegenHistory,
+  fetchCodegenModules,
   fetchCodegenPreview,
   fetchCodegenTableColumns,
   fetchCodegenTables,
   generateCodegenFiles,
   regenerateCodegenFiles,
+  removeCodegenModule,
   saveCodegenHistory,
-  type CodegenGeneratePayload,
   type CodegenPayload,
   type CodegenPayloadBody,
 } from '@/api/codegen';
+import AppModal from '@/components/AppModal.vue';
+import AppTable from '@/components/AppTable.vue';
+import FormField from '@/components/FormField.vue';
+import PermissionButton from '@/components/PermissionButton.vue';
 import { formatTime, getErrorMessage, prettyJSON } from '@/helpers';
 import { notifyError, notifyInfo, notifySuccess } from '@/notify';
 import type {
@@ -27,8 +29,10 @@ import type {
   CodegenFieldOverride,
   CodegenGenerateResult,
   CodegenHistoryItem,
+  CodegenManagedModule,
+  CodegenMenuRecord,
   CodegenPreview,
-  CodegenSchemaItem,
+  CodegenRemoveResult,
   CodegenTableInfo,
   TableColumn,
 } from '@/types';
@@ -65,6 +69,11 @@ type FieldConfigRow = {
   options_text: string;
   default_value_text: string;
 };
+
+const registryFiles = [
+  'internal/gen/modules_gen.go',
+  'vben-admin/apps/admin/src/generated/routes.ts',
+];
 
 const componentOptions = [
   { label: '自动推断', value: '' },
@@ -108,20 +117,26 @@ const diffTable: TableColumn[] = [
 ];
 
 const tables = ref<CodegenTableInfo[]>([]);
+const modules = ref<CodegenManagedModule[]>([]);
 const columns = ref<CodegenColumn[]>([]);
 const historyRows = ref<CodegenHistoryItem[]>([]);
 const fieldConfigs = ref<FieldConfigRow[]>([]);
 const preview = ref<CodegenPreview | null>(null);
 const diffResult = ref<CodegenDiffResult | null>(null);
 const generateResult = ref<CodegenGenerateResult | null>(null);
+const removeResult = ref<CodegenRemoveResult | null>(null);
 const loadingTables = ref(false);
+const loadingModules = ref(false);
 const loadingColumns = ref(false);
 const loadingHistory = ref(false);
 const previewing = ref(false);
 const diffing = ref(false);
 const saving = ref(false);
 const generating = ref(false);
+const removing = ref(false);
 const regeneratingHistoryId = ref<number | null>(null);
+const regeneratingModuleName = ref('');
+const selectedManagedModuleName = ref('');
 const errorMessage = ref('');
 
 const form = reactive<{
@@ -150,8 +165,26 @@ const generateOptions = reactive({
   upsert_menu: true,
 });
 
+const removeModal = reactive({
+  open: false,
+  module_name: '',
+  remove_files: true,
+  unregister_module: true,
+  remove_menu: true,
+  remove_history: false,
+  remove_lock: true,
+});
+
 const selectedTableInfo = computed(
   () => tables.value.find((item) => item.table_name === form.table_name) || null,
+);
+
+const selectedManagedModule = computed(
+  () => modules.value.find((item) => item.module_name === selectedManagedModuleName.value) || null,
+);
+
+const removeTargetModule = computed(
+  () => modules.value.find((item) => item.module_name === removeModal.module_name) || null,
 );
 
 const effectiveTitle = computed(() => {
@@ -160,21 +193,61 @@ const effectiveTitle = computed(() => {
 
 const tableHint = computed(() => {
   if (!preview.value) {
-    return '先做 preview，再看 diff，最后 generate 或 regenerate。';
+    return '先做 preview，再看 diff，最后 generate、regenerate 或 remove。';
   }
   return `路由 ${preview.value.page.route_path}，API 模块 ${preview.value.api.module_code}。`;
 });
 
 const canOperate = computed(() => Boolean(form.module_name.trim() && form.table_name.trim()));
 
+const selectedOverrideEntries = computed(() => {
+  const overrides = selectedManagedModule.value?.payload.field_overrides || {};
+  return Object.entries(overrides).map(([field, config]) => ({
+    field,
+    config,
+  }));
+});
+
+const removeTargetFiles = computed(() => {
+  const target = removeTargetModule.value;
+  if (!target) {
+    return {
+      moduleFiles: [] as string[],
+      registry: [] as string[],
+    };
+  }
+  const moduleFiles = target.files.filter((item) => !registryFiles.includes(item));
+  const registry = target.files.filter((item) => registryFiles.includes(item));
+  return { moduleFiles, registry };
+});
+
+const removeTargetMenuRecords = computed(() => {
+  const target = removeTargetModule.value;
+  if (!target) {
+    return [] as CodegenMenuRecord[];
+  }
+  return [
+    {
+      id: 0,
+      name: target.module_name,
+      title: target.payload.title || target.preview_summary.table_comment || target.module_name,
+      path: target.route_path,
+      menu_type: 'menu',
+    },
+    ...target.permission_codes.map((code) => ({
+      id: 0,
+      name: code,
+      title: code,
+      menu_type: 'button',
+      permission_code: code,
+    })),
+  ];
+});
+
 function setActionError(error: unknown, fallback: string) {
   const message = getErrorMessage(error, fallback);
   errorMessage.value = message;
   notifyError(message);
-}
-
-function boolText(value: boolean) {
-  return value ? '是' : '否';
 }
 
 function boolOverrideToInput(value: boolean | undefined): OverrideBoolValue {
@@ -382,15 +455,6 @@ function payloadSnapshot(): CodegenPayload {
   };
 }
 
-function generatePayloadSnapshot(): CodegenGeneratePayload {
-  return {
-    ...payloadSnapshot(),
-    overwrite: generateOptions.overwrite,
-    register_module: generateOptions.register_module,
-    upsert_menu: generateOptions.upsert_menu,
-  };
-}
-
 function changeSelection(row: FieldConfigRow, bucket: 'list' | 'form' | 'search', checked: boolean) {
   if (bucket === 'list') {
     row.in_list = checked;
@@ -403,6 +467,17 @@ function changeSelection(row: FieldConfigRow, bucket: 'list' | 'form' | 'search'
   row.in_search = checked;
 }
 
+function ensureManagedModuleSelection(items: CodegenManagedModule[]) {
+  if (!items.length) {
+    selectedManagedModuleName.value = '';
+    return;
+  }
+  const current = items.find((item) => item.module_name === selectedManagedModuleName.value);
+  if (!current) {
+    selectedManagedModuleName.value = items[0].module_name;
+  }
+}
+
 async function loadTables() {
   loadingTables.value = true;
   try {
@@ -412,6 +487,19 @@ async function loadTables() {
     setActionError(error, '加载业务表列表失败');
   } finally {
     loadingTables.value = false;
+  }
+}
+
+async function loadModules() {
+  loadingModules.value = true;
+  try {
+    const result = await fetchCodegenModules();
+    modules.value = result.list || [];
+    ensureManagedModuleSelection(modules.value);
+  } catch (error) {
+    setActionError(error, '加载已生成模块失败');
+  } finally {
+    loadingModules.value = false;
   }
 }
 
@@ -427,6 +515,10 @@ async function loadHistory() {
   }
 }
 
+async function refreshLifecycleData() {
+  await Promise.all([loadModules(), loadHistory()]);
+}
+
 async function loadColumns(tableName: string) {
   if (!tableName) {
     columns.value = [];
@@ -434,6 +526,7 @@ async function loadColumns(tableName: string) {
     preview.value = null;
     diffResult.value = null;
     generateResult.value = null;
+    removeResult.value = null;
     form.table_name = '';
     return;
   }
@@ -446,6 +539,7 @@ async function loadColumns(tableName: string) {
     preview.value = null;
     diffResult.value = null;
     generateResult.value = null;
+    removeResult.value = null;
     fieldConfigs.value = [];
   } catch (error) {
     setActionError(error, '读取字段元数据失败');
@@ -467,10 +561,6 @@ async function changeTable(tableName: string, payload?: CodegenPayloadBody) {
   form.payload.search_fields = normalized ? [...normalized.search_fields] : [];
   form.payload.title = normalized?.title || '';
 
-  if (!normalized && !form.payload.title) {
-    form.payload.title = '';
-  }
-
   if (tableName) {
     await previewCurrent(false);
   }
@@ -487,6 +577,7 @@ async function previewCurrent(showNotice = true) {
     syncPreview(nextPreview);
     diffResult.value = null;
     generateResult.value = null;
+    removeResult.value = null;
     if (showNotice) {
       notifySuccess('方案预览已更新');
     }
@@ -519,6 +610,7 @@ async function diffCurrent() {
       upsert_menu: generateOptions.upsert_menu,
     });
     generateResult.value = null;
+    removeResult.value = null;
     notifyInfo('diff 已更新');
   } catch (error) {
     setActionError(error, '生成 diff 失败');
@@ -571,8 +663,10 @@ async function generateCurrent() {
       register_module: generateOptions.register_module,
       upsert_menu: generateOptions.upsert_menu,
     });
+    removeResult.value = null;
+    selectedManagedModuleName.value = nextPreview.module_name;
     notifySuccess('代码生成完成');
-    await loadHistory();
+    await refreshLifecycleData();
   } catch (error) {
     setActionError(error, '生成文件失败');
   } finally {
@@ -580,7 +674,7 @@ async function generateCurrent() {
   }
 }
 
-async function removeHistory(row: CodegenHistoryItem) {
+async function removeHistoryRecord(row: CodegenHistoryItem) {
   if (!window.confirm(`确认删除生成历史 #${row.id} 吗？`)) {
     return;
   }
@@ -596,6 +690,7 @@ async function removeHistory(row: CodegenHistoryItem) {
 async function applyHistory(row: CodegenHistoryItem) {
   const payload = normalizePayload(row.payload);
   form.module_name = row.module_name;
+  selectedManagedModuleName.value = row.module_name;
   await changeTable(row.table_name, payload);
   notifySuccess(`已载入历史配置 #${row.id}`);
 }
@@ -620,12 +715,100 @@ async function regenerateFromHistory(row: CodegenHistoryItem) {
       register_module: generateOptions.register_module,
       upsert_menu: generateOptions.upsert_menu,
     });
+    removeResult.value = null;
+    selectedManagedModuleName.value = row.module_name;
     notifySuccess(`已根据历史 #${row.id} 重新生成`);
-    await loadHistory();
+    await refreshLifecycleData();
   } catch (error) {
     setActionError(error, '重新生成失败');
   } finally {
     regeneratingHistoryId.value = null;
+  }
+}
+
+async function applyManagedModule(module: CodegenManagedModule, showNotice = true) {
+  selectedManagedModuleName.value = module.module_name;
+  form.module_name = module.module_name;
+  await changeTable(module.table_name, module.payload);
+  if (showNotice) {
+    notifySuccess(`已载入模块 ${module.module_name} 的 lock 配置`);
+  }
+}
+
+function selectManagedModule(moduleName: string) {
+  selectedManagedModuleName.value = moduleName;
+}
+
+async function viewManagedDiff(module: CodegenManagedModule) {
+  await applyManagedModule(module, false);
+  await diffCurrent();
+}
+
+async function regenerateManagedModule(module: CodegenManagedModule) {
+  regeneratingModuleName.value = module.module_name;
+  errorMessage.value = '';
+  try {
+    await applyManagedModule(module, false);
+    generateResult.value = await regenerateCodegenFiles({
+      module_name: module.module_name,
+      overwrite: generateOptions.overwrite,
+      register_module: generateOptions.register_module,
+      upsert_menu: generateOptions.upsert_menu,
+    });
+    removeResult.value = null;
+    selectedManagedModuleName.value = module.module_name;
+    notifySuccess(`模块 ${module.module_name} 已重新生成`);
+    await refreshLifecycleData();
+  } catch (error) {
+    setActionError(error, '按模块重新生成失败');
+  } finally {
+    regeneratingModuleName.value = '';
+  }
+}
+
+function openRemoveModal(module: CodegenManagedModule) {
+  selectedManagedModuleName.value = module.module_name;
+  removeModal.open = true;
+  removeModal.module_name = module.module_name;
+  removeModal.remove_files = true;
+  removeModal.unregister_module = true;
+  removeModal.remove_menu = true;
+  removeModal.remove_history = false;
+  removeModal.remove_lock = true;
+}
+
+function closeRemoveModal() {
+  if (removing.value) {
+    return;
+  }
+  removeModal.open = false;
+}
+
+async function confirmRemoveModule() {
+  if (!removeModal.module_name) {
+    notifyError('请选择要卸载的模块');
+    return;
+  }
+  removing.value = true;
+  errorMessage.value = '';
+  try {
+    removeResult.value = await removeCodegenModule({
+      module_name: removeModal.module_name,
+      remove_files: removeModal.remove_files,
+      unregister_module: removeModal.unregister_module,
+      remove_menu: removeModal.remove_menu,
+      remove_history: removeModal.remove_history,
+      remove_lock: removeModal.remove_lock,
+    });
+    diffResult.value = null;
+    generateResult.value = null;
+    notifySuccess(`模块 ${removeModal.module_name} 卸载流程已执行`);
+    removeModal.open = false;
+    await refreshLifecycleData();
+  } catch (error) {
+    setActionError(error, '卸载模块失败');
+  } finally {
+    removing.value = false;
   }
 }
 
@@ -657,19 +840,8 @@ function diffHashes(row: { old_hash?: string; new_hash?: string }) {
   return `${oldHash} -> ${newHash}`;
 }
 
-function schemaFlags(row: CodegenSchemaItem) {
-  const flags = [];
-  if (row.required) flags.push('required');
-  if (row.readonly) flags.push('readonly');
-  if (row.hidden) flags.push('hidden');
-  if (row.searchable) flags.push('searchable');
-  if (row.sortable) flags.push('sortable');
-  if (row.width) flags.push(`width:${row.width}`);
-  return flags;
-}
-
 onMounted(async () => {
-  await Promise.all([loadTables(), loadHistory()]);
+  await Promise.all([loadTables(), loadHistory(), loadModules()]);
 });
 </script>
 
@@ -761,6 +933,135 @@ onMounted(async () => {
                 <span>同步菜单与权限</span>
               </label>
             </div>
+          </div>
+        </article>
+
+        <article class="card page-card">
+          <div class="section-heading compact">
+            <div>
+              <h3>模块生命周期</h3>
+              <p>扫描 `codegen.lock.json`，统一管理 generate、regenerate、remove 的完整链路。</p>
+            </div>
+          </div>
+
+          <div v-if="loadingModules" class="empty-state">扫描已生成模块中...</div>
+          <div v-else-if="!modules.length" class="empty-state">当前还没有 lock 管理的已生成模块。</div>
+          <div v-else class="module-grid">
+            <section
+              v-for="item in modules"
+              :key="item.module_name"
+              class="module-card inset-card"
+              :class="{ active: selectedManagedModuleName === item.module_name }"
+            >
+              <div class="stack-xs">
+                <strong>{{ item.module_name }}</strong>
+                <span class="text-muted">{{ item.table_name }}</span>
+                <span class="text-muted">{{ item.route_path }}</span>
+              </div>
+
+              <div class="module-meta-list">
+                <span>生成时间：{{ formatTime(item.generated_at) }}</span>
+                <span>模板版本：{{ item.template_version }}</span>
+                <span>文件数：{{ item.files.length }}</span>
+              </div>
+
+              <div class="tag-list">
+                <span v-for="code in item.permission_codes" :key="code" class="tag-chip">
+                  {{ code }}
+                </span>
+              </div>
+
+              <div class="table-actions align-start">
+                <PermissionButton code="codegen.list">
+                  <button class="btn secondary btn-sm" type="button" @click="selectManagedModule(item.module_name)">
+                    查看摘要
+                  </button>
+                </PermissionButton>
+                <PermissionButton code="codegen.save">
+                  <button class="btn secondary btn-sm" type="button" @click="applyManagedModule(item)">
+                    载入配置
+                  </button>
+                </PermissionButton>
+                <PermissionButton code="codegen.save">
+                  <button class="btn secondary btn-sm" type="button" @click="viewManagedDiff(item)">
+                    查看 Diff
+                  </button>
+                </PermissionButton>
+                <PermissionButton code="codegen.save">
+                  <button
+                    class="btn secondary btn-sm"
+                    type="button"
+                    :disabled="regeneratingModuleName === item.module_name"
+                    @click="regenerateManagedModule(item)"
+                  >
+                    重新生成
+                  </button>
+                </PermissionButton>
+                <PermissionButton code="codegen.delete">
+                  <button class="btn danger btn-sm" type="button" @click="openRemoveModal(item)">
+                    卸载模块
+                  </button>
+                </PermissionButton>
+              </div>
+            </section>
+          </div>
+        </article>
+
+        <article v-if="selectedManagedModule" class="card page-card">
+          <div class="section-heading compact">
+            <div>
+              <h3>Lock 摘要</h3>
+              <p>把 `codegen.lock.json` 的基础信息、schema 摘要和字段覆盖可视化展示出来。</p>
+            </div>
+          </div>
+
+          <div class="preview-grid">
+            <section class="preview-card inset-card">
+              <strong>基础信息</strong>
+              <div class="stack-xs">
+                <span>模块：{{ selectedManagedModule.module_name }}</span>
+                <span>数据表：{{ selectedManagedModule.table_name }}</span>
+                <span>路由：{{ selectedManagedModule.route_path }}</span>
+                <span>生成时间：{{ formatTime(selectedManagedModule.generated_at) }}</span>
+                <span>模板版本：{{ selectedManagedModule.template_version }}</span>
+              </div>
+            </section>
+
+            <section class="preview-card inset-card">
+              <strong>Route / API</strong>
+              <div class="stack-xs">
+                <span>页面：{{ selectedManagedModule.preview_summary.page.page_name }}</span>
+                <span>视图文件：{{ selectedManagedModule.preview_summary.page.view_file }}</span>
+                <span>List：{{ selectedManagedModule.preview_summary.api.list }}</span>
+                <span>Save：{{ selectedManagedModule.preview_summary.api.save }}</span>
+                <span>Delete：{{ selectedManagedModule.preview_summary.api.delete }}</span>
+              </div>
+            </section>
+
+            <section class="preview-card inset-card">
+              <strong>权限码</strong>
+              <div class="tag-list">
+                <span v-for="code in selectedManagedModule.permission_codes" :key="code" class="tag-chip">
+                  {{ code }}
+                </span>
+              </div>
+            </section>
+
+            <section class="preview-card inset-card">
+              <strong>Generated Files</strong>
+              <pre class="mini-code">{{ prettyJSON(selectedManagedModule.files) }}</pre>
+            </section>
+
+            <section class="preview-card preview-card--full inset-card">
+              <strong>Field Overrides 摘要</strong>
+              <div v-if="selectedOverrideEntries.length" class="override-grid">
+                <div v-for="item in selectedOverrideEntries" :key="item.field" class="override-card">
+                  <strong>{{ item.field }}</strong>
+                  <pre class="mini-code">{{ prettyJSON(item.config) }}</pre>
+                </div>
+              </div>
+              <div v-else class="empty-state">当前 lock 没有字段级 overrides。</div>
+            </section>
           </div>
         </article>
 
@@ -1047,6 +1348,44 @@ onMounted(async () => {
           </div>
         </article>
 
+        <article v-if="removeResult" class="card page-card">
+          <div class="section-heading compact">
+            <div>
+              <h3>卸载结果</h3>
+              <p>这里展示最近一次 remove 的真实删除、跳过和注册文件重建结果。</p>
+            </div>
+          </div>
+
+          <div class="preview-grid">
+            <section class="preview-card inset-card">
+              <strong>已删除文件</strong>
+              <pre class="mini-code">{{ prettyJSON(removeResult.removed_files) }}</pre>
+            </section>
+            <section class="preview-card inset-card">
+              <strong>跳过文件</strong>
+              <pre class="mini-code">{{ prettyJSON(removeResult.skipped_files) }}</pre>
+            </section>
+            <section class="preview-card inset-card">
+              <strong>已删除菜单 / 权限</strong>
+              <pre class="mini-code">{{ prettyJSON({
+                removed_menu_records: removeResult.removed_menu_records,
+                removed_role_menu_links: removeResult.removed_role_menu_links,
+              }) }}</pre>
+            </section>
+            <section class="preview-card inset-card">
+              <strong>注册文件 / 历史</strong>
+              <pre class="mini-code">{{ prettyJSON({
+                regenerated_registry_files: removeResult.regenerated_registry_files,
+                removed_history_ids: removeResult.removed_history_ids,
+              }) }}</pre>
+            </section>
+            <section v-if="removeResult.warnings?.length" class="preview-card preview-card--full inset-card">
+              <strong>Warnings</strong>
+              <pre class="mini-code">{{ prettyJSON(removeResult.warnings) }}</pre>
+            </section>
+          </div>
+        </article>
+
         <article class="card page-card">
           <div class="section-heading compact">
             <div>
@@ -1081,7 +1420,7 @@ onMounted(async () => {
                   </button>
                 </PermissionButton>
                 <PermissionButton code="codegen.delete">
-                  <button class="btn danger btn-sm" type="button" @click="removeHistory(row)">删除</button>
+                  <button class="btn danger btn-sm" type="button" @click="removeHistoryRecord(row)">删除</button>
                 </PermissionButton>
               </div>
             </template>
@@ -1090,4 +1429,89 @@ onMounted(async () => {
       </div>
     </div>
   </section>
+
+  <AppModal
+    :open="removeModal.open"
+    title="卸载生成模块"
+    width="920px"
+    @close="closeRemoveModal"
+  >
+    <div class="page-stack">
+      <div class="hint-banner">
+        仅会删除生成器管理的文件；手写文件不会被覆盖或误删。建议先看一次 diff，再执行 remove。
+      </div>
+
+      <div class="form-grid two-columns">
+        <label class="check-card">
+          <input v-model="removeModal.remove_files" type="checkbox" />
+          <div>
+            <strong>删除模块文件</strong>
+            <small>删除 module/model/types/meta、admin api、admin 页面。</small>
+          </div>
+        </label>
+        <label class="check-card">
+          <input v-model="removeModal.unregister_module" type="checkbox" />
+          <div>
+            <strong>重建注册文件</strong>
+            <small>重写 `modules_gen.go` 和 `generated/routes.ts`，把模块从注册表移除。</small>
+          </div>
+        </label>
+        <label class="check-card">
+          <input v-model="removeModal.remove_menu" type="checkbox" />
+          <div>
+            <strong>删除菜单与权限</strong>
+            <small>删除 `admin_menu` / `admin_role_menu` 里的当前模块菜单和按钮节点。</small>
+          </div>
+        </label>
+        <label class="check-card">
+          <input v-model="removeModal.remove_history" type="checkbox" />
+          <div>
+            <strong>删除生成历史</strong>
+            <small>清理 `codegen_history` 里当前模块的记录，默认不勾选。</small>
+          </div>
+        </label>
+        <label class="check-card">
+          <input v-model="removeModal.remove_lock" type="checkbox" />
+          <div>
+            <strong>删除 lock 文件</strong>
+            <small>移除 `internal/modules/{module}/codegen.lock.json`。</small>
+          </div>
+        </label>
+      </div>
+
+      <div v-if="removeTargetModule" class="preview-grid">
+        <section class="preview-card inset-card">
+          <strong>将删除的模块文件</strong>
+          <pre class="mini-code">{{ prettyJSON(removeModal.remove_files ? removeTargetFiles.moduleFiles : []) }}</pre>
+        </section>
+        <section class="preview-card inset-card">
+          <strong>将重建的注册文件</strong>
+          <pre class="mini-code">{{ prettyJSON(removeModal.unregister_module ? removeTargetFiles.registry : []) }}</pre>
+        </section>
+        <section class="preview-card inset-card">
+          <strong>将删除的菜单与权限</strong>
+          <pre class="mini-code">{{ prettyJSON(removeModal.remove_menu ? removeTargetMenuRecords : []) }}</pre>
+        </section>
+        <section class="preview-card inset-card">
+          <strong>将删除的 lock / history</strong>
+          <pre class="mini-code">{{ prettyJSON({
+            remove_lock: removeModal.remove_lock,
+            remove_history: removeModal.remove_history,
+            lock_file: removeModal.remove_lock ? `internal/modules/${removeTargetModule.module_name}/codegen.lock.json` : '',
+            history_scope: removeModal.remove_history ? removeTargetModule.module_name : '',
+          }) }}</pre>
+        </section>
+      </div>
+      <div v-else class="empty-state">未找到对应 lock 摘要，remove 将只按 module_name 尝试清理。</div>
+    </div>
+
+    <template #footer>
+      <div class="modal-actions">
+        <button class="btn secondary" type="button" :disabled="removing" @click="closeRemoveModal">取消</button>
+        <button class="btn danger" type="button" :disabled="removing" @click="confirmRemoveModule">
+          {{ removing ? '卸载中...' : '确认卸载' }}
+        </button>
+      </div>
+    </template>
+  </AppModal>
 </template>

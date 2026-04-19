@@ -47,6 +47,28 @@ func (w *SafeWriter) Write(relPath string, content []byte, overwrite bool) (stat
 	return status, warning, nil
 }
 
+func (w *SafeWriter) Delete(relPath string) (status string, warning string, err error) {
+	targetPath, err := w.safePath(relPath)
+	if err != nil {
+		return "", "", err
+	}
+
+	content, readErr := os.ReadFile(targetPath)
+	switch {
+	case os.IsNotExist(readErr):
+		return "skipped", fmt.Sprintf("%s does not exist", relPath), nil
+	case readErr != nil:
+		return "", "", readErr
+	case !IsGeneratedFile(content):
+		return "skipped", fmt.Sprintf("%s exists and is not generator-managed", relPath), nil
+	}
+
+	if err := os.Remove(targetPath); err != nil {
+		return "", "", err
+	}
+	return "removed", "", nil
+}
+
 func (w *SafeWriter) Inspect(relPath string, content []byte, overwrite bool) (status string, warning string, existing []byte, err error) {
 	targetPath, err := w.safePath(relPath)
 	if err != nil {

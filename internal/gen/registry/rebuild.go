@@ -4,6 +4,7 @@ import (
 	"go/format"
 	"sort"
 	"strconv"
+	"strings"
 	"text/template"
 
 	gentemplates "github.com/lvjiaben/goweb-scaffold/internal/gen/templates"
@@ -27,11 +28,16 @@ type routeItem struct {
 }
 
 func RenderBackendModulesFile(repoRoot string, upsertModules ...GeneratedModule) ([]byte, error) {
+	return RenderBackendModulesFileWithOptions(repoRoot, upsertModules, nil)
+}
+
+func RenderBackendModulesFileWithOptions(repoRoot string, upsertModules []GeneratedModule, excludeModules []string) ([]byte, error) {
 	items, err := DiscoverGeneratedModules(repoRoot)
 	if err != nil {
 		return nil, err
 	}
 	items = mergeGeneratedModules(items, upsertModules...)
+	items = excludeGeneratedModules(items, excludeModules)
 
 	imports := make([]importItem, 0, len(baseModules)+len(items))
 	modules := make([]moduleItem, 0, len(baseModules)+len(items))
@@ -65,11 +71,16 @@ func RenderBackendModulesFile(repoRoot string, upsertModules ...GeneratedModule)
 }
 
 func RenderAdminRoutesFile(repoRoot string, upsertModules ...GeneratedModule) ([]byte, error) {
+	return RenderAdminRoutesFileWithOptions(repoRoot, upsertModules, nil)
+}
+
+func RenderAdminRoutesFileWithOptions(repoRoot string, upsertModules []GeneratedModule, excludeModules []string) ([]byte, error) {
 	items, err := DiscoverGeneratedModules(repoRoot)
 	if err != nil {
 		return nil, err
 	}
 	items = mergeGeneratedModules(items, upsertModules...)
+	items = excludeGeneratedModules(items, excludeModules)
 
 	routes := make([]routeItem, 0, len(items))
 	for _, item := range items {
@@ -89,7 +100,7 @@ func RenderAdminRoutesFile(repoRoot string, upsertModules ...GeneratedModule) ([
 }
 
 func RebuildBackendModulesFile(repoRoot string, upsertModules ...GeneratedModule) (string, string, error) {
-	content, err := RenderBackendModulesFile(repoRoot, upsertModules...)
+	content, err := RenderBackendModulesFileWithOptions(repoRoot, upsertModules, nil)
 	if err != nil {
 		return "", "", err
 	}
@@ -97,7 +108,7 @@ func RebuildBackendModulesFile(repoRoot string, upsertModules ...GeneratedModule
 }
 
 func RebuildAdminRoutesFile(repoRoot string, upsertModules ...GeneratedModule) (string, string, error) {
-	content, err := RenderAdminRoutesFile(repoRoot, upsertModules...)
+	content, err := RenderAdminRoutesFileWithOptions(repoRoot, upsertModules, nil)
 	if err != nil {
 		return "", "", err
 	}
@@ -123,5 +134,32 @@ func mergeGeneratedModules(items []GeneratedModule, upsertModules ...GeneratedMo
 	sort.Slice(result, func(i, j int) bool {
 		return result[i].ModuleName < result[j].ModuleName
 	})
+	return result
+}
+
+func excludeGeneratedModules(items []GeneratedModule, excludeModules []string) []GeneratedModule {
+	if len(excludeModules) == 0 {
+		return items
+	}
+
+	excluded := make(map[string]struct{}, len(excludeModules))
+	for _, item := range excludeModules {
+		moduleName := strings.TrimSpace(item)
+		if moduleName == "" {
+			continue
+		}
+		excluded[moduleName] = struct{}{}
+	}
+	if len(excluded) == 0 {
+		return items
+	}
+
+	result := make([]GeneratedModule, 0, len(items))
+	for _, item := range items {
+		if _, ok := excluded[item.ModuleName]; ok {
+			continue
+		}
+		result = append(result, item)
+	}
 	return result
 }

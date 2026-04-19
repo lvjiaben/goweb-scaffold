@@ -2,10 +2,8 @@ package codegen
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/lvjiaben/goweb-core/httpx"
@@ -39,6 +37,15 @@ type regenerateRequest struct {
 	UpsertMenu     bool   `json:"upsert_menu"`
 }
 
+type removeRequest struct {
+	ModuleName       string `json:"module_name" validate:"required"`
+	RemoveFiles      bool   `json:"remove_files"`
+	UnregisterModule bool   `json:"unregister_module"`
+	RemoveMenu       bool   `json:"remove_menu"`
+	RemoveHistory    bool   `json:"remove_history"`
+	RemoveLock       bool   `json:"remove_lock"`
+}
+
 type regenerateSource struct {
 	ModuleName string
 	TableName  string
@@ -49,12 +56,14 @@ func (Module) Name() string { return "codegen" }
 
 func (Module) Register(runtime *bootstrap.Runtime) error {
 	runtime.AdminProtectedGroup.GET("/codegen/list", list(runtime), httpx.WithPermission("codegen.list"))
+	runtime.AdminProtectedGroup.GET("/codegen/modules", modules(runtime), httpx.WithPermission("codegen.list"))
 	runtime.AdminProtectedGroup.GET("/codegen/tables", tables(runtime), httpx.WithPermission("codegen.list"))
 	runtime.AdminProtectedGroup.GET("/codegen/table-columns", tableColumns(runtime), httpx.WithPermission("codegen.list"))
 	runtime.AdminProtectedGroup.POST("/codegen/preview", preview(runtime), httpx.WithPermission("codegen.save"))
 	runtime.AdminProtectedGroup.POST("/codegen/diff", diff(runtime), httpx.WithPermission("codegen.save"))
 	runtime.AdminProtectedGroup.POST("/codegen/generate", generate(runtime), httpx.WithPermission("codegen.save"))
 	runtime.AdminProtectedGroup.POST("/codegen/regenerate", regenerate(runtime), httpx.WithPermission("codegen.save"))
+	runtime.AdminProtectedGroup.POST("/codegen/remove", remove(runtime), httpx.WithPermission("codegen.delete"))
 	runtime.AdminProtectedGroup.POST("/codegen/save", save(runtime), httpx.WithPermission("codegen.save"))
 	runtime.AdminProtectedGroup.POST("/codegen/delete", deleteHistory(runtime), httpx.WithPermission("codegen.delete"))
 	return nil
@@ -87,6 +96,20 @@ func list(runtime *bootstrap.Runtime) httpx.HandlerFunc {
 func tables(runtime *bootstrap.Runtime) httpx.HandlerFunc {
 	return func(c *httpx.Context) {
 		items, err := listBusinessTables(runtime)
+		if err != nil {
+			c.Error(err)
+			return
+		}
+		c.Success(map[string]any{"list": items})
+	}
+}
+
+func modules(runtime *bootstrap.Runtime) httpx.HandlerFunc {
+	return func(c *httpx.Context) {
+		items, err := (service.GeneratorService{
+			RepoRoot: runtime.RepoRoot,
+			DB:       runtime.DB,
+		}).ListModules()
 		if err != nil {
 			c.Error(err)
 			return
@@ -296,6 +319,38 @@ func regenerate(runtime *bootstrap.Runtime) httpx.HandlerFunc {
 	}
 }
 
+func remove(runtime *bootstrap.Runtime) httpx.HandlerFunc {
+	return func(c *httpx.Context) {
+		var req removeRequest
+		if err := c.BindJSON(&req); err != nil {
+			c.Error(err)
+			return
+		}
+		req.ModuleName = strings.TrimSpace(req.ModuleName)
+		if err := runtime.Validator.Struct(req); err != nil {
+			c.BadRequest(err.Error())
+			return
+		}
+
+		result, err := (service.GeneratorService{
+			RepoRoot: runtime.RepoRoot,
+			DB:       runtime.DB,
+		}).Remove(service.RemoveInput{
+			ModuleName:       req.ModuleName,
+			RemoveFiles:      req.RemoveFiles,
+			UnregisterModule: req.UnregisterModule,
+			RemoveMenu:       req.RemoveMenu,
+			RemoveHistory:    req.RemoveHistory,
+			RemoveLock:       req.RemoveLock,
+		})
+		if err != nil {
+			respondCodegenError(c, err)
+			return
+		}
+		c.Success(result)
+	}
+}
+
 func save(runtime *bootstrap.Runtime) httpx.HandlerFunc {
 	return func(c *httpx.Context) {
 		var req saveRequest
@@ -398,11 +453,15 @@ func respondCodegenError(c *httpx.Context, err error) {
 }
 
 func loadRegenerateSource(runtime *bootstrap.Runtime, req regenerateRequest) (regenerateSource, error) {
+	codegenService := service.GeneratorService{
+		RepoRoot: runtime.RepoRoot,
+		DB:       runtime.DB,
+	}
 	if req.HistoryID > 0 {
 		return loadRegenerateSourceFromHistory(runtime, req.HistoryID)
 	}
 
-	lock, err := readModuleLock(runtime, req.ModuleName)
+	lock, err := codegenService.LoadLock(req.ModuleName)
 	if err == nil {
 		rawPayload, marshalErr := json.Marshal(lock.Payload)
 		if marshalErr != nil {
@@ -439,22 +498,4 @@ func loadRegenerateSourceFromHistory(runtime *bootstrap.Runtime, historyID int64
 		TableName:  strings.TrimSpace(row.SourceTable),
 		Payload:    json.RawMessage(row.Payload),
 	}, nil
-}
-
-func readModuleLock(runtime *bootstrap.Runtime, moduleName string) (service.LockFile, error) {
-	relPath := filepath.Join("internal/modules", moduleName, "codegen.lock.json")
-	fullPath := filepath.Join(runtime.RepoRoot, relPath)
-	raw, err := os.ReadFile(fullPath)
-	if err != nil {
-		return service.LockFile{}, err
-	}
-
-	var lock service.LockFile
-	if err := json.Unmarshal(raw, &lock); err != nil {
-		return service.LockFile{}, err
-	}
-	if strings.TrimSpace(lock.ModuleName) == "" || strings.TrimSpace(lock.TableName) == "" {
-		return service.LockFile{}, errors.New("invalid codegen lock file")
-	}
-	return lock, nil
 }

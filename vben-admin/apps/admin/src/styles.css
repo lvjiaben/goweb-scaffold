@@ -708,6 +708,31 @@ pre {
   background: rgba(35, 81, 124, 0.08);
 }
 
+.module-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 14px;
+}
+
+.module-card {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+  border: 1px solid rgba(24, 36, 61, 0.08);
+}
+
+.module-card.active {
+  border-color: rgba(35, 81, 124, 0.38);
+  background: rgba(35, 81, 124, 0.08);
+}
+
+.module-meta-list {
+  display: grid;
+  gap: 4px;
+  color: rgba(24, 36, 61, 0.68);
+  font-size: 13px;
+}
+
 .preview-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -731,6 +756,21 @@ pre {
 
 .codegen-textarea--sm {
   min-height: 84px;
+}
+
+.override-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+}
+
+.override-card {
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+  border: 1px solid rgba(24, 36, 61, 0.08);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.84);
 }
 
 .forbidden-page {

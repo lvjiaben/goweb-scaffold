@@ -149,6 +149,38 @@ type DiffResult struct {
 	Warnings            []string          `json:"warnings"`
 }
 
+type ManagedModule struct {
+	ModuleName      string             `json:"module_name"`
+	TableName       string             `json:"table_name"`
+	GeneratedAt     string             `json:"generated_at"`
+	TemplateVersion string             `json:"template_version"`
+	RoutePath       string             `json:"route_path"`
+	PermissionCodes []string           `json:"permission_codes"`
+	Files           []string           `json:"files"`
+	Payload         PayloadConfig      `json:"payload"`
+	PreviewSummary  LockPreviewSummary `json:"preview_summary"`
+}
+
+type RemoveInput struct {
+	ModuleName       string
+	RemoveFiles      bool
+	UnregisterModule bool
+	RemoveMenu       bool
+	RemoveHistory    bool
+	RemoveLock       bool
+}
+
+type RemoveResult struct {
+	ModuleName               string           `json:"module_name"`
+	RemovedFiles             []string         `json:"removed_files"`
+	SkippedFiles             []string         `json:"skipped_files"`
+	RemovedMenuRecords       []map[string]any `json:"removed_menu_records"`
+	RemovedRoleMenuLinks     int64            `json:"removed_role_menu_links"`
+	RemovedHistoryIDs        []int64          `json:"removed_history_ids"`
+	RegeneratedRegistryFiles []string         `json:"regenerated_registry_files"`
+	Warnings                 []string         `json:"warnings"`
+}
+
 type MenuUpsertResult struct {
 	Records []map[string]any
 }

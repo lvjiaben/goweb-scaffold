@@ -106,6 +106,7 @@ npm run dev
 - `SystemConfigPage`：系统配置列表与弹窗表单
 - `AttachmentPage`：上传、预览、复制 URL、删除
 - `CodegenPage`：业务表元数据、字段级配置、preview、diff、真实生成、regenerate、历史记录、结果面板
+- `CodegenPage`：业务表元数据、字段级配置、preview、diff、真实生成、regenerate、模块列表、lock 摘要、remove 生命周期面板
 - `DemoArticlePage`：由 codegen 生成的样例 CRUD 页面
 - `ForbiddenView`：无权限或不可访问路由兜底页
 
@@ -208,6 +209,10 @@ npm run dev
   真正生成文件、可重建注册文件、可 upsert 菜单权限
 - `POST /admin-api/codegen/regenerate`
   支持按 `module_name` 或按 `history_id` 重新生成
+- `GET /admin-api/codegen/modules`
+  扫描所有 `codegen.lock.json`，返回当前已生成模块列表与 lock 摘要
+- `POST /admin-api/codegen/remove`
+  安全卸载生成模块，只删除生成器管理的文件，并可选择移除菜单权限、历史记录、lock 与注册项
 
 ### 字段级 overrides 结构
 
@@ -247,6 +252,96 @@ npm run dev
 11. 如果后续只想按 lock 或历史记录再次输出，可直接点“重新生成”
 12. 如果选择了 `register_module`，生成完成后重启后端服务
 
+### 第六阶段生命周期工作流
+
+完整工作流现在固定为：
+
+1. 选表
+2. Preview
+3. Diff
+4. Generate
+5. Regenerate
+6. Remove
+
+其中：
+
+- `preview`
+  固定 page/api/schema 推断结果
+- `diff`
+  生成前先看本次会创建、覆盖、跳过哪些文件
+- `generate`
+  真正写文件、重建注册、写菜单权限
+- `regenerate`
+  优先从 `codegen.lock.json` 再生，也可退回历史记录
+- `remove`
+  卸载生成模块，并可按需清理 lock、菜单权限、历史记录与注册文件
+
+### 卸载 / 回滚模块
+
+`POST /admin-api/codegen/remove` 的典型请求体：
+
+```json
+{
+  "module_name": "demo_article",
+  "remove_files": true,
+  "unregister_module": true,
+  "remove_menu": true,
+  "remove_history": false,
+  "remove_lock": true
+}
+```
+
+规则：
+
+- 只会删除生成器管理的文件
+- 非生成器文件会自动 skip，不会误删
+- 如果勾选 `unregister_module`，会重建：
+  - `internal/gen/modules_gen.go`
+  - `vben-admin/apps/admin/src/generated/routes.ts`
+- 如果勾选 `remove_menu`，会删除该模块对应的后台菜单、按钮权限和 `admin_role_menu` 关联
+- 如果勾选 `remove_history`，会删除 `codegen_history` 里当前模块的所有历史
+
+### 自动化测试与 golden
+
+第六阶段已经为 generator / lifecycle 增加自动化测试：
+
+- `internal/gen/service/*_test.go`
+- `internal/gen/writer/*_test.go`
+- `internal/gen/registry/*_test.go`
+- `internal/modules/codegen/*_test.go`
+
+golden 与固定输入位于：
+
+- `internal/gen/service/testdata/demo_article_columns.json`
+- `internal/gen/service/testdata/demo_article_payload.json`
+- `internal/gen/service/testdata/demo_article_preview.golden.json`
+
+更新 golden 的命令：
+
+```bash
+UPDATE_GOLDEN=1 go test ./...
+```
+
+## 本地验证命令
+
+完整本地验证：
+
+```bash
+go test ./...
+go build ./...
+cd vben-admin/apps/admin && npm run build
+cd ../user && npm run build
+```
+
+也可以直接使用：
+
+```bash
+make test
+make build
+make build-admin
+make build-user
+```
+
 ### 当前样例
 
 仓库已经包含一次真实生成的样例模块：
@@ -268,3 +363,4 @@ npm run dev
 - 仓库不会提交本机私有 PostgreSQL 凭据
 - codegen 未来只允许生成 admin 后台 CRUD，不生成 user 页面
 - 生成新模块后，需要重启后端服务，让最新 `modules_gen.go` 生效
+- 第六阶段新增 `.github/workflows/backend.yml` 与 `.github/workflows/frontend.yml`，固定 Go 测试 / 构建与 admin/user 构建
