@@ -68,5 +68,12 @@ export function hasAccess(code: string) {
   if (!code) {
     return true;
   }
-  return Boolean(adminState.user?.access_codes.includes(code));
+  const codes = code
+    .split(/[|,\s]+/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+  if (!codes.length) {
+    return true;
+  }
+  return codes.some((item) => adminState.user?.access_codes.includes(item));
 }

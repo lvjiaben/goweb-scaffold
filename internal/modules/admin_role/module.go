@@ -26,7 +26,7 @@ func (Module) Name() string { return "admin_role" }
 func (Module) Register(runtime *bootstrap.Runtime) error {
 	runtime.AdminProtectedGroup.GET("/admin_role/list", list(runtime), httpx.WithPermission("admin_role.list"))
 	runtime.AdminProtectedGroup.GET("/admin_role/detail", detail(runtime), httpx.WithPermission("admin_role.list"))
-	runtime.AdminProtectedGroup.GET("/admin_role/options", options(runtime), httpx.WithPermission("admin_role.list"))
+	runtime.AdminProtectedGroup.GET("/admin_role/options", options(runtime), httpx.WithPermission("admin_user.save"))
 	runtime.AdminProtectedGroup.POST("/admin_role/save", save(runtime), httpx.WithPermission("admin_role.save"))
 	runtime.AdminProtectedGroup.POST("/admin_role/delete", deleteRoles(runtime), httpx.WithPermission("admin_role.delete"))
 	return nil

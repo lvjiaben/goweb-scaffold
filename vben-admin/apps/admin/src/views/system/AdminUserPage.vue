@@ -15,6 +15,7 @@ import {
   type AdminUserForm,
 } from '@/api/admin-user';
 import { formatTime, getErrorMessage } from '@/helpers';
+import { notifySuccess } from '@/notify';
 import type { AdminUserItem, RoleOption, TableColumn } from '@/types';
 
 const columns: TableColumn[] = [
@@ -91,12 +92,14 @@ async function loadRoleOptions() {
 
 function openCreate() {
   resetForm();
+  void loadRoleOptions();
   open.value = true;
 }
 
 async function openEdit(id: number) {
   errorMessage.value = '';
   try {
+    await loadRoleOptions();
     const detail = await fetchAdminUserDetail(id);
     form.id = detail.id;
     form.username = detail.username;
@@ -126,6 +129,7 @@ async function submit() {
     });
     open.value = false;
     resetForm();
+    notifySuccess(form.id ? '管理员已更新' : '管理员已创建');
     await load();
   } catch (error) {
     errorMessage.value = getErrorMessage(error, '保存管理员失败');
@@ -143,6 +147,7 @@ async function removeRow(row: AdminUserItem) {
     if (rows.value.length === 1 && page.value > 1) {
       page.value -= 1;
     }
+    notifySuccess('管理员已删除');
     await load();
   } catch (error) {
     errorMessage.value = getErrorMessage(error, '删除管理员失败');
@@ -175,9 +180,7 @@ async function goPage(next: number) {
   await load();
 }
 
-onMounted(async () => {
-  await Promise.all([load(), loadRoleOptions()]);
-});
+onMounted(load);
 </script>
 
 <template>
@@ -260,7 +263,14 @@ onMounted(async () => {
       </div>
     </article>
 
-    <AppModal :open="open" :title="modalTitle" width="760px" @close="closeModal">
+    <AppModal
+      :open="open"
+      :title="modalTitle"
+      width="760px"
+      :mask-closable="!saving"
+      :esc-closable="!saving"
+      @close="closeModal"
+    >
       <div class="form-grid two-columns">
         <FormField label="用户名" required>
           <input v-model="form.username" class="input" />

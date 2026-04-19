@@ -5,6 +5,7 @@ import AppTable from '@/components/AppTable.vue';
 import PermissionButton from '@/components/PermissionButton.vue';
 import { deleteAttachment, fetchAttachments, uploadAttachment } from '@/api/attachment';
 import { copyText, formatTime, getErrorMessage, isImageFile } from '@/helpers';
+import { notifySuccess } from '@/notify';
 import type { AttachmentItem, TableColumn } from '@/types';
 
 const columns: TableColumn[] = [
@@ -58,6 +59,7 @@ async function submitUpload() {
   try {
     await uploadAttachment(selectedFile.value);
     selectedFile.value = null;
+    notifySuccess('附件上传成功');
     await load();
   } catch (error) {
     errorMessage.value = getErrorMessage(error, '上传附件失败');
@@ -72,6 +74,7 @@ async function removeRow(row: AttachmentItem) {
   }
   try {
     await deleteAttachment(row.id);
+    notifySuccess('附件已删除');
     await load();
   } catch (error) {
     errorMessage.value = getErrorMessage(error, '删除附件失败');
@@ -81,6 +84,7 @@ async function removeRow(row: AttachmentItem) {
 async function copyURL(url: string) {
   try {
     await copyText(url);
+    notifySuccess('URL 已复制');
   } catch (error) {
     errorMessage.value = getErrorMessage(error, '复制 URL 失败');
   }

@@ -12,6 +12,7 @@ import {
   type SystemConfigForm,
 } from '@/api/system-config';
 import { formatTime, getErrorMessage, prettyJSON } from '@/helpers';
+import { notifySuccess } from '@/notify';
 import type { SystemConfigItem, TableColumn } from '@/types';
 
 const columns: TableColumn[] = [
@@ -104,6 +105,7 @@ async function submit() {
       config_value: form.config_value,
       remark: form.remark.trim(),
     });
+    notifySuccess(form.id ? '系统配置已更新' : '系统配置已创建');
     closeModal();
     await load();
   } catch (error) {
@@ -191,7 +193,14 @@ onMounted(load);
       </div>
     </article>
 
-    <AppModal :open="open" :title="modalTitle" width="840px" @close="closeModal">
+    <AppModal
+      :open="open"
+      :title="modalTitle"
+      width="840px"
+      :mask-closable="!saving"
+      :esc-closable="!saving"
+      @close="closeModal"
+    >
       <div class="form-grid two-columns">
         <FormField label="配置键" required hint="config_key 必须唯一。">
           <input v-model="form.config_key" class="input" />

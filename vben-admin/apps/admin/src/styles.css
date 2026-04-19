@@ -284,6 +284,10 @@ pre {
   color: rgba(24, 36, 61, 0.62);
 }
 
+.form-field__error {
+  color: #8d2b2b;
+}
+
 .checkbox-line {
   margin: 4px 0 18px;
 }
@@ -718,6 +722,13 @@ pre {
 
 .preview-card--full {
   grid-column: 1 / -1;
+}
+
+.forbidden-page {
+  display: grid;
+  gap: 14px;
+  min-height: 280px;
+  align-content: center;
 }
 
 .note-list {

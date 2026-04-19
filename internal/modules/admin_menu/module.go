@@ -58,8 +58,8 @@ func (Module) Name() string { return "admin_menu" }
 func (Module) Register(runtime *bootstrap.Runtime) error {
 	runtime.AdminProtectedGroup.GET("/admin_menu/list", list(runtime), httpx.WithPermission("admin_menu.list"))
 	runtime.AdminProtectedGroup.GET("/admin_menu/detail", detail(runtime), httpx.WithPermission("admin_menu.list"))
-	runtime.AdminProtectedGroup.GET("/admin_menu/tree", tree(runtime), httpx.WithPermission("admin_menu.list"))
-	runtime.AdminProtectedGroup.GET("/admin_menu/options", options(runtime), httpx.WithPermission("admin_menu.list"))
+	runtime.AdminProtectedGroup.GET("/admin_menu/tree", tree(runtime), httpx.WithPermission("admin_role.save|admin_menu.save"))
+	runtime.AdminProtectedGroup.GET("/admin_menu/options", options(runtime), httpx.WithPermission("admin_menu.save"))
 	runtime.AdminProtectedGroup.POST("/admin_menu/save", save(runtime), httpx.WithPermission("admin_menu.save"))
 	runtime.AdminProtectedGroup.POST("/admin_menu/delete", deleteMenus(runtime), httpx.WithPermission("admin_menu.delete"))
 	return nil
@@ -121,7 +121,7 @@ func tree(runtime *bootstrap.Runtime) httpx.HandlerFunc {
 func options(runtime *bootstrap.Runtime) httpx.HandlerFunc {
 	return func(c *httpx.Context) {
 		var menus []model.AdminMenu
-		if err := runtime.DB.Order("sort ASC, id ASC").Find(&menus).Error; err != nil {
+		if err := runtime.DB.Where("menu_type = ?", model.MenuTypeMenu).Order("sort ASC, id ASC").Find(&menus).Error; err != nil {
 			c.Error(err)
 			return
 		}

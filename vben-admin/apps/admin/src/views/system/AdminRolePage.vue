@@ -15,6 +15,7 @@ import {
   type AdminRoleForm,
 } from '@/api/admin-role';
 import { formatTime, getErrorMessage } from '@/helpers';
+import { notifySuccess } from '@/notify';
 import type { MenuOption, RoleItem, TableColumn } from '@/types';
 
 const columns: TableColumn[] = [
@@ -84,11 +85,13 @@ async function loadMenuOptions() {
 
 function openCreate() {
   resetForm();
+  void loadMenuOptions();
   open.value = true;
 }
 
 async function openEdit(id: number) {
   try {
+    await loadMenuOptions();
     const detail = await fetchAdminRoleDetail(id);
     form.id = detail.id;
     form.name = detail.name;
@@ -112,6 +115,7 @@ async function submit() {
       status: Number(form.status),
       menu_ids: [...form.menu_ids],
     });
+    notifySuccess(form.id ? '角色已更新' : '角色已创建');
     closeModal();
     await load();
   } catch (error) {
@@ -130,6 +134,7 @@ async function removeRow(row: RoleItem) {
     if (rows.value.length === 1 && page.value > 1) {
       page.value -= 1;
     }
+    notifySuccess('角色已删除');
     await load();
   } catch (error) {
     errorMessage.value = getErrorMessage(error, '删除角色失败');
@@ -154,9 +159,7 @@ async function goPage(next: number) {
   await load();
 }
 
-onMounted(async () => {
-  await Promise.all([load(), loadMenuOptions()]);
-});
+onMounted(load);
 </script>
 
 <template>
@@ -223,7 +226,14 @@ onMounted(async () => {
       </div>
     </article>
 
-    <AppModal :open="open" :title="modalTitle" width="840px" @close="closeModal">
+    <AppModal
+      :open="open"
+      :title="modalTitle"
+      width="840px"
+      :mask-closable="!saving"
+      :esc-closable="!saving"
+      @close="closeModal"
+    >
       <div class="form-grid two-columns">
         <FormField label="名称" required>
           <input v-model="form.name" class="input" />

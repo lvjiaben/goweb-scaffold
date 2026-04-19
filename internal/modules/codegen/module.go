@@ -129,9 +129,9 @@ func save(runtime *bootstrap.Runtime) httpx.HandlerFunc {
 		record := model.CodegenHistory{
 			ModuleName:  req.ModuleName,
 			SourceTable: req.TableName,
-			Status:      "placeholder",
+			Status:      "draft",
 			Payload:     model.JSON(req.Payload),
-			Remark:      "code generator skeleton is reserved for admin only, generation logic is not implemented in v1",
+			Remark:      "preview draft for next stage real code generation; admin app only",
 		}
 		if err := runtime.DB.Create(&record).Error; err != nil {
 			c.Error(err)

@@ -4,12 +4,19 @@ import type { MenuItem } from '@/types';
 defineProps<{
   items: MenuItem[];
 }>();
+
+function resolveMenuPath(item: MenuItem): string {
+  if (item.children?.length) {
+    return resolveMenuPath(item.children[0]);
+  }
+  return item.path || '/dashboard';
+}
 </script>
 
 <template>
   <ul class="menu-tree">
     <li v-for="item in items" :key="item.id">
-      <RouterLink :to="item.path || '/dashboard'" class="menu-link">
+      <RouterLink :to="resolveMenuPath(item)" class="menu-link">
         <span>{{ item.title }}</span>
       </RouterLink>
       <MenuTree v-if="item.children?.length" :items="item.children" />

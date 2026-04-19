@@ -4,11 +4,13 @@ import { useRoute, useRouter } from 'vue-router';
 
 import MenuTree from '@/components/MenuTree.vue';
 import { adminState, logoutAndClear } from '@/auth';
+import { findMenuTrail } from '@/helpers';
 
 const route = useRoute();
 const router = useRouter();
 
-const currentTitle = computed(() => String(route.meta.title || '工作台'));
+const menuTrail = computed(() => findMenuTrail(adminState.menus, route.path));
+const currentTitle = computed(() => menuTrail.value.at(-1)?.title || String(route.meta.title || '工作台'));
 
 async function logout() {
   await logoutAndClear();
@@ -23,7 +25,7 @@ async function logout() {
         <img src="/logo.png" alt="logo" class="brand-logo" />
         <div>
           <strong>Goweb Admin</strong>
-          <p>vben-admin 底板已适配新 API</p>
+          <p>后台底座、RBAC 与 codegen 方案稿持续收口中</p>
         </div>
       </div>
       <nav class="nav card">
@@ -36,6 +38,12 @@ async function logout() {
         <div>
           <p class="topbar-kicker">当前页面</p>
           <h1>{{ currentTitle }}</h1>
+          <div v-if="menuTrail.length" class="breadcrumb">
+            <span v-for="(item, index) in menuTrail" :key="item.id">
+              <span>{{ item.title }}</span>
+              <small v-if="index < menuTrail.length - 1">/</small>
+            </span>
+          </div>
         </div>
         <div class="topbar-actions">
           <div class="user-meta">
@@ -109,6 +117,20 @@ async function logout() {
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: #b15c2e;
+}
+
+.breadcrumb {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+  color: rgba(20, 33, 61, 0.66);
+  font-size: 13px;
+}
+
+.breadcrumb span {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
 }
 
 .topbar-actions {

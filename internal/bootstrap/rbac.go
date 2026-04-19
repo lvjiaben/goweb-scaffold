@@ -2,6 +2,7 @@ package bootstrap
 
 import (
 	"context"
+	"strings"
 
 	corerbac "github.com/lvjiaben/goweb-core/rbac"
 	"github.com/lvjiaben/goweb-scaffold/internal/modules/model"
@@ -27,14 +28,39 @@ func (s *PermissionService) HasPermission(ctx context.Context, identity *corerba
 		return false, nil
 	}
 
+	codes := splitPermissionCodes(permissionCode)
+	if len(codes) == 0 {
+		return false, nil
+	}
+
 	var count int64
 	err := s.db.WithContext(ctx).
 		Model(&model.AdminMenu{}).
 		Joins("JOIN admin_role_menu arm ON arm.menu_id = admin_menu.id AND arm.deleted_at IS NULL").
 		Where("arm.role_id IN ?", identity.RoleIDs).
-		Where("admin_menu.permission_code = ? AND admin_menu.status = ?", permissionCode, 1).
+		Where("admin_menu.permission_code IN ? AND admin_menu.status = ?", codes, 1).
 		Count(&count).Error
 	return count > 0, err
+}
+
+func splitPermissionCodes(raw string) []string {
+	parts := strings.FieldsFunc(raw, func(r rune) bool {
+		return r == '|' || r == ',' || r == ' '
+	})
+	result := make([]string, 0, len(parts))
+	seen := make(map[string]struct{}, len(parts))
+	for _, part := range parts {
+		code := strings.TrimSpace(part)
+		if code == "" {
+			continue
+		}
+		if _, ok := seen[code]; ok {
+			continue
+		}
+		seen[code] = struct{}{}
+		result = append(result, code)
+	}
+	return result
 }
 
 func (s *PermissionService) GetAccessCodes(ctx context.Context, identity *corerbac.Identity) ([]string, error) {

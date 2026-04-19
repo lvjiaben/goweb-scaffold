@@ -1,5 +1,6 @@
 import { request } from './request';
-import type { MenuOption, Paginated, RoleItem, RoleOption } from '@/types';
+import { menuTreeToOptions } from '@/helpers';
+import type { MenuItem, MenuOption, Paginated, RoleItem } from '@/types';
 
 export type AdminRoleForm = {
   id?: number;
@@ -25,10 +26,9 @@ export function deleteAdminRole(id: number) {
   return request.post('/admin_role/delete', { id });
 }
 
-export function fetchRoleOptionList() {
-  return request.get<{ list: RoleOption[] }>('/admin_role/options');
-}
-
-export function fetchMenuTreeOptions() {
-  return request.get<{ list: MenuOption[] }>('/admin_menu/options');
+export async function fetchMenuTreeOptions() {
+  const result = await request.get<{ list: MenuItem[] }>('/admin_menu/tree');
+  return {
+    list: menuTreeToOptions(result.list || []),
+  };
 }

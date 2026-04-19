@@ -9,12 +9,13 @@ import PermissionButton from '@/components/PermissionButton.vue';
 import {
   deleteAdminMenu,
   fetchAdminMenuDetail,
+  fetchAdminMenuList,
   fetchAdminMenuOptions,
-  fetchAdminMenuTree,
   saveAdminMenu,
   type AdminMenuForm,
 } from '@/api/admin-menu';
 import { flattenMenuTree, formatTime, getErrorMessage } from '@/helpers';
+import { notifySuccess } from '@/notify';
 import type { FlatMenuItem, MenuItem, MenuOption, TableColumn } from '@/types';
 
 const columns: TableColumn[] = [
@@ -67,17 +68,8 @@ const filteredRows = computed(() => {
     ),
   );
 });
-const parentOptions = computed(() => removeButtonNodes(menuOptions.value));
+const parentOptions = computed(() => menuOptions.value);
 const parentLabel = computed(() => findMenuLabel(parentOptions.value, form.parent_id));
-
-function removeButtonNodes(options: MenuOption[]) {
-  return options
-    .filter((item) => item.menu_type !== 'button')
-    .map((item) => ({
-      ...item,
-      children: removeButtonNodes(item.children || []),
-    }));
-}
 
 function findMenuLabel(options: MenuOption[], value: number): string {
   if (!value) {
@@ -116,9 +108,8 @@ async function load() {
   loading.value = true;
   errorMessage.value = '';
   try {
-    const [treeResult, optionResult] = await Promise.all([fetchAdminMenuTree(), fetchAdminMenuOptions()]);
+    const treeResult = await fetchAdminMenuList();
     menuTree.value = treeResult.list || [];
-    menuOptions.value = optionResult.list || [];
   } catch (error) {
     errorMessage.value = getErrorMessage(error, '加载菜单树失败');
   } finally {
@@ -126,14 +117,25 @@ async function load() {
   }
 }
 
+async function loadParentOptions() {
+  try {
+    const optionResult = await fetchAdminMenuOptions();
+    menuOptions.value = optionResult.list || [];
+  } catch (error) {
+    errorMessage.value = getErrorMessage(error, '加载父级菜单选项失败');
+  }
+}
+
 function openCreate(parentID = 0) {
   resetForm();
   form.parent_id = parentID;
+  void loadParentOptions();
   open.value = true;
 }
 
 async function openEdit(id: number) {
   try {
+    await loadParentOptions();
     const detail = await fetchAdminMenuDetail(id);
     form.id = detail.id;
     form.parent_id = detail.parent_id;
@@ -171,6 +173,7 @@ async function submit() {
       visible: Boolean(form.visible),
       status: Number(form.status),
     });
+    notifySuccess(form.id ? '菜单已更新' : '菜单已创建');
     closeModal();
     await load();
   } catch (error) {
@@ -186,6 +189,7 @@ async function removeRow(row: FlatMenuItem) {
   }
   try {
     await deleteAdminMenu(row.id);
+    notifySuccess('菜单节点已删除');
     await load();
   } catch (error) {
     errorMessage.value = getErrorMessage(error, '删除菜单失败');
@@ -271,7 +275,14 @@ onMounted(load);
       </AppTable>
     </article>
 
-    <AppModal :open="open" :title="modalTitle" width="860px" @close="closeModal">
+    <AppModal
+      :open="open"
+      :title="modalTitle"
+      width="860px"
+      :mask-closable="!saving"
+      :esc-closable="!saving"
+      @close="closeModal"
+    >
       <div class="form-grid two-columns">
         <FormField label="节点类型" required>
           <select v-model="form.menu_type" class="input">

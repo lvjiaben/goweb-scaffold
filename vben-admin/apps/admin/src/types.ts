@@ -5,6 +5,8 @@ export type TableColumn = {
   align?: 'left' | 'center' | 'right';
 };
 
+export type NoticeType = 'error' | 'info' | 'success' | 'warning';
+
 export type Paginated<T> = {
   list: T[];
   total: number;
@@ -120,6 +122,31 @@ export interface CodegenHistoryItem {
   created_at: string;
 }
 
+export interface CodegenInferredField {
+  column_name: string;
+  data_type: string;
+  is_nullable: boolean;
+  is_primary_key: boolean;
+  guessed_form_component: string;
+  guessed_list_display: string;
+  guessed_searchable: boolean;
+  guessed_sortable: boolean;
+}
+
+export interface CodegenSchemaItem {
+  field: string;
+  label: string;
+  component: string;
+  display?: string;
+  operator?: string;
+  required?: boolean;
+  readonly?: boolean;
+  hidden?: boolean;
+  searchable?: boolean;
+  sortable?: boolean;
+  placeholder?: string;
+}
+
 export interface CodegenPreview {
   module_name: string;
   table_name: string;
@@ -128,8 +155,21 @@ export interface CodegenPreview {
     page_name: string;
     view_file: string;
   };
-  api: Record<string, string>;
-  columns: CodegenColumn[];
-  payload: unknown;
+  api: {
+    module_code: string;
+    list: string;
+    detail: string;
+    save: string;
+    delete: string;
+  };
+  inferred_fields: CodegenInferredField[];
+  form_schema: CodegenSchemaItem[];
+  list_schema: CodegenSchemaItem[];
+  search_schema: CodegenSchemaItem[];
+  payload: {
+    list_fields: string[];
+    form_fields: string[];
+    search_fields: string[];
+  };
   notes: string[];
 }

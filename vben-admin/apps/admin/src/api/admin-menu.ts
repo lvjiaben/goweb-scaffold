@@ -16,7 +16,7 @@ export type AdminMenuForm = {
   status: number;
 };
 
-export function fetchAdminMenus() {
+export function fetchAdminMenuList() {
   return request.get<{ list: MenuItem[] }>('/admin_menu/list');
 }
 
