@@ -18,8 +18,9 @@ import (
 )
 
 type Runtime struct {
-	Config *Config
-	Logger *slog.Logger
+	Config   *Config
+	Logger   *slog.Logger
+	RepoRoot string
 
 	DB        *gorm.DB
 	Engine    *httpx.Engine
@@ -67,9 +68,15 @@ func NewRuntime(configPath string) (*Runtime, error) {
 		return nil, err
 	}
 
+	repoRoot, err := os.Getwd()
+	if err != nil {
+		return nil, err
+	}
+
 	runtime := &Runtime{
 		Config:    cfg,
 		Logger:    logger,
+		RepoRoot:  repoRoot,
 		DB:        database,
 		Engine:    engine,
 		Validator: validate.New(),

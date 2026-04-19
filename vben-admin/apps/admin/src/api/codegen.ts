@@ -1,5 +1,5 @@
 import { request } from './request';
-import type { CodegenColumn, CodegenHistoryItem, CodegenPreview, CodegenTableInfo } from '@/types';
+import type { CodegenColumn, CodegenGenerateResult, CodegenHistoryItem, CodegenPreview, CodegenTableInfo } from '@/types';
 
 export type CodegenPayload = {
   module_name: string;
@@ -8,7 +8,14 @@ export type CodegenPayload = {
     list_fields: string[];
     form_fields: string[];
     search_fields: string[];
+    title?: string;
   };
+};
+
+export type CodegenGeneratePayload = CodegenPayload & {
+  overwrite: boolean;
+  register_module: boolean;
+  upsert_menu: boolean;
 };
 
 export function fetchCodegenHistory() {
@@ -27,6 +34,10 @@ export function fetchCodegenTableColumns(tableName: string) {
 
 export function fetchCodegenPreview(payload: CodegenPayload) {
   return request.post<CodegenPreview>('/codegen/preview', payload);
+}
+
+export function generateCodegenFiles(payload: CodegenGeneratePayload) {
+  return request.post<CodegenGenerateResult>('/codegen/generate', payload);
 }
 
 export function saveCodegenHistory(payload: CodegenPayload) {

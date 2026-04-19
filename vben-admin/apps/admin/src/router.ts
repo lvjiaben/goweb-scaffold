@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router';
 
 import { adminState, bootstrapAdminSession } from '@/auth';
 import { collectMenuPaths, findFirstMenuPath, findMenuTrail } from '@/helpers';
+import { generatedSystemRoutes } from '@/generated/routes';
 import ForbiddenView from '@/views/ForbiddenView.vue';
 import DashboardHomePage from '@/views/dashboard/DashboardHomePage.vue';
 import LoginView from '@/views/LoginView.vue';
@@ -66,6 +67,7 @@ const router = createRouter({
           component: CodegenPage,
           meta: { title: '代码生成', requiresMenu: true },
         },
+        ...generatedSystemRoutes,
         {
           path: '/forbidden',
           component: ForbiddenView,

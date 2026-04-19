@@ -6,6 +6,7 @@ import (
 
 	"github.com/lvjiaben/goweb-core/httpx"
 	"github.com/lvjiaben/goweb-scaffold/internal/bootstrap"
+	"github.com/lvjiaben/goweb-scaffold/internal/gen/service"
 	"github.com/lvjiaben/goweb-scaffold/internal/modules/model"
 )
 
@@ -17,6 +18,15 @@ type saveRequest struct {
 	Payload    json.RawMessage `json:"payload"`
 }
 
+type generateRequest struct {
+	ModuleName     string          `json:"module_name" validate:"required"`
+	TableName      string          `json:"table_name" validate:"required"`
+	Payload        json.RawMessage `json:"payload"`
+	Overwrite      bool            `json:"overwrite"`
+	RegisterModule bool            `json:"register_module"`
+	UpsertMenu     bool            `json:"upsert_menu"`
+}
+
 func (Module) Name() string { return "codegen" }
 
 func (Module) Register(runtime *bootstrap.Runtime) error {
@@ -24,6 +34,7 @@ func (Module) Register(runtime *bootstrap.Runtime) error {
 	runtime.AdminProtectedGroup.GET("/codegen/tables", tables(runtime), httpx.WithPermission("codegen.list"))
 	runtime.AdminProtectedGroup.GET("/codegen/table-columns", tableColumns(runtime), httpx.WithPermission("codegen.list"))
 	runtime.AdminProtectedGroup.POST("/codegen/preview", preview(runtime), httpx.WithPermission("codegen.save"))
+	runtime.AdminProtectedGroup.POST("/codegen/generate", generate(runtime), httpx.WithPermission("codegen.save"))
 	runtime.AdminProtectedGroup.POST("/codegen/save", save(runtime), httpx.WithPermission("codegen.save"))
 	runtime.AdminProtectedGroup.POST("/codegen/delete", deleteHistory(runtime), httpx.WithPermission("codegen.delete"))
 	return nil
@@ -104,8 +115,69 @@ func preview(runtime *bootstrap.Runtime) httpx.HandlerFunc {
 			return
 		}
 
-		previewPayload := buildPreviewPayload(req.ModuleName, req.TableName, req.Payload, columns)
+		previewPayload := service.BuildPreview(req.ModuleName, req.TableName, req.Payload, columns)
 		c.Success(previewPayload)
+	}
+}
+
+func generate(runtime *bootstrap.Runtime) httpx.HandlerFunc {
+	return func(c *httpx.Context) {
+		var req generateRequest
+		if err := c.BindJSON(&req); err != nil {
+			c.Error(err)
+			return
+		}
+		req.ModuleName = strings.TrimSpace(req.ModuleName)
+		req.TableName = strings.TrimSpace(req.TableName)
+		if err := runtime.Validator.Struct(req); err != nil {
+			c.BadRequest(err.Error())
+			return
+		}
+		if len(req.Payload) == 0 {
+			req.Payload = json.RawMessage(`{}`)
+		}
+
+		columns, err := listTableColumns(runtime, req.TableName)
+		if err != nil {
+			c.Error(err)
+			return
+		}
+		if len(columns) == 0 {
+			c.BadRequest("table has no available columns for generation")
+			return
+		}
+
+		previewPayload := service.BuildPreview(req.ModuleName, req.TableName, req.Payload, columns)
+		result, err := (service.GeneratorService{
+			RepoRoot: runtime.RepoRoot,
+			DB:       runtime.DB,
+		}).Generate(service.GenerateInput{
+			ModuleName:     req.ModuleName,
+			TableName:      req.TableName,
+			Payload:        previewPayload.Payload,
+			Preview:        previewPayload,
+			Columns:        columns,
+			Overwrite:      req.Overwrite,
+			RegisterModule: req.RegisterModule,
+			UpsertMenu:     req.UpsertMenu,
+		})
+		if err != nil {
+			c.Error(err)
+			return
+		}
+
+		record := model.CodegenHistory{
+			ModuleName:  req.ModuleName,
+			SourceTable: req.TableName,
+			Status:      "generated",
+			Payload:     model.JSON(req.Payload),
+			Remark:      "generated admin CRUD files",
+		}
+		if err := runtime.DB.Create(&record).Error; err != nil {
+			c.Error(err)
+			return
+		}
+		c.Success(result)
 	}
 }
 

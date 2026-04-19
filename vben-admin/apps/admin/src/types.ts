@@ -170,6 +170,25 @@ export interface CodegenPreview {
     list_fields: string[];
     form_fields: string[];
     search_fields: string[];
+    title?: string;
   };
   notes: string[];
+}
+
+export interface CodegenGenerateResult {
+  generated_files: string[];
+  overwritten_files: string[];
+  skipped_files: string[];
+  module_name: string;
+  route_path: string;
+  permission_codes: string[];
+  menu_records: Array<{
+    id: number;
+    name: string;
+    title: string;
+    path?: string;
+    menu_type: string;
+    permission_code?: string;
+  }>;
+  warnings: string[];
 }
