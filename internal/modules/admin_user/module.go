@@ -1,6 +1,8 @@
 package admin_user
 
 import (
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/lvjiaben/goweb-core/httpx"
@@ -60,14 +62,37 @@ func list(runtime *bootstrap.Runtime) httpx.HandlerFunc {
 		}
 
 		roleMap := make(map[int64][]int64, len(userIDs))
+		roleNameMap := make(map[int64][]string, len(userIDs))
 		if len(userIDs) > 0 {
 			var mappings []model.AdminUserRole
 			if err := runtime.DB.Where("user_id IN ?", userIDs).Find(&mappings).Error; err != nil {
 				c.Error(err)
 				return
 			}
+
+			roleIDs := make([]int64, 0, len(mappings))
 			for _, item := range mappings {
 				roleMap[item.UserID] = append(roleMap[item.UserID], item.RoleID)
+				roleIDs = append(roleIDs, item.RoleID)
+			}
+
+			if len(roleIDs) > 0 {
+				var roles []model.AdminRole
+				if err := runtime.DB.Where("id IN ?", bootstrap.NormalizeIDs(roleIDs...)).Find(&roles).Error; err != nil {
+					c.Error(err)
+					return
+				}
+				roleIndex := make(map[int64]string, len(roles))
+				for _, role := range roles {
+					roleIndex[role.ID] = role.Name
+				}
+				for userID, ids := range roleMap {
+					for _, roleID := range ids {
+						if name := roleIndex[roleID]; name != "" {
+							roleNameMap[userID] = append(roleNameMap[userID], name)
+						}
+					}
+				}
 			}
 		}
 
@@ -80,6 +105,7 @@ func list(runtime *bootstrap.Runtime) httpx.HandlerFunc {
 				"status":     user.Status,
 				"is_super":   user.IsSuper,
 				"role_ids":   roleMap[user.ID],
+				"role_names": roleNameMap[user.ID],
 				"created_at": user.CreatedAt,
 				"updated_at": user.UpdatedAt,
 			})
@@ -134,6 +160,8 @@ func save(runtime *bootstrap.Runtime) httpx.HandlerFunc {
 			c.Error(err)
 			return
 		}
+		req.Username = strings.TrimSpace(req.Username)
+		req.Nickname = strings.TrimSpace(req.Nickname)
 		if req.Status == 0 {
 			req.Status = 1
 		}
@@ -143,6 +171,10 @@ func save(runtime *bootstrap.Runtime) httpx.HandlerFunc {
 		}
 		if req.ID == 0 && req.Password == "" {
 			c.BadRequest("password is required")
+			return
+		}
+		if err := ensureUsernameUnique(runtime, req.ID, req.Username); err != nil {
+			c.BadRequest(err.Error())
 			return
 		}
 
@@ -223,6 +255,21 @@ func save(runtime *bootstrap.Runtime) httpx.HandlerFunc {
 		}
 		c.Success(map[string]any{"id": user.ID})
 	}
+}
+
+func ensureUsernameUnique(runtime *bootstrap.Runtime, currentID int64, username string) error {
+	var count int64
+	query := runtime.DB.Model(&model.AdminUser{}).Where("username = ?", username)
+	if currentID > 0 {
+		query = query.Where("id <> ?", currentID)
+	}
+	if err := query.Count(&count).Error; err != nil {
+		return err
+	}
+	if count > 0 {
+		return fmt.Errorf("username already exists")
+	}
+	return nil
 }
 
 func deleteUsers(runtime *bootstrap.Runtime) httpx.HandlerFunc {

@@ -2,6 +2,7 @@ package codegen
 
 import (
 	"encoding/json"
+	"strings"
 
 	"github.com/lvjiaben/goweb-core/httpx"
 	"github.com/lvjiaben/goweb-scaffold/internal/bootstrap"
@@ -20,6 +21,9 @@ func (Module) Name() string { return "codegen" }
 
 func (Module) Register(runtime *bootstrap.Runtime) error {
 	runtime.AdminProtectedGroup.GET("/codegen/list", list(runtime), httpx.WithPermission("codegen.list"))
+	runtime.AdminProtectedGroup.GET("/codegen/tables", tables(runtime), httpx.WithPermission("codegen.list"))
+	runtime.AdminProtectedGroup.GET("/codegen/table-columns", tableColumns(runtime), httpx.WithPermission("codegen.list"))
+	runtime.AdminProtectedGroup.POST("/codegen/preview", preview(runtime), httpx.WithPermission("codegen.save"))
 	runtime.AdminProtectedGroup.POST("/codegen/save", save(runtime), httpx.WithPermission("codegen.save"))
 	runtime.AdminProtectedGroup.POST("/codegen/delete", deleteHistory(runtime), httpx.WithPermission("codegen.delete"))
 	return nil
@@ -49,6 +53,62 @@ func list(runtime *bootstrap.Runtime) httpx.HandlerFunc {
 	}
 }
 
+func tables(runtime *bootstrap.Runtime) httpx.HandlerFunc {
+	return func(c *httpx.Context) {
+		items, err := listBusinessTables(runtime)
+		if err != nil {
+			c.Error(err)
+			return
+		}
+		c.Success(map[string]any{"list": items})
+	}
+}
+
+func tableColumns(runtime *bootstrap.Runtime) httpx.HandlerFunc {
+	return func(c *httpx.Context) {
+		tableName := strings.TrimSpace(c.Query("table_name"))
+		if tableName == "" {
+			c.BadRequest("table_name is required")
+			return
+		}
+
+		items, err := listTableColumns(runtime, tableName)
+		if err != nil {
+			c.Error(err)
+			return
+		}
+		c.Success(map[string]any{"list": items})
+	}
+}
+
+func preview(runtime *bootstrap.Runtime) httpx.HandlerFunc {
+	return func(c *httpx.Context) {
+		var req saveRequest
+		if err := c.BindJSON(&req); err != nil {
+			c.Error(err)
+			return
+		}
+		req.ModuleName = strings.TrimSpace(req.ModuleName)
+		req.TableName = strings.TrimSpace(req.TableName)
+		if err := runtime.Validator.Struct(req); err != nil {
+			c.BadRequest(err.Error())
+			return
+		}
+		if len(req.Payload) == 0 {
+			req.Payload = json.RawMessage(`{}`)
+		}
+
+		columns, err := listTableColumns(runtime, req.TableName)
+		if err != nil {
+			c.Error(err)
+			return
+		}
+
+		previewPayload := buildPreviewPayload(req.ModuleName, req.TableName, req.Payload, columns)
+		c.Success(previewPayload)
+	}
+}
+
 func save(runtime *bootstrap.Runtime) httpx.HandlerFunc {
 	return func(c *httpx.Context) {
 		var req saveRequest
@@ -60,6 +120,8 @@ func save(runtime *bootstrap.Runtime) httpx.HandlerFunc {
 			c.BadRequest(err.Error())
 			return
 		}
+		req.ModuleName = strings.TrimSpace(req.ModuleName)
+		req.TableName = strings.TrimSpace(req.TableName)
 		if len(req.Payload) == 0 {
 			req.Payload = json.RawMessage(`{}`)
 		}

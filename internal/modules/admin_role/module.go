@@ -1,6 +1,8 @@
 package admin_role
 
 import (
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/lvjiaben/goweb-core/httpx"
@@ -24,9 +26,30 @@ func (Module) Name() string { return "admin_role" }
 func (Module) Register(runtime *bootstrap.Runtime) error {
 	runtime.AdminProtectedGroup.GET("/admin_role/list", list(runtime), httpx.WithPermission("admin_role.list"))
 	runtime.AdminProtectedGroup.GET("/admin_role/detail", detail(runtime), httpx.WithPermission("admin_role.list"))
+	runtime.AdminProtectedGroup.GET("/admin_role/options", options(runtime), httpx.WithPermission("admin_role.list"))
 	runtime.AdminProtectedGroup.POST("/admin_role/save", save(runtime), httpx.WithPermission("admin_role.save"))
 	runtime.AdminProtectedGroup.POST("/admin_role/delete", deleteRoles(runtime), httpx.WithPermission("admin_role.delete"))
 	return nil
+}
+
+func options(runtime *bootstrap.Runtime) httpx.HandlerFunc {
+	return func(c *httpx.Context) {
+		var roles []model.AdminRole
+		if err := runtime.DB.Where("status = ?", 1).Order("id ASC").Find(&roles).Error; err != nil {
+			c.Error(err)
+			return
+		}
+
+		items := make([]map[string]any, 0, len(roles))
+		for _, role := range roles {
+			items = append(items, map[string]any{
+				"label": role.Name,
+				"value": role.ID,
+				"code":  role.Code,
+			})
+		}
+		c.Success(map[string]any{"list": items})
+	}
 }
 
 func list(runtime *bootstrap.Runtime) httpx.HandlerFunc {
@@ -111,10 +134,16 @@ func save(runtime *bootstrap.Runtime) httpx.HandlerFunc {
 			c.Error(err)
 			return
 		}
+		req.Name = strings.TrimSpace(req.Name)
+		req.Code = strings.TrimSpace(req.Code)
 		if req.Status == 0 {
 			req.Status = 1
 		}
 		if err := runtime.Validator.Struct(req); err != nil {
+			c.BadRequest(err.Error())
+			return
+		}
+		if err := ensureRoleCodeUnique(runtime, req.ID, req.Code); err != nil {
 			c.BadRequest(err.Error())
 			return
 		}
@@ -195,6 +224,16 @@ func deleteRoles(runtime *bootstrap.Runtime) httpx.HandlerFunc {
 			}
 		}
 
+		var bindCount int64
+		if err := runtime.DB.Model(&model.AdminUserRole{}).Where("role_id IN ?", ids).Count(&bindCount).Error; err != nil {
+			c.Error(err)
+			return
+		}
+		if bindCount > 0 {
+			c.BadRequest("role still bound to admin users")
+			return
+		}
+
 		err := runtime.DB.Transaction(func(tx *gorm.DB) error {
 			if err := tx.Where("role_id IN ?", ids).Delete(&model.AdminRoleMenu{}).Error; err != nil {
 				return err
@@ -210,4 +249,19 @@ func deleteRoles(runtime *bootstrap.Runtime) httpx.HandlerFunc {
 		}
 		c.Success(map[string]any{"deleted": len(ids)})
 	}
+}
+
+func ensureRoleCodeUnique(runtime *bootstrap.Runtime, currentID int64, code string) error {
+	var count int64
+	query := runtime.DB.Model(&model.AdminRole{}).Where("code = ?", code)
+	if currentID > 0 {
+		query = query.Where("id <> ?", currentID)
+	}
+	if err := query.Count(&count).Error; err != nil {
+		return err
+	}
+	if count > 0 {
+		return fmt.Errorf("role code already exists")
+	}
+	return nil
 }

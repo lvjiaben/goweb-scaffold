@@ -2,6 +2,8 @@ package system_config
 
 import (
 	"encoding/json"
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/lvjiaben/goweb-core/httpx"
@@ -105,12 +107,19 @@ func save(runtime *bootstrap.Runtime) httpx.HandlerFunc {
 			c.Error(err)
 			return
 		}
+		req.ConfigKey = strings.TrimSpace(req.ConfigKey)
+		req.ConfigName = strings.TrimSpace(req.ConfigName)
+		req.Remark = strings.TrimSpace(req.Remark)
 		if err := runtime.Validator.Struct(req); err != nil {
 			c.BadRequest(err.Error())
 			return
 		}
 		if len(req.ConfigValue) == 0 {
 			req.ConfigValue = json.RawMessage(`{}`)
+		}
+		if err := ensureConfigKeyUnique(runtime, req.ID, req.ConfigKey); err != nil {
+			c.BadRequest(err.Error())
+			return
 		}
 
 		if req.ID == 0 {
@@ -146,4 +155,19 @@ func save(runtime *bootstrap.Runtime) httpx.HandlerFunc {
 		}
 		c.Success(map[string]any{"id": item.ID})
 	}
+}
+
+func ensureConfigKeyUnique(runtime *bootstrap.Runtime, currentID int64, key string) error {
+	var count int64
+	query := runtime.DB.Model(&model.SystemConfig{}).Where("config_key = ?", key)
+	if currentID > 0 {
+		query = query.Where("id <> ?", currentID)
+	}
+	if err := query.Count(&count).Error; err != nil {
+		return err
+	}
+	if count > 0 {
+		return fmt.Errorf("config_key already exists")
+	}
+	return nil
 }

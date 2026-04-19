@@ -1,11 +1,15 @@
 import { createRouter, createWebHistory } from 'vue-router';
 
-import { adminState, bootstrapAdminSession } from './auth';
-import AttachmentView from './views/AttachmentView.vue';
-import CrudView from './views/CrudView.vue';
-import DashboardView from './views/DashboardView.vue';
-import LoginView from './views/LoginView.vue';
-import AdminLayout from './views/AdminLayout.vue';
+import { adminState, bootstrapAdminSession } from '@/auth';
+import DashboardHomePage from '@/views/dashboard/DashboardHomePage.vue';
+import LoginView from '@/views/LoginView.vue';
+import AdminLayout from '@/views/AdminLayout.vue';
+import AdminMenuPage from '@/views/system/AdminMenuPage.vue';
+import AdminRolePage from '@/views/system/AdminRolePage.vue';
+import AdminUserPage from '@/views/system/AdminUserPage.vue';
+import AttachmentPage from '@/views/system/AttachmentPage.vue';
+import CodegenPage from '@/views/system/CodegenPage.vue';
+import SystemConfigPage from '@/views/system/SystemConfigPage.vue';
 
 const router = createRouter({
   history: createWebHistory(),
@@ -19,45 +23,46 @@ const router = createRouter({
       path: '/',
       component: AdminLayout,
       children: [
-        {
-          path: '',
-          redirect: '/dashboard',
-        },
+        { path: '', redirect: '/dashboard' },
         {
           path: '/dashboard',
           name: 'dashboard',
-          component: DashboardView,
+          component: DashboardHomePage,
           meta: { title: '工作台' },
         },
         {
           path: '/system/admin-user',
-          component: CrudView,
-          meta: { title: '管理员', module: 'admin_user' },
+          component: AdminUserPage,
+          meta: { title: '管理员' },
+        },
+        {
+          path: '/system',
+          redirect: '/system/admin-user',
         },
         {
           path: '/system/admin-role',
-          component: CrudView,
-          meta: { title: '角色管理', module: 'admin_role' },
+          component: AdminRolePage,
+          meta: { title: '角色管理' },
         },
         {
           path: '/system/admin-menu',
-          component: CrudView,
-          meta: { title: '菜单管理', module: 'admin_menu' },
+          component: AdminMenuPage,
+          meta: { title: '菜单管理' },
         },
         {
           path: '/system/system-config',
-          component: CrudView,
-          meta: { title: '系统配置', module: 'system_config' },
+          component: SystemConfigPage,
+          meta: { title: '系统配置' },
         },
         {
           path: '/system/attachment',
-          component: AttachmentView,
+          component: AttachmentPage,
           meta: { title: '附件管理' },
         },
         {
           path: '/system/codegen',
-          component: CrudView,
-          meta: { title: '代码生成', module: 'codegen' },
+          component: CodegenPage,
+          meta: { title: '代码生成' },
         },
       ],
     },

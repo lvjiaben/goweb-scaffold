@@ -1,3 +1,17 @@
+export type TableColumn = {
+  key: string;
+  title: string;
+  width?: string;
+  align?: 'left' | 'center' | 'right';
+};
+
+export type Paginated<T> = {
+  list: T[];
+  total: number;
+  page: number;
+  page_size: number;
+};
+
 export interface MenuItem {
   id: number;
   parent_id: number;
@@ -9,14 +23,113 @@ export interface MenuItem {
   icon: string;
   sort: number;
   permission_code: string;
+  visible?: boolean;
+  status?: number;
+  created_at?: string;
+  updated_at?: string;
   children?: MenuItem[];
 }
 
-export interface AdminUser {
+export interface MenuOption {
+  label: string;
+  value: number;
+  menu_type: string;
+  children?: MenuOption[];
+}
+
+export type FlatMenuItem = MenuItem & { depth: number };
+
+export interface AdminMe {
   id: number;
   username: string;
   nickname: string;
   is_super: boolean;
   role_ids: number[];
   access_codes: string[];
+}
+
+export interface RoleOption {
+  label: string;
+  value: number;
+  code: string;
+}
+
+export interface AdminUserItem {
+  id: number;
+  username: string;
+  nickname: string;
+  status: number;
+  is_super: boolean;
+  role_ids: number[];
+  role_names: string[];
+  created_at: string;
+}
+
+export interface RoleItem {
+  id: number;
+  name: string;
+  code: string;
+  status: number;
+  created_at: string;
+}
+
+export interface SystemConfigItem {
+  id: number;
+  config_key: string;
+  config_name: string;
+  config_value: unknown;
+  remark: string;
+  created_at: string;
+}
+
+export interface AttachmentItem {
+  id: number;
+  original_name: string;
+  saved_name: string;
+  url: string;
+  file_path: string;
+  file_ext: string;
+  mime_type: string;
+  file_size: number;
+  uploader_kind: string;
+  uploader_id: number;
+  created_at: string;
+}
+
+export interface CodegenTableInfo {
+  table_name: string;
+  display_name: string;
+}
+
+export interface CodegenColumn {
+  column_name: string;
+  data_type: string;
+  is_nullable: boolean;
+  column_default: string;
+  ordinal_position: number;
+  is_primary_key: boolean;
+}
+
+export interface CodegenHistoryItem {
+  id: number;
+  module_name: string;
+  table_name: string;
+  status: string;
+  payload: unknown;
+  remark: string;
+  created_at: string;
+}
+
+export interface CodegenPreview {
+  module_name: string;
+  table_name: string;
+  page: {
+    route_path: string;
+    page_name: string;
+    view_file: string;
+  };
+  api: Record<string, string>;
+  columns: CodegenColumn[];
+  payload: unknown;
+  notes: string[];
 }

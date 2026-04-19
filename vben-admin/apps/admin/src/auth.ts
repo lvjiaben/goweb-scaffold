@@ -1,11 +1,12 @@
 import { reactive } from 'vue';
 
-import { adminLogin, adminLogout, adminTokenKey, fetchAdminMe, fetchAdminMenus } from './api';
-import type { AdminUser, MenuItem } from './types';
+import { adminLogin, adminLogout, fetchAdminMe, fetchAdminMenus } from '@/api/auth';
+import { adminTokenKey } from '@/api/request';
+import type { AdminMe, MenuItem } from '@/types';
 
 type AdminState = {
   token: string;
-  user: AdminUser | null;
+  user: AdminMe | null;
   menus: MenuItem[];
   bootstrapped: boolean;
 };
@@ -35,6 +36,7 @@ export async function bootstrapAdminSession() {
     clearAdminSession();
     return false;
   }
+
   try {
     const [user, menuPayload] = await Promise.all([fetchAdminMe(), fetchAdminMenus()]);
     adminState.user = user;
@@ -57,7 +59,14 @@ export async function logoutAndClear() {
   try {
     await adminLogout();
   } catch {
-    // ignore logout failures on expired sessions
+    // ignore expired session logout
   }
   clearAdminSession();
+}
+
+export function hasAccess(code: string) {
+  if (!code) {
+    return true;
+  }
+  return Boolean(adminState.user?.access_codes.includes(code));
 }

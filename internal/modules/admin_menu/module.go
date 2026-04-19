@@ -1,6 +1,8 @@
 package admin_menu
 
 import (
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/lvjiaben/goweb-core/httpx"
@@ -39,7 +41,16 @@ type menuTreeItem struct {
 	Sort           int            `json:"sort"`
 	Visible        bool           `json:"visible"`
 	Status         int            `json:"status"`
+	CreatedAt      time.Time      `json:"created_at"`
+	UpdatedAt      time.Time      `json:"updated_at"`
 	Children       []menuTreeItem `json:"children,omitempty"`
+}
+
+type menuOption struct {
+	Label    string       `json:"label"`
+	Value    int64        `json:"value"`
+	MenuType string       `json:"menu_type"`
+	Children []menuOption `json:"children,omitempty"`
 }
 
 func (Module) Name() string { return "admin_menu" }
@@ -47,6 +58,8 @@ func (Module) Name() string { return "admin_menu" }
 func (Module) Register(runtime *bootstrap.Runtime) error {
 	runtime.AdminProtectedGroup.GET("/admin_menu/list", list(runtime), httpx.WithPermission("admin_menu.list"))
 	runtime.AdminProtectedGroup.GET("/admin_menu/detail", detail(runtime), httpx.WithPermission("admin_menu.list"))
+	runtime.AdminProtectedGroup.GET("/admin_menu/tree", tree(runtime), httpx.WithPermission("admin_menu.list"))
+	runtime.AdminProtectedGroup.GET("/admin_menu/options", options(runtime), httpx.WithPermission("admin_menu.list"))
 	runtime.AdminProtectedGroup.POST("/admin_menu/save", save(runtime), httpx.WithPermission("admin_menu.save"))
 	runtime.AdminProtectedGroup.POST("/admin_menu/delete", deleteMenus(runtime), httpx.WithPermission("admin_menu.delete"))
 	return nil
@@ -94,6 +107,28 @@ func detail(runtime *bootstrap.Runtime) httpx.HandlerFunc {
 	}
 }
 
+func tree(runtime *bootstrap.Runtime) httpx.HandlerFunc {
+	return func(c *httpx.Context) {
+		var menus []model.AdminMenu
+		if err := runtime.DB.Order("sort ASC, id ASC").Find(&menus).Error; err != nil {
+			c.Error(err)
+			return
+		}
+		c.Success(map[string]any{"list": buildTree(menus)})
+	}
+}
+
+func options(runtime *bootstrap.Runtime) httpx.HandlerFunc {
+	return func(c *httpx.Context) {
+		var menus []model.AdminMenu
+		if err := runtime.DB.Order("sort ASC, id ASC").Find(&menus).Error; err != nil {
+			c.Error(err)
+			return
+		}
+		c.Success(map[string]any{"list": buildOptions(buildTree(menus))})
+	}
+}
+
 func save(runtime *bootstrap.Runtime) httpx.HandlerFunc {
 	return func(c *httpx.Context) {
 		var req saveRequest
@@ -101,6 +136,12 @@ func save(runtime *bootstrap.Runtime) httpx.HandlerFunc {
 			c.Error(err)
 			return
 		}
+		req.Name = strings.TrimSpace(req.Name)
+		req.Title = strings.TrimSpace(req.Title)
+		req.Path = strings.TrimSpace(req.Path)
+		req.Component = strings.TrimSpace(req.Component)
+		req.PermissionCode = strings.TrimSpace(req.PermissionCode)
+		req.Icon = strings.TrimSpace(req.Icon)
 		if req.Status == 0 {
 			req.Status = 1
 		}
@@ -110,6 +151,10 @@ func save(runtime *bootstrap.Runtime) httpx.HandlerFunc {
 		}
 		if req.MenuType != model.MenuTypeMenu && req.MenuType != model.MenuTypeButton {
 			c.BadRequest("invalid menu_type")
+			return
+		}
+		if err := validateMenuSave(runtime, req); err != nil {
+			c.BadRequest(err.Error())
 			return
 		}
 
@@ -215,6 +260,8 @@ func buildTree(menus []model.AdminMenu) []menuTreeItem {
 			Sort:           menu.Sort,
 			Visible:        menu.Visible,
 			Status:         menu.Status,
+			CreatedAt:      menu.CreatedAt,
+			UpdatedAt:      menu.UpdatedAt,
 			Children:       []menuTreeItem{},
 		}
 	}
@@ -268,4 +315,73 @@ func collectDescendantIDs(menus []model.AdminMenu, initial []int64) []int64 {
 		queue = append(queue, children[current]...)
 	}
 	return result
+}
+
+func buildOptions(items []menuTreeItem) []menuOption {
+	result := make([]menuOption, 0, len(items))
+	for _, item := range items {
+		option := menuOption{
+			Label:    item.Title,
+			Value:    item.ID,
+			MenuType: item.MenuType,
+			Children: buildOptions(item.Children),
+		}
+		result = append(result, option)
+	}
+	return result
+}
+
+func validateMenuSave(runtime *bootstrap.Runtime, req saveRequest) error {
+	if req.ID > 0 && req.ParentID == req.ID {
+		return fmt.Errorf("parent_id cannot be self")
+	}
+
+	if req.ParentID > 0 {
+		var parent model.AdminMenu
+		if err := runtime.DB.Select("id", "menu_type").First(&parent, req.ParentID).Error; err != nil {
+			return err
+		}
+		if parent.MenuType != model.MenuTypeMenu {
+			return fmt.Errorf("parent menu must be a menu node")
+		}
+	}
+
+	if req.MenuType == model.MenuTypeButton && req.PermissionCode == "" {
+		return fmt.Errorf("button menu requires permission_code")
+	}
+
+	if req.MenuType == model.MenuTypeMenu {
+		if req.Name == "" || req.Title == "" || req.Path == "" {
+			return fmt.Errorf("menu requires name, title and path")
+		}
+		if !strings.HasPrefix(req.Path, "/") {
+			return fmt.Errorf("menu path must start with /")
+		}
+	}
+
+	if req.ID > 0 && req.ParentID > 0 {
+		var menus []model.AdminMenu
+		if err := runtime.DB.Select("id", "parent_id").Find(&menus).Error; err != nil {
+			return err
+		}
+		parentMap := make(map[int64]int64, len(menus))
+		for _, item := range menus {
+			parentMap[item.ID] = item.ParentID
+		}
+
+		cursor := req.ParentID
+		visited := map[int64]struct{}{}
+		for cursor > 0 {
+			if cursor == req.ID {
+				return fmt.Errorf("parent relation creates cycle")
+			}
+			if _, ok := visited[cursor]; ok {
+				break
+			}
+			visited[cursor] = struct{}{}
+			cursor = parentMap[cursor]
+		}
+	}
+
+	return nil
 }
