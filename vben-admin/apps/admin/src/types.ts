@@ -101,6 +101,7 @@ export interface AttachmentItem {
 export interface CodegenTableInfo {
   table_name: string;
   display_name: string;
+  table_comment?: string;
 }
 
 export interface CodegenColumn {
@@ -110,6 +111,8 @@ export interface CodegenColumn {
   column_default: string;
   ordinal_position: number;
   is_primary_key: boolean;
+  column_comment?: string;
+  table_comment?: string;
 }
 
 export interface CodegenHistoryItem {
@@ -127,10 +130,31 @@ export interface CodegenInferredField {
   data_type: string;
   is_nullable: boolean;
   is_primary_key: boolean;
+  column_comment?: string;
+  guessed_label: string;
   guessed_form_component: string;
   guessed_list_display: string;
   guessed_searchable: boolean;
   guessed_sortable: boolean;
+}
+
+export interface CodegenFieldOption {
+  label: string;
+  value: unknown;
+}
+
+export interface CodegenFieldOverride {
+  label?: string;
+  component?: string;
+  placeholder?: string;
+  required?: boolean;
+  readonly?: boolean;
+  hidden?: boolean;
+  sortable?: boolean;
+  searchable?: boolean;
+  width?: string;
+  options?: CodegenFieldOption[];
+  default_value?: unknown;
 }
 
 export interface CodegenSchemaItem {
@@ -145,11 +169,23 @@ export interface CodegenSchemaItem {
   searchable?: boolean;
   sortable?: boolean;
   placeholder?: string;
+  width?: string;
+  options?: CodegenFieldOption[];
+  default_value?: unknown;
+}
+
+export interface CodegenPayloadBody {
+  list_fields: string[];
+  form_fields: string[];
+  search_fields: string[];
+  title?: string;
+  field_overrides?: Record<string, CodegenFieldOverride>;
 }
 
 export interface CodegenPreview {
   module_name: string;
   table_name: string;
+  table_comment?: string;
   page: {
     route_path: string;
     page_name: string;
@@ -166,12 +202,7 @@ export interface CodegenPreview {
   form_schema: CodegenSchemaItem[];
   list_schema: CodegenSchemaItem[];
   search_schema: CodegenSchemaItem[];
-  payload: {
-    list_fields: string[];
-    form_fields: string[];
-    search_fields: string[];
-    title?: string;
-  };
+  payload: CodegenPayloadBody;
   notes: string[];
 }
 
@@ -190,5 +221,24 @@ export interface CodegenGenerateResult {
     menu_type: string;
     permission_code?: string;
   }>;
+  warnings: string[];
+}
+
+export interface CodegenDiffFileSummary {
+  path: string;
+  status: string;
+  changed_sections: string[];
+  old_hash?: string;
+  new_hash?: string;
+}
+
+export interface CodegenDiffResult {
+  would_create_files: string[];
+  would_overwrite_files: string[];
+  would_skip_files: string[];
+  per_file_diff_summary: CodegenDiffFileSummary[];
+  module_name: string;
+  route_path: string;
+  permission_codes: string[];
   warnings: string[];
 }

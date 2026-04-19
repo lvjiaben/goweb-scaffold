@@ -24,17 +24,20 @@ var excludedTables = map[string]struct{}{
 }
 
 type tableInfo struct {
-	TableName string `json:"table_name" gorm:"column:table_name"`
+	TableName    string `json:"table_name" gorm:"column:table_name"`
+	TableComment string `json:"table_comment" gorm:"column:table_comment"`
 }
 
 func listBusinessTables(runtime *bootstrap.Runtime) ([]map[string]any, error) {
 	var rows []tableInfo
 	if err := runtime.DB.Raw(`
-SELECT table_name
-FROM information_schema.tables
-WHERE table_schema = 'public'
+SELECT
+  t.table_name,
+  COALESCE(obj_description(to_regclass(format('%I.%I', t.table_schema, t.table_name)), 'pg_class'), '') AS table_comment
+FROM information_schema.tables t
+WHERE t.table_schema = 'public'
   AND table_type = 'BASE TABLE'
-ORDER BY table_name ASC`).Scan(&rows).Error; err != nil {
+ORDER BY t.table_name ASC`).Scan(&rows).Error; err != nil {
 		return nil, err
 	}
 
@@ -43,9 +46,14 @@ ORDER BY table_name ASC`).Scan(&rows).Error; err != nil {
 		if isExcludedTable(row.TableName) {
 			continue
 		}
+		displayName := strings.TrimSpace(row.TableComment)
+		if displayName == "" {
+			displayName = row.TableName
+		}
 		items = append(items, map[string]any{
-			"table_name":   row.TableName,
-			"display_name": row.TableName,
+			"table_name":    row.TableName,
+			"display_name":  displayName,
+			"table_comment": strings.TrimSpace(row.TableComment),
 		})
 	}
 	return items, nil
@@ -64,7 +72,9 @@ SELECT
   (c.is_nullable = 'YES') AS is_nullable,
   COALESCE(c.column_default, '') AS column_default,
   c.ordinal_position,
-  COALESCE(pk.is_primary_key, FALSE) AS is_primary_key
+  COALESCE(pk.is_primary_key, FALSE) AS is_primary_key,
+  COALESCE(col_description(to_regclass(format('%I.%I', c.table_schema, c.table_name)), c.ordinal_position), '') AS column_comment,
+  COALESCE(obj_description(to_regclass(format('%I.%I', c.table_schema, c.table_name)), 'pg_class'), '') AS table_comment
 FROM information_schema.columns c
 LEFT JOIN (
   SELECT

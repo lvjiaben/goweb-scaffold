@@ -11,6 +11,11 @@ import { formatTime, getErrorMessage, prettyJSON } from '@/helpers';
 import { notifySuccess } from '@/notify';
 import type { TableColumn } from '@/types';
 
+type FieldOption = {
+  label: string;
+  value: any;
+};
+
 type FieldSchema = {
   field: string;
   label: string;
@@ -23,105 +28,173 @@ type FieldSchema = {
   searchable?: boolean;
   sortable?: boolean;
   placeholder?: string;
+  width?: string;
+  options?: FieldOption[];
+  default_value?: any;
 };
 
 const listSchema: FieldSchema[] = [
   {
     "field": "id",
     "label": "ID",
-    "component": "",
+    "component": "readonly-text",
     "display": "id",
-    "sortable": true
+    "sortable": true,
+    "default_value": ""
   },
   {
     "field": "title",
-    "label": "Title",
-    "component": "",
+    "label": "文章标题",
+    "component": "text-input",
     "display": "text",
     "searchable": true,
-    "sortable": true
+    "sortable": true,
+    "width": "220px",
+    "default_value": ""
   },
   {
     "field": "summary",
-    "label": "Summary",
-    "component": "",
+    "label": "文章摘要",
+    "component": "textarea",
     "display": "text",
-    "searchable": true
+    "searchable": true,
+    "default_value": ""
   },
   {
     "field": "status",
-    "label": "Status",
-    "component": "",
-    "display": "text",
+    "label": "状态",
+    "component": "select",
+    "display": "option-tag",
     "searchable": true,
-    "sortable": true
+    "sortable": true,
+    "width": "120px",
+    "options": [
+      {
+        "label": "草稿",
+        "value": 0
+      },
+      {
+        "label": "启用",
+        "value": 1
+      },
+      {
+        "label": "禁用",
+        "value": 2
+      }
+    ],
+    "default_value": 1
   },
   {
     "field": "sort",
-    "label": "Sort",
-    "component": "",
+    "label": "排序值",
+    "component": "number-input",
     "display": "text",
-    "sortable": true
+    "sortable": true,
+    "width": "100px",
+    "default_value": 0
   },
   {
     "field": "created_at",
     "label": "创建时间",
-    "component": "",
+    "component": "readonly-datetime",
     "display": "datetime",
-    "sortable": true
+    "sortable": true,
+    "default_value": ""
   },
   {
     "field": "updated_at",
     "label": "更新时间",
-    "component": "",
+    "component": "readonly-datetime",
     "display": "datetime",
-    "sortable": true
+    "sortable": true,
+    "default_value": ""
   }
 ];
 const formSchema: FieldSchema[] = [
   {
     "field": "title",
-    "label": "Title",
+    "label": "文章标题",
     "component": "text-input",
     "required": true,
-    "placeholder": "请输入Title"
+    "placeholder": "请输入文章标题",
+    "width": "220px",
+    "default_value": ""
   },
   {
     "field": "summary",
-    "label": "Summary",
+    "label": "文章摘要",
     "component": "textarea",
     "required": true,
-    "placeholder": "请输入详细内容"
+    "placeholder": "请输入文章摘要，用于列表简介",
+    "default_value": ""
   },
   {
     "field": "status",
-    "label": "Status",
-    "component": "number-input",
+    "label": "状态",
+    "component": "select",
     "required": true,
-    "placeholder": "请输入数字"
+    "placeholder": "请选择状态",
+    "width": "120px",
+    "options": [
+      {
+        "label": "草稿",
+        "value": 0
+      },
+      {
+        "label": "启用",
+        "value": 1
+      },
+      {
+        "label": "禁用",
+        "value": 2
+      }
+    ],
+    "default_value": 1
   },
   {
     "field": "sort",
-    "label": "Sort",
+    "label": "排序值",
     "component": "number-input",
     "required": true,
-    "placeholder": "请输入数字"
+    "placeholder": "请输入数字",
+    "width": "100px",
+    "default_value": 0
   }
 ];
 const searchSchema: FieldSchema[] = [
   {
     "field": "title",
-    "label": "Title",
+    "label": "文章标题",
     "component": "text-input",
     "operator": "like",
-    "searchable": true
+    "searchable": true,
+    "placeholder": "请输入文章标题",
+    "width": "220px",
+    "default_value": ""
   },
   {
     "field": "status",
-    "label": "Status",
-    "component": "number-input",
+    "label": "状态",
+    "component": "select",
     "operator": "eq",
-    "searchable": true
+    "searchable": true,
+    "placeholder": "请选择状态",
+    "width": "120px",
+    "options": [
+      {
+        "label": "草稿",
+        "value": 0
+      },
+      {
+        "label": "启用",
+        "value": 1
+      },
+      {
+        "label": "禁用",
+        "value": 2
+      }
+    ],
+    "default_value": 1
   }
 ];
 const columns: TableColumn[] = [
@@ -132,19 +205,22 @@ const columns: TableColumn[] = [
   },
   {
     "key": "title",
-    "title": "Title"
+    "title": "文章标题",
+    "width": "220px"
   },
   {
     "key": "summary",
-    "title": "Summary"
+    "title": "文章摘要"
   },
   {
     "key": "status",
-    "title": "Status"
+    "title": "状态",
+    "width": "120px"
   },
   {
     "key": "sort",
-    "title": "Sort"
+    "title": "排序值",
+    "width": "100px"
   },
   {
     "key": "created_at",
@@ -188,7 +264,7 @@ const searchForm = reactive<Record<string, any>>(defaultSearchState());
 
 const modalTitle = computed(() => (form.id ? '编辑演示文章' : '新建演示文章'));
 const totalPage = computed(() => Math.max(1, Math.ceil(total.value / pageSize.value)));
-const visibleFormSchema = computed(() => formSchema.filter((item) => !item.hidden));
+const visibleFormSchema = computed(() => formSchema.filter((item) => item.component !== 'hidden' && !item.hidden));
 
 function resetForm() {
   Object.assign(form, defaultFormState());
@@ -230,7 +306,30 @@ function normalizeFormValue(field: FieldSchema, value: unknown) {
   if (field.component === 'switch') {
     return Boolean(value);
   }
+  if (field.component === 'select' || field.component === 'radio') {
+    return coerceOptionValue(field, value);
+  }
   return value ?? '';
+}
+
+function coerceOptionValue(field: FieldSchema, value: unknown) {
+  if (!field.options?.length) {
+    return value;
+  }
+  for (const option of field.options) {
+    if (option.value === value || String(option.value) === String(value)) {
+      return option.value;
+    }
+  }
+  return value;
+}
+
+function optionLabel(field: FieldSchema, value: unknown) {
+  if (!field.options?.length) {
+    return String(value ?? '-');
+  }
+  const matched = field.options.find((item) => item.value === value || String(item.value) === String(value));
+  return matched?.label || String(value ?? '-');
 }
 
 async function load() {
@@ -265,7 +364,7 @@ async function load() {
 
       if (field.component === 'select') {
         if (raw !== '' && raw !== null && raw !== undefined) {
-          params[field.field] = raw;
+          params[field.field] = coerceOptionValue(field, raw);
         }
         continue;
       }
@@ -307,7 +406,7 @@ function buildPayload() {
     payload.id = Number(form.id);
   }
   for (const field of formSchema) {
-    if (field.readonly || field.hidden) {
+    if (field.readonly || field.hidden || field.component === 'hidden') {
       continue;
     }
     const raw = form[field.field];
@@ -317,6 +416,10 @@ function buildPayload() {
         break;
       case 'switch':
         payload[field.field] = Boolean(raw);
+        break;
+      case 'select':
+      case 'radio':
+        payload[field.field] = coerceOptionValue(field, raw);
         break;
       case 'json-editor':
         if (!String(raw || '').trim()) {
@@ -393,6 +496,10 @@ function renderJSONPreview(value: unknown) {
   return text.length > 80 ? `${text.slice(0, 80)}...` : text;
 }
 
+function fieldByName(fieldName: string) {
+  return listSchema.find((item) => item.field === fieldName) || formSchema.find((item) => item.field === fieldName);
+}
+
 onMounted(load);
 </script>
 
@@ -401,76 +508,99 @@ onMounted(load);
     <article class="card page-card">
       <div class="section-heading">
         <div>
-          <h3>演示文章管理</h3>
-          <p>该页面由 codegen 生成，提供正式可用的后台 CRUD 基础能力。</p>
+          <h3>演示文章</h3>
+          <p>生成器输出的后台 CRUD 页面，支持搜索、列表、弹窗编辑和按钮权限控制。</p>
         </div>
         <PermissionButton code="demo_article.save">
           <button class="btn" type="button" @click="openCreate">新建演示文章</button>
         </PermissionButton>
       </div>
 
-      <div class="toolbar-row">
-        <div class="search-grid">
-          <FormField
-            v-for="field in searchSchema"
-            :key="field.field"
-            :label="field.label"
-          >
-            <div v-if="field.component === 'datetime-range'" class="inline-range">
+      <div v-if="errorMessage" class="error-banner">{{ errorMessage }}</div>
+
+      <div class="form-grid two-columns">
+        <FormField
+          v-for="field in searchSchema"
+          :key="field.field"
+          :label="field.label"
+        >
+          <template v-if="field.component === 'datetime-range'">
+            <div class="form-grid two-columns">
               <input
                 v-model="searchForm[`${field.field}_start`]"
                 class="input"
                 type="datetime-local"
+                :placeholder="field.placeholder || '开始时间'"
               />
               <input
                 v-model="searchForm[`${field.field}_end`]"
                 class="input"
                 type="datetime-local"
+                :placeholder="field.placeholder || '结束时间'"
               />
             </div>
-            <select v-else-if="field.component === 'select'" v-model="searchForm[field.field]" class="input">
-              <option value="">全部</option>
-              <option :value="true">是</option>
-              <option :value="false">否</option>
-            </select>
-            <input
-              v-else-if="field.component === 'number-input'"
-              v-model.number="searchForm[field.field]"
-              class="input"
-              type="number"
-              :placeholder="field.placeholder || `请输入${field.label}`"
-            />
-            <input
-              v-else
-              v-model="searchForm[field.field]"
-              class="input"
-              :placeholder="field.placeholder || `请输入${field.label}`"
-              @keyup.enter="search"
-            />
-          </FormField>
-        </div>
+          </template>
+          <select
+            v-else-if="field.component === 'select'"
+            v-model="searchForm[field.field]"
+            class="input"
+          >
+            <option value="">全部</option>
+            <option v-for="option in field.options || []" :key="`${field.field}-${String(option.value)}`" :value="option.value">
+              {{ option.label }}
+            </option>
+          </select>
+          <input
+            v-else-if="field.component === 'number-input'"
+            v-model="searchForm[field.field]"
+            class="input"
+            type="number"
+            :placeholder="field.placeholder || `请输入${field.label}`"
+          />
+          <input
+            v-else
+            v-model="searchForm[field.field]"
+            class="input"
+            :placeholder="field.placeholder || `搜索${field.label}`"
+          />
+        </FormField>
+      </div>
+
+      <div class="table-footer">
+        <div class="text-muted">共 {{ total }} 条记录</div>
         <div class="table-actions">
-          <button class="btn secondary" type="button" @click="search">搜索</button>
+          <button class="btn secondary" type="button" @click="search">查询</button>
         </div>
       </div>
+    </article>
 
-      <div class="toolbar-row">
-        <span class="text-muted">共 <strong v-text="total" /> 条</span>
-      </div>
-
-      <p v-if="errorMessage" class="error-banner" v-text="errorMessage" />
-
-      <AppTable :columns="columns" :rows="rows" :loading="loading" empty-text="暂无数据">
+    <article class="card page-card">
+      <AppTable :columns="columns" :rows="rows" :loading="loading" empty-text="暂无演示文章数据">
         <template #cell-created_at="{ value }">
-          <span v-text="formatTime(value)" />
+          {{ formatTime(value) }}
         </template>
         <template #cell-updated_at="{ value }">
-          <span v-text="formatTime(value)" />
+          {{ formatTime(value) }}
+        </template>
+        <template
+          v-for="field in listSchema"
+          :key="field.field"
+          #[`cell-${field.field}`]="{ value }"
+        >
+          <span v-if="field.display === 'datetime'">{{ formatTime(String(value || '')) }}</span>
+          <span v-else-if="field.display === 'boolean-tag'" class="status-pill" :class="value ? 'is-active' : 'is-disabled'">
+            {{ renderBooleanLabel(field.field, value) }}
+          </span>
+          <span v-else-if="field.display === 'option-tag'" class="status-pill is-info">
+            {{ optionLabel(fieldByName(field.field) || field, value) }}
+          </span>
+          <code v-else-if="field.display === 'json-preview'">{{ renderJSONPreview(value) }}</code>
+          <span v-else>{{ value ?? '-' }}</span>
         </template>
         <template #cell-actions="{ row }">
           <div class="table-actions">
             <PermissionButton code="demo_article.save">
-              <button class="btn secondary btn-sm" type="button" @click="openEdit(row.id)">编辑</button>
+              <button class="btn secondary btn-sm" type="button" @click="openEdit(Number(row.id))">编辑</button>
             </PermissionButton>
             <PermissionButton code="demo_article.delete">
               <button class="btn danger btn-sm" type="button" @click="removeRow(row)">删除</button>
@@ -480,22 +610,15 @@ onMounted(load);
       </AppTable>
 
       <div class="table-footer">
-        <span>第 <strong v-text="page" /> / <strong v-text="totalPage" /> 页</span>
+        <div class="text-muted">第 {{ page }} / {{ totalPage }} 页</div>
         <div class="table-actions">
-          <button class="btn secondary btn-sm" type="button" :disabled="page <= 1" @click="goPage(page - 1)">上一页</button>
-          <button class="btn secondary btn-sm" type="button" :disabled="page >= totalPage" @click="goPage(page + 1)">下一页</button>
+          <button class="btn secondary" type="button" :disabled="page <= 1" @click="goPage(page - 1)">上一页</button>
+          <button class="btn secondary" type="button" :disabled="page >= totalPage" @click="goPage(page + 1)">下一页</button>
         </div>
       </div>
     </article>
 
-    <AppModal
-      :open="open"
-      :title="modalTitle"
-      width="760px"
-      :mask-closable="!saving"
-      :esc-closable="!saving"
-      @close="closeModal"
-    >
+    <AppModal :open="open" :title="modalTitle" width="760px" @close="closeModal">
       <div class="form-grid two-columns">
         <FormField
           v-for="field in visibleFormSchema"
@@ -508,47 +631,68 @@ onMounted(load);
             v-if="field.component === 'textarea' || field.component === 'json-editor'"
             v-model="form[field.field]"
             class="input textarea"
+            :placeholder="field.placeholder || `请输入${field.label}`"
+            :readonly="field.readonly"
+          />
+          <input
+            v-else-if="field.component === 'number-input'"
+            v-model="form[field.field]"
+            class="input"
+            type="number"
+            :placeholder="field.placeholder || `请输入${field.label}`"
             :readonly="field.readonly"
           />
           <select
-            v-else-if="field.component === 'switch'"
+            v-else-if="field.component === 'select'"
             v-model="form[field.field]"
             class="input"
             :disabled="field.readonly"
           >
-            <option :value="true">是</option>
-            <option :value="false">否</option>
+            <option v-if="!field.required" value="">请选择</option>
+            <option v-for="option in field.options || []" :key="`${field.field}-${String(option.value)}`" :value="option.value">
+              {{ option.label }}
+            </option>
           </select>
-          <input
-            v-else-if="field.component === 'number-input'"
-            v-model.number="form[field.field]"
-            class="input"
-            type="number"
-            :readonly="field.readonly"
-          />
+          <div v-else-if="field.component === 'radio'" class="check-grid">
+            <label
+              v-for="option in field.options || []"
+              :key="`${field.field}-${String(option.value)}`"
+              class="check-card"
+            >
+              <input
+                v-model="form[field.field]"
+                :value="option.value"
+                type="radio"
+                :disabled="field.readonly"
+              />
+              <span>{{ option.label }}</span>
+            </label>
+          </div>
+          <label v-else-if="field.component === 'switch'" class="checkbox-item">
+            <input v-model="form[field.field]" type="checkbox" :disabled="field.readonly" />
+            <span>{{ form[field.field] ? '启用' : '禁用' }}</span>
+          </label>
           <input
             v-else-if="field.component === 'datetime-picker' || field.component === 'readonly-datetime'"
             v-model="form[field.field]"
             class="input"
             type="datetime-local"
-            :readonly="field.readonly"
+            :readonly="field.readonly || field.component === 'readonly-datetime'"
           />
           <input
             v-else
             v-model="form[field.field]"
             class="input"
-            :readonly="field.readonly"
+            :placeholder="field.placeholder || `请输入${field.label}`"
+            :readonly="field.readonly || field.component === 'readonly-text'"
           />
         </FormField>
       </div>
 
       <template #footer>
-        <div class="table-actions">
+        <div class="modal-actions">
           <button class="btn secondary" type="button" :disabled="saving" @click="closeModal">取消</button>
-          <button class="btn" type="button" :disabled="saving" @click="submit">
-            <span v-if="saving">提交中...</span>
-            <span v-else>保存</span>
-          </button>
+          <button class="btn" type="button" :disabled="saving" @click="submit">保存</button>
         </div>
       </template>
     </AppModal>

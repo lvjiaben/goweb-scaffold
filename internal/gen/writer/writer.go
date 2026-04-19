@@ -2,6 +2,7 @@ package writer
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -25,13 +26,31 @@ func (w *SafeWriter) Root() string {
 }
 
 func (w *SafeWriter) Write(relPath string, content []byte, overwrite bool) (status string, warning string, err error) {
+	status, warning, _, err = w.Inspect(relPath, content, overwrite)
+	if err != nil {
+		return "", "", err
+	}
+	if status == "skipped" {
+		return status, warning, nil
+	}
+
 	targetPath, err := w.safePath(relPath)
 	if err != nil {
 		return "", "", err
 	}
-
 	if err := os.MkdirAll(filepath.Dir(targetPath), 0o755); err != nil {
 		return "", "", err
+	}
+	if err := os.WriteFile(targetPath, content, 0o644); err != nil {
+		return "", "", err
+	}
+	return status, warning, nil
+}
+
+func (w *SafeWriter) Inspect(relPath string, content []byte, overwrite bool) (status string, warning string, existing []byte, err error) {
+	targetPath, err := w.safePath(relPath)
+	if err != nil {
+		return "", "", nil, err
 	}
 
 	existing, readErr := os.ReadFile(targetPath)
@@ -39,25 +58,19 @@ func (w *SafeWriter) Write(relPath string, content []byte, overwrite bool) (stat
 	case readErr == nil:
 		isGenerated := IsGeneratedFile(existing)
 		if !isGenerated {
-			return "skipped", fmt.Sprintf("%s exists and is not generator-managed", relPath), nil
+			return "skipped", fmt.Sprintf("%s exists and is not generator-managed", relPath), existing, nil
 		}
 		if bytes.Equal(existing, content) {
-			return "skipped", "", nil
+			return "skipped", "", existing, nil
 		}
 		if !overwrite {
-			return "skipped", fmt.Sprintf("%s already exists; set overwrite=true to rewrite", relPath), nil
+			return "skipped", fmt.Sprintf("%s already exists; set overwrite=true to rewrite", relPath), existing, nil
 		}
-		if err := os.WriteFile(targetPath, content, 0o644); err != nil {
-			return "", "", err
-		}
-		return "overwritten", "", nil
+		return "overwritten", "", existing, nil
 	case !os.IsNotExist(readErr):
-		return "", "", readErr
+		return "", "", nil, readErr
 	default:
-		if err := os.WriteFile(targetPath, content, 0o644); err != nil {
-			return "", "", err
-		}
-		return "generated", "", nil
+		return "generated", "", nil, nil
 	}
 }
 
@@ -67,7 +80,18 @@ func IsGeneratedFile(content []byte) bool {
 		return false
 	}
 	firstLine := strings.SplitN(trimmed, "\n", 2)[0]
-	return strings.Contains(firstLine, GeneratedMarker)
+	if strings.Contains(firstLine, GeneratedMarker) {
+		return true
+	}
+	if strings.HasPrefix(trimmed, "{") {
+		var marker struct {
+			GeneratedBy string `json:"generated_by"`
+		}
+		if err := json.Unmarshal([]byte(trimmed), &marker); err == nil && marker.GeneratedBy == "goweb-scaffold" {
+			return true
+		}
+	}
+	return false
 }
 
 func (w *SafeWriter) safePath(relPath string) (string, error) {

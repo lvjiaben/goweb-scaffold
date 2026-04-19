@@ -203,6 +203,7 @@ func ModulePaths(moduleName string) map[string]string {
 		"types":  filepath.ToSlash(filepath.Join("internal/modules", moduleName, "types.go")),
 		"model":  filepath.ToSlash(filepath.Join("internal/modules", moduleName, "model.go")),
 		"meta":   filepath.ToSlash(filepath.Join("internal/modules", moduleName, "meta.go")),
+		"lock":   filepath.ToSlash(filepath.Join("internal/modules", moduleName, "codegen.lock.json")),
 		"api":    filepath.ToSlash(filepath.Join("vben-admin/apps/admin/src/api", moduleName+".ts")),
 		"view":   filepath.ToSlash(filepath.Join("vben-admin/apps/admin/src/views/system", pascal+"Page.vue")),
 	}

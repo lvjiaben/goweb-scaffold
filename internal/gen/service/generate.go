@@ -1,11 +1,17 @@
 package service
 
 import (
+	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/lvjiaben/goweb-scaffold/internal/gen/registry"
 	"github.com/lvjiaben/goweb-scaffold/internal/gen/writer"
@@ -99,6 +105,20 @@ type frontendPageTemplateData struct {
 	SearchDefaultJSON string
 }
 
+type generatedArtifact struct {
+	Path    string
+	Content []byte
+}
+
+type generationBundle struct {
+	Meta        ModuleMeta
+	Preview     Preview
+	Artifacts   []generatedArtifact
+	Lock        LockFile
+	Generated   []string
+	RegistryRef registry.GeneratedModule
+}
+
 func (s GeneratorService) Generate(input GenerateInput) (GenerateResult, error) {
 	result := GenerateResult{
 		GeneratedFiles:   []string{},
@@ -108,22 +128,110 @@ func (s GeneratorService) Generate(input GenerateInput) (GenerateResult, error) 
 		MenuRecords:      []map[string]any{},
 		Warnings:         []string{},
 	}
+
+	bundle, err := s.prepareBundle(input)
+	if err != nil {
+		return result, err
+	}
+
+	w := writer.New(s.RepoRoot)
+	for _, item := range bundle.Artifacts {
+		status, warning, err := w.Write(item.Path, item.Content, input.Overwrite)
+		if err != nil {
+			return result, err
+		}
+		result = applyWriteResult(result, item.Path, status, warning)
+	}
+
+	if input.UpsertMenu {
+		if !input.RegisterModule {
+			result.Warnings = append(result.Warnings, "register_module=false 且 upsert_menu=true，菜单已写入，但重启前端/后端前路由不会生效。")
+		}
+		menuResult, warnings, err := s.upsertMenus(bundle.Meta)
+		if err != nil {
+			return result, err
+		}
+		result.MenuRecords = menuResult.Records
+		result.Warnings = append(result.Warnings, warnings...)
+	} else {
+		result.Warnings = append(result.Warnings, "upsert_menu=false，未写入 admin_menu 和 admin_role_menu。")
+	}
+
+	result.ModuleName = bundle.Meta.ModuleName
+	result.RoutePath = bundle.Meta.RoutePath
+	result.PermissionCodes = append([]string{}, bundle.Meta.PermissionCodes...)
+	result.Warnings = uniqueStrings(result.Warnings)
+	return result, nil
+}
+
+func (s GeneratorService) Diff(input GenerateInput) (DiffResult, error) {
+	result := DiffResult{
+		WouldCreateFiles:    []string{},
+		WouldOverwriteFiles: []string{},
+		WouldSkipFiles:      []string{},
+		PerFileDiffSummary:  []DiffFileSummary{},
+		PermissionCodes:     []string{},
+		Warnings:            []string{},
+	}
+
+	bundle, err := s.prepareBundle(input)
+	if err != nil {
+		return result, err
+	}
+
+	w := writer.New(s.RepoRoot)
+	for _, item := range bundle.Artifacts {
+		status, warning, existing, err := w.Inspect(item.Path, item.Content, input.Overwrite)
+		if err != nil {
+			return result, err
+		}
+
+		summary := DiffFileSummary{
+			Path:            item.Path,
+			Status:          diffStatus(status),
+			ChangedSections: summarizeFileDiff(status, warning, existing, item.Content),
+			OldHash:         hashContent(existing),
+			NewHash:         hashContent(item.Content),
+		}
+		result.PerFileDiffSummary = append(result.PerFileDiffSummary, summary)
+
+		switch status {
+		case "generated":
+			result.WouldCreateFiles = append(result.WouldCreateFiles, item.Path)
+		case "overwritten":
+			result.WouldOverwriteFiles = append(result.WouldOverwriteFiles, item.Path)
+		default:
+			result.WouldSkipFiles = append(result.WouldSkipFiles, item.Path)
+		}
+		if warning != "" {
+			result.Warnings = append(result.Warnings, warning)
+		}
+	}
+
+	result.ModuleName = bundle.Meta.ModuleName
+	result.RoutePath = bundle.Meta.RoutePath
+	result.PermissionCodes = append([]string{}, bundle.Meta.PermissionCodes...)
+	result.Warnings = uniqueStrings(result.Warnings)
+	return result, nil
+}
+
+func (s GeneratorService) prepareBundle(input GenerateInput) (generationBundle, error) {
+	bundle := generationBundle{}
 	moduleName := ToSnake(strings.TrimSpace(input.ModuleName))
 	tableName := strings.TrimSpace(input.TableName)
 	if moduleName == "" || tableName == "" {
-		return result, fmt.Errorf("module_name and table_name are required")
+		return bundle, fmt.Errorf("module_name and table_name are required")
 	}
 	if s.RepoRoot == "" {
-		return result, fmt.Errorf("repo root is required")
+		return bundle, fmt.Errorf("repo root is required")
+	}
+	if len(input.Columns) == 0 {
+		return bundle, fmt.Errorf("columns are required for generation")
 	}
 
 	preview := input.Preview
 	if preview.ModuleName == "" {
 		preview = BuildPreview(moduleName, tableName, mustMarshalPayload(input.Payload), input.Columns)
-	}
-
-	if len(input.Columns) == 0 {
-		return result, fmt.Errorf("columns are required for generation")
 	}
 
 	fields := buildTemplateFields(input.Columns, preview)
@@ -135,7 +243,7 @@ func (s GeneratorService) Generate(input GenerateInput) (GenerateResult, error) 
 		PascalName:  ToPascal(moduleName),
 		RoutePath:   preview.Page.RoutePath,
 		PageName:    preview.Page.PageName,
-		Title:       firstNonEmpty(preview.Payload.Title, HumanizeModuleName(moduleName)),
+		Title:       firstNonEmpty(strings.TrimSpace(preview.Payload.Title), strings.TrimSpace(preview.TableComment), HumanizeModuleName(moduleName)),
 		ViewFile:    preview.Page.ViewFile,
 		PermissionCodes: []string{
 			moduleName + ".list",
@@ -143,6 +251,31 @@ func (s GeneratorService) Generate(input GenerateInput) (GenerateResult, error) 
 			moduleName + ".delete",
 		},
 	}
+	bundle.Meta = meta
+	bundle.Preview = preview
+	bundle.RegistryRef = registry.GeneratedModule{
+		ModuleName: meta.ModuleName,
+		RoutePath:  meta.RoutePath,
+		PageName:   meta.PageName,
+		Title:      meta.Title,
+	}
+
+	basicGeneratedFiles := []string{
+		paths["model"],
+		paths["types"],
+		paths["module"],
+		paths["meta"],
+		paths["lock"],
+		paths["api"],
+		paths["view"],
+	}
+	if input.RegisterModule {
+		basicGeneratedFiles = append(basicGeneratedFiles,
+			"internal/gen/modules_gen.go",
+			"vben-admin/apps/admin/src/generated/routes.ts",
+		)
+	}
+	bundle.Generated = append([]string{}, basicGeneratedFiles...)
 
 	modelData := backendModelTemplateData{
 		PackageName:   moduleName,
@@ -169,7 +302,9 @@ func (s GeneratorService) Generate(input GenerateInput) (GenerateResult, error) 
 			return item.IsSaveField && item.Required && (item.RequestKind == "string" || item.RequestKind == "time" || item.RequestKind == "json")
 		}),
 		UsesStrings: anyField(fields, func(item templateField) bool {
-			return item.IsSaveField && item.RequestKind == "string" || item.IsSaveField && item.Required && item.RequestKind == "time" || item.IsSearchField && (item.SearchOperator == "like" || item.SearchOperator == "between")
+			return item.IsSaveField && item.RequestKind == "string" ||
+				item.IsSaveField && item.Required && item.RequestKind == "time" ||
+				item.IsSearchField && (item.SearchOperator == "like" || item.SearchOperator == "between")
 		}),
 		UsesStrconv: anyField(fields, func(item templateField) bool {
 			return item.IsSearchField && item.SearchOperator == "eq" && (item.IsBoolean || item.IsInteger || item.IsBigInteger)
@@ -198,71 +333,62 @@ func (s GeneratorService) Generate(input GenerateInput) (GenerateResult, error) 
 		FormSchemaJSON:    MarshalIndent(preview.FormSchema),
 		SearchSchemaJSON:  MarshalIndent(preview.SearchSchema),
 		ListColumnsJSON:   MarshalIndent(buildListColumns(preview.ListSchema)),
-		DefaultFormJSON:   MarshalIndent(buildDefaultFormState(fields)),
+		DefaultFormJSON:   MarshalIndent(buildDefaultFormState(preview.FormSchema)),
 		SearchDefaultJSON: MarshalIndent(buildDefaultSearchState(preview.SearchSchema)),
 	}
 
-	w := writer.New(s.RepoRoot)
-	writePlan := []struct {
-		Path         string
-		TemplatePath string
-		Data         any
-	}{
-		{Path: paths["model"], TemplatePath: "backend/model.go.tmpl", Data: modelData},
-		{Path: paths["types"], TemplatePath: "backend/types.go.tmpl", Data: typesData},
-		{Path: paths["module"], TemplatePath: "backend/module.go.tmpl", Data: moduleData},
-		{Path: paths["meta"], TemplatePath: "backend/meta.go.tmpl", Data: meta},
-		{Path: paths["api"], TemplatePath: "admin_frontend/api.ts.tmpl", Data: apiData},
-		{Path: paths["view"], TemplatePath: "admin_frontend/page.vue.tmpl", Data: pageData},
+	artifacts := []generatedArtifact{}
+	appendTemplateArtifact := func(path string, templatePath string, data any) error {
+		content, err := renderTemplate(templatePath, data)
+		if err != nil {
+			return err
+		}
+		artifacts = append(artifacts, generatedArtifact{Path: path, Content: content})
+		return nil
 	}
 
-	for _, item := range writePlan {
-		content, err := renderTemplate(item.TemplatePath, item.Data)
-		if err != nil {
-			return result, err
-		}
-		status, warning, err := w.Write(item.Path, content, input.Overwrite)
-		if err != nil {
-			return result, err
-		}
-		result = applyWriteResult(result, item.Path, status, warning)
+	if err := appendTemplateArtifact(paths["model"], "backend/model.go.tmpl", modelData); err != nil {
+		return bundle, err
 	}
+	if err := appendTemplateArtifact(paths["types"], "backend/types.go.tmpl", typesData); err != nil {
+		return bundle, err
+	}
+	if err := appendTemplateArtifact(paths["module"], "backend/module.go.tmpl", moduleData); err != nil {
+		return bundle, err
+	}
+	if err := appendTemplateArtifact(paths["meta"], "backend/meta.go.tmpl", meta); err != nil {
+		return bundle, err
+	}
+	if err := appendTemplateArtifact(paths["api"], "admin_frontend/api.ts.tmpl", apiData); err != nil {
+		return bundle, err
+	}
+	if err := appendTemplateArtifact(paths["view"], "admin_frontend/page.vue.tmpl", pageData); err != nil {
+		return bundle, err
+	}
+
+	lockFile, lockContent, err := s.buildLockFile(paths["lock"], meta, preview, preview.Payload, basicGeneratedFiles, input.GeneratedAt)
+	if err != nil {
+		return bundle, err
+	}
+	bundle.Lock = lockFile
+	artifacts = append(artifacts, generatedArtifact{Path: paths["lock"], Content: lockContent})
 
 	if input.RegisterModule {
-		status, warning, err := registry.RebuildBackendModulesFile(s.RepoRoot)
+		content, err := registry.RenderBackendModulesFile(s.RepoRoot, bundle.RegistryRef)
 		if err != nil {
-			return result, err
+			return bundle, err
 		}
-		result = applyWriteResult(result, "internal/gen/modules_gen.go", status, warning)
+		artifacts = append(artifacts, generatedArtifact{Path: "internal/gen/modules_gen.go", Content: content})
 
-		status, warning, err = registry.RebuildAdminRoutesFile(s.RepoRoot)
+		content, err = registry.RenderAdminRoutesFile(s.RepoRoot, bundle.RegistryRef)
 		if err != nil {
-			return result, err
+			return bundle, err
 		}
-		result = applyWriteResult(result, "vben-admin/apps/admin/src/generated/routes.ts", status, warning)
-	} else {
-		result.Warnings = append(result.Warnings, "register_module=false，已生成文件但未重建模块注册和前端路由。")
+		artifacts = append(artifacts, generatedArtifact{Path: "vben-admin/apps/admin/src/generated/routes.ts", Content: content})
 	}
 
-	if input.UpsertMenu {
-		if !input.RegisterModule {
-			result.Warnings = append(result.Warnings, "register_module=false 且 upsert_menu=true，菜单已写入，但重启前端/后端前路由不会生效。")
-		}
-		menuResult, warnings, err := s.upsertMenus(meta)
-		if err != nil {
-			return result, err
-		}
-		result.MenuRecords = menuResult.Records
-		result.Warnings = append(result.Warnings, warnings...)
-	} else {
-		result.Warnings = append(result.Warnings, "upsert_menu=false，未写入 admin_menu 和 admin_role_menu。")
-	}
-
-	result.ModuleName = moduleName
-	result.RoutePath = preview.Page.RoutePath
-	result.PermissionCodes = append([]string{}, meta.PermissionCodes...)
-	result.Warnings = uniqueStrings(result.Warnings)
-	return result, nil
+	bundle.Artifacts = artifacts
+	return bundle, nil
 }
 
 func buildTemplateFields(columns []ColumnInfo, preview Preview) []templateField {
@@ -305,7 +431,7 @@ func buildTemplateFields(columns []ColumnInfo, preview Preview) []templateField 
 			IsJSON:        strings.EqualFold(strings.TrimSpace(column.DataType), "jsonb"),
 			StartQueryKey: column.ColumnName + "_start",
 			EndQueryKey:   column.ColumnName + "_end",
-			DefaultValue:  defaultFormValue(column),
+			DefaultValue:  guessDefaultValue(column, guessFormComponent(column)),
 		}
 
 		if inferred, ok := inferredIndex[column.ColumnName]; ok {
@@ -319,6 +445,7 @@ func buildTemplateFields(columns []ColumnInfo, preview Preview) []templateField 
 			item.Readonly = schema.Readonly
 			item.Hidden = schema.Hidden
 			item.Placeholder = schema.Placeholder
+			item.DefaultValue = firstNonNil(schema.DefaultValue, item.DefaultValue)
 		}
 		if schema, ok := listIndex[column.ColumnName]; ok {
 			item.IsListField = true
@@ -421,53 +548,10 @@ func searchTSType(column ColumnInfo) string {
 	}
 }
 
-func defaultFormValue(column ColumnInfo) any {
-	switch requestKind(column) {
-	case "bool":
-		return parseBoolDefault(column.ColumnDefault)
-	case "int":
-		return parseIntDefault(column.ColumnDefault, defaultIntegerHint(column.ColumnName))
-	case "int64":
-		return parseIntDefault(column.ColumnDefault, defaultIntegerHint(column.ColumnName))
-	case "json":
-		return "{}"
-	case "time":
-		return ""
-	default:
-		return ""
-	}
-}
-
-func parseBoolDefault(raw string) bool {
-	return strings.Contains(strings.ToLower(raw), "true")
-}
-
-func parseIntDefault(raw string, fallback int) int {
-	trimmed := strings.TrimSpace(raw)
-	trimmed = strings.Trim(trimmed, "()")
-	if value, err := strconv.Atoi(trimmed); err == nil {
-		return value
-	}
-	return fallback
-}
-
-func defaultIntegerHint(columnName string) int {
-	lower := strings.ToLower(strings.TrimSpace(columnName))
-	if strings.Contains(lower, "status") {
-		return 1
-	}
-	return 0
-}
-
-func buildDefaultFormState(fields []templateField) map[string]any {
-	result := map[string]any{
-		"id": 0,
-	}
+func buildDefaultFormState(fields []SchemaField) map[string]any {
+	result := map[string]any{"id": 0}
 	for _, field := range fields {
-		if !field.IsSaveField {
-			continue
-		}
-		result[field.ColumnName] = field.DefaultValue
+		result[field.Field] = firstNonNil(field.DefaultValue, "")
 	}
 	return result
 }
@@ -488,15 +572,22 @@ func buildDefaultSearchState(fields []SchemaField) map[string]any {
 func buildListColumns(fields []SchemaField) []map[string]any {
 	result := make([]map[string]any, 0, len(fields)+1)
 	for _, field := range fields {
+		if field.Hidden {
+			continue
+		}
 		column := map[string]any{
 			"key":   field.Field,
 			"title": field.Label,
 		}
-		switch field.Field {
-		case "id":
-			column["width"] = "80px"
-		case "created_at", "updated_at":
-			column["width"] = "180px"
+		if strings.TrimSpace(field.Width) != "" {
+			column["width"] = field.Width
+		} else {
+			switch field.Field {
+			case "id":
+				column["width"] = "80px"
+			case "created_at", "updated_at":
+				column["width"] = "180px"
+			}
 		}
 		result = append(result, column)
 	}
@@ -509,9 +600,140 @@ func buildListColumns(fields []SchemaField) []map[string]any {
 	return result
 }
 
+func (s GeneratorService) buildLockFile(lockPath string, meta ModuleMeta, preview Preview, payload PayloadConfig, generatedFiles []string, generatedAt time.Time) (LockFile, []byte, error) {
+	lock := LockFile{
+		GeneratedBy:     GeneratorName,
+		ModuleName:      meta.ModuleName,
+		TableName:       meta.TableName,
+		TemplateVersion: TemplateVersion,
+		Payload:         payload,
+		PreviewSummary: LockPreviewSummary{
+			TableComment:   preview.TableComment,
+			Page:           preview.Page,
+			API:            preview.API,
+			InferredFields: preview.InferredFields,
+			FormSchema:     preview.FormSchema,
+			ListSchema:     preview.ListSchema,
+			SearchSchema:   preview.SearchSchema,
+		},
+		PermissionCodes: append([]string{}, meta.PermissionCodes...),
+		RoutePath:       meta.RoutePath,
+		GeneratedFiles:  append([]string{}, generatedFiles...),
+	}
+
+	lock.GeneratedAt = s.resolveGeneratedAt(lockPath, lock, generatedAt)
+	content, err := json.MarshalIndent(lock, "", "  ")
+	if err != nil {
+		return LockFile{}, nil, err
+	}
+	content = append(content, '\n')
+	return lock, content, nil
+}
+
+func (s GeneratorService) resolveGeneratedAt(lockPath string, desired LockFile, override time.Time) string {
+	if !override.IsZero() {
+		return override.Format(time.RFC3339)
+	}
+
+	existing, err := s.readLockFile(lockPath)
+	if err == nil && sameLockCore(existing, desired) {
+		return existing.GeneratedAt
+	}
+	return time.Now().Format(time.RFC3339)
+}
+
+func (s GeneratorService) readLockFile(relPath string) (LockFile, error) {
+	fullPath := filepath.Join(s.RepoRoot, filepath.Clean(relPath))
+	raw, err := os.ReadFile(fullPath)
+	if err != nil {
+		return LockFile{}, err
+	}
+	var lock LockFile
+	if err := json.Unmarshal(raw, &lock); err != nil {
+		return LockFile{}, err
+	}
+	return lock, nil
+}
+
+func sameLockCore(left LockFile, right LockFile) bool {
+	left.GeneratedAt = ""
+	right.GeneratedAt = ""
+	leftRaw, _ := json.Marshal(left)
+	rightRaw, _ := json.Marshal(right)
+	return bytes.Equal(leftRaw, rightRaw)
+}
+
+func diffStatus(status string) string {
+	switch status {
+	case "generated":
+		return "create"
+	case "overwritten":
+		return "overwrite"
+	default:
+		return "skip"
+	}
+}
+
+func summarizeFileDiff(status string, warning string, oldContent []byte, newContent []byte) []string {
+	switch status {
+	case "generated":
+		return []string{"new file"}
+	case "overwritten":
+		return summarizeChangedLines(oldContent, newContent)
+	default:
+		if warning != "" {
+			return []string{warning}
+		}
+		if bytes.Equal(oldContent, newContent) {
+			return []string{"no content changes"}
+		}
+		return summarizeChangedLines(oldContent, newContent)
+	}
+}
+
+func summarizeChangedLines(oldContent []byte, newContent []byte) []string {
+	oldLines := strings.Split(strings.ReplaceAll(string(oldContent), "\r\n", "\n"), "\n")
+	newLines := strings.Split(strings.ReplaceAll(string(newContent), "\r\n", "\n"), "\n")
+
+	prefix := 0
+	for prefix < len(oldLines) && prefix < len(newLines) && oldLines[prefix] == newLines[prefix] {
+		prefix++
+	}
+
+	suffix := 0
+	for suffix < len(oldLines)-prefix && suffix < len(newLines)-prefix &&
+		oldLines[len(oldLines)-1-suffix] == newLines[len(newLines)-1-suffix] {
+		suffix++
+	}
+
+	oldStart := prefix + 1
+	oldEnd := len(oldLines) - suffix
+	newStart := prefix + 1
+	newEnd := len(newLines) - suffix
+
+	if oldEnd < oldStart {
+		oldEnd = oldStart
+	}
+	if newEnd < newStart {
+		newEnd = newStart
+	}
+
+	return []string{
+		fmt.Sprintf("old lines %d-%d -> new lines %d-%d", oldStart, oldEnd, newStart, newEnd),
+	}
+}
+
+func hashContent(content []byte) string {
+	if len(content) == 0 {
+		return ""
+	}
+	sum := sha256.Sum256(content)
+	return hex.EncodeToString(sum[:8])
+}
+
 func applyWriteResult(result GenerateResult, path string, status string, warning string) GenerateResult {
 	switch status {
-	case "created":
+	case "generated":
 		result.GeneratedFiles = append(result.GeneratedFiles, path)
 	case "overwritten":
 		result.OverwrittenFiles = append(result.OverwrittenFiles, path)
@@ -557,6 +779,27 @@ func mustMarshalPayload(payload PayloadConfig) json.RawMessage {
 	return raw
 }
 
+func parseBoolDefault(raw string) bool {
+	return strings.Contains(strings.ToLower(raw), "true")
+}
+
+func parseIntDefault(raw string, fallback int) int {
+	trimmed := strings.TrimSpace(raw)
+	trimmed = strings.Trim(trimmed, "()")
+	if value, err := strconv.Atoi(trimmed); err == nil {
+		return value
+	}
+	return fallback
+}
+
+func defaultIntegerHint(columnName string) int {
+	lower := strings.ToLower(strings.TrimSpace(columnName))
+	if strings.Contains(lower, "status") || strings.Contains(lower, "state") {
+		return 1
+	}
+	return 0
+}
+
 func (s GeneratorService) upsertMenus(meta ModuleMeta) (MenuUpsertResult, []string, error) {
 	if s.DB == nil {
 		return MenuUpsertResult{}, []string{"当前运行时没有数据库连接，未执行菜单写入。"}, nil
@@ -595,9 +838,10 @@ func (s GeneratorService) upsertMenus(meta ModuleMeta) (MenuUpsertResult, []stri
 		}
 		result.Records = append(result.Records, menuRecord)
 
+		menuID, _ := menuRecord["id"].(int64)
 		buttons := []model.AdminMenu{
 			{
-				ParentID:       int64(menuRecord["id"].(int64)),
+				ParentID:       menuID,
 				Name:           ToKebab(meta.ModuleName) + "-list",
 				Title:          meta.Title + "列表",
 				MenuType:       model.MenuTypeButton,
@@ -607,7 +851,7 @@ func (s GeneratorService) upsertMenus(meta ModuleMeta) (MenuUpsertResult, []stri
 				Status:         1,
 			},
 			{
-				ParentID:       int64(menuRecord["id"].(int64)),
+				ParentID:       menuID,
 				Name:           ToKebab(meta.ModuleName) + "-save",
 				Title:          meta.Title + "保存",
 				MenuType:       model.MenuTypeButton,
@@ -617,7 +861,7 @@ func (s GeneratorService) upsertMenus(meta ModuleMeta) (MenuUpsertResult, []stri
 				Status:         1,
 			},
 			{
-				ParentID:       int64(menuRecord["id"].(int64)),
+				ParentID:       menuID,
 				Name:           ToKebab(meta.ModuleName) + "-delete",
 				Title:          meta.Title + "删除",
 				MenuType:       model.MenuTypeButton,
@@ -628,19 +872,21 @@ func (s GeneratorService) upsertMenus(meta ModuleMeta) (MenuUpsertResult, []stri
 			},
 		}
 
-		menuIDs := []int64{menuRecord["id"].(int64)}
+		menuIDs := []int64{menuID}
 		for _, button := range buttons {
 			record, err := upsertAdminMenuRecord(tx, button, "permission_code", button.PermissionCode)
 			if err != nil {
 				return err
 			}
 			result.Records = append(result.Records, record)
-			menuIDs = append(menuIDs, record["id"].(int64))
+			if id, ok := record["id"].(int64); ok {
+				menuIDs = append(menuIDs, id)
+			}
 		}
 
-		for _, menuID := range menuIDs {
-			link := model.AdminRoleMenu{RoleID: 1, MenuID: menuID}
-			if err := tx.Where("role_id = ? AND menu_id = ?", 1, menuID).FirstOrCreate(&link).Error; err != nil {
+		for _, currentMenuID := range menuIDs {
+			link := model.AdminRoleMenu{RoleID: 1, MenuID: currentMenuID}
+			if err := tx.Where("role_id = ? AND menu_id = ?", 1, currentMenuID).FirstOrCreate(&link).Error; err != nil {
 				return err
 			}
 		}

@@ -105,7 +105,7 @@ npm run dev
 - `AdminMenuPage`：菜单树、按钮节点、父级菜单维护
 - `SystemConfigPage`：系统配置列表与弹窗表单
 - `AttachmentPage`：上传、预览、复制 URL、删除
-- `CodegenPage`：业务表元数据、preview、真实生成、历史记录、结果面板
+- `CodegenPage`：业务表元数据、字段级配置、preview、diff、真实生成、regenerate、历史记录、结果面板
 - `DemoArticlePage`：由 codegen 生成的样例 CRUD 页面
 - `ForbiddenView`：无权限或不可访问路由兜底页
 
@@ -152,6 +152,22 @@ npm run dev
   `vben-admin/apps/admin/src/generated/routes.ts`
 - 可直接把菜单和按钮权限写入 `admin_menu` / `admin_role_menu`
 - 保存历史记录并可重新载入当前表单
+- 为每个生成模块写入 `internal/modules/{module_name}/codegen.lock.json`
+- 支持从 `codegen.lock.json` 或 `codegen_history` 重新生成
+- 支持生成前 diff 预览
+- 支持字段级 overrides：
+  `label`
+  `component`
+  `placeholder`
+  `required`
+  `readonly`
+  `hidden`
+  `sortable`
+  `searchable`
+  `width`
+  `options`
+  `default_value`
+- 会读取 PostgreSQL 表注释和列注释，优先作为标题和字段 label 候选
 
 当前阶段明确只生成 admin 端，不生成 user 页面。
 
@@ -162,6 +178,17 @@ npm run dev
 - 仅允许覆盖“生成器生成过的文件”
 - 如果目标文件存在但不是生成器文件头，默认跳过并返回 warning
 
+### `codegen.lock.json`
+
+每个生成模块目录下都会写入一份 `codegen.lock.json`，用于：
+
+- 记录本次生成使用的 `module_name`、`table_name`
+- 记录 `generated_at` 和 `template_version`
+- 固化 `payload` 与 `preview_summary`
+- 固化 `permission_codes`、`route_path`、`generated_files`
+- 作为以后 `regenerate` 的稳定输入来源
+- 让生成器能做 diff、再生和结果追踪，而不只依赖 `codegen_history`
+
 ### 生成参数
 
 - `overwrite`
@@ -171,6 +198,40 @@ npm run dev
 - `upsert_menu`
   生成后直接 upsert 后台菜单和按钮权限，并给超级管理员角色补齐 `admin_role_menu`
 
+## Codegen API
+
+- `POST /admin-api/codegen/preview`
+  返回当前模块的 page/api/schema 方案稿
+- `POST /admin-api/codegen/diff`
+  只计算本次生成会创建、覆盖、跳过哪些文件，不真正写盘
+- `POST /admin-api/codegen/generate`
+  真正生成文件、可重建注册文件、可 upsert 菜单权限
+- `POST /admin-api/codegen/regenerate`
+  支持按 `module_name` 或按 `history_id` 重新生成
+
+### 字段级 overrides 结构
+
+`payload.field_overrides` 的结构如下：
+
+```json
+{
+  "status": {
+    "label": "状态",
+    "component": "select",
+    "sortable": true,
+    "searchable": true,
+    "width": "120px",
+    "options": [
+      { "label": "启用", "value": 1 },
+      { "label": "禁用", "value": 2 }
+    ],
+    "default_value": 1
+  }
+}
+```
+
+`CodegenPage` 里已经可以直接维护这些字段级配置，不需要再手写整段 JSON。
+
 ### 第一次真实生成流程
 
 1. 启动 PostgreSQL 并创建 `goweb_scaffold`
@@ -178,9 +239,13 @@ npm run dev
 3. 启动后端：`go run ./cmd/server -config configs/config.yaml`
 4. 启动 admin：`cd vben-admin/apps/admin && npm install && npm run dev`
 5. 登录 admin 后进入“代码生成”
-6. 选择业务表，先点击“生成方案稿”
-7. 确认字段方案后点击“生成文件”
-8. 如果选择了 `register_module`，生成完成后重启后端服务
+6. 选择业务表
+7. 在字段配置表里调整 list/form/search 选用和字段 overrides
+8. 点击“生成 Preview”
+9. 点击“查看 Diff”
+10. 确认后点击“生成文件”
+11. 如果后续只想按 lock 或历史记录再次输出，可直接点“重新生成”
+12. 如果选择了 `register_module`，生成完成后重启后端服务
 
 ### 当前样例
 
@@ -190,6 +255,7 @@ npm run dev
 - 后端模块：`internal/modules/demo_article/*`
 - admin API：`vben-admin/apps/admin/src/api/demo_article.ts`
 - admin 页面：`vben-admin/apps/admin/src/views/system/DemoArticlePage.vue`
+- lock 文件：`internal/modules/demo_article/codegen.lock.json`
 - 路由：`/system/demo-article`
 - 权限码：
   `demo_article.list`

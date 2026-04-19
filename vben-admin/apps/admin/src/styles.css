@@ -724,6 +724,15 @@ pre {
   grid-column: 1 / -1;
 }
 
+.codegen-field-config .app-table__inner th,
+.codegen-field-config .app-table__inner td {
+  min-width: 96px;
+}
+
+.codegen-textarea--sm {
+  min-height: 84px;
+}
+
 .forbidden-page {
   display: grid;
   gap: 14px;

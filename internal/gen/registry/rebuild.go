@@ -2,6 +2,7 @@ package registry
 
 import (
 	"go/format"
+	"sort"
 	"strconv"
 	"text/template"
 
@@ -25,11 +26,12 @@ type routeItem struct {
 	ViewImportPath string
 }
 
-func RebuildBackendModulesFile(repoRoot string) (string, string, error) {
+func RenderBackendModulesFile(repoRoot string, upsertModules ...GeneratedModule) ([]byte, error) {
 	items, err := DiscoverGeneratedModules(repoRoot)
 	if err != nil {
-		return "", "", err
+		return nil, err
 	}
+	items = mergeGeneratedModules(items, upsertModules...)
 
 	imports := make([]importItem, 0, len(baseModules)+len(items))
 	modules := make([]moduleItem, 0, len(baseModules)+len(items))
@@ -57,21 +59,17 @@ func RebuildBackendModulesFile(repoRoot string) (string, string, error) {
 		"quote": strconv.Quote,
 	})
 	if err != nil {
-		return "", "", err
+		return nil, err
 	}
-	content, err = format.Source(content)
-	if err != nil {
-		return "", "", err
-	}
-
-	return writer.New(repoRoot).Write("internal/gen/modules_gen.go", content, true)
+	return format.Source(content)
 }
 
-func RebuildAdminRoutesFile(repoRoot string) (string, string, error) {
+func RenderAdminRoutesFile(repoRoot string, upsertModules ...GeneratedModule) ([]byte, error) {
 	items, err := DiscoverGeneratedModules(repoRoot)
 	if err != nil {
-		return "", "", err
+		return nil, err
 	}
+	items = mergeGeneratedModules(items, upsertModules...)
 
 	routes := make([]routeItem, 0, len(items))
 	for _, item := range items {
@@ -83,14 +81,47 @@ func RebuildAdminRoutesFile(repoRoot string) (string, string, error) {
 		})
 	}
 
-	content, err := gentemplates.Render("admin_frontend/routes.ts.tmpl", map[string]any{
+	return gentemplates.Render("admin_frontend/routes.ts.tmpl", map[string]any{
 		"Routes": routes,
 	}, template.FuncMap{
 		"quote": strconv.Quote,
 	})
+}
+
+func RebuildBackendModulesFile(repoRoot string, upsertModules ...GeneratedModule) (string, string, error) {
+	content, err := RenderBackendModulesFile(repoRoot, upsertModules...)
 	if err != nil {
 		return "", "", err
 	}
+	return writer.New(repoRoot).Write("internal/gen/modules_gen.go", content, true)
+}
 
+func RebuildAdminRoutesFile(repoRoot string, upsertModules ...GeneratedModule) (string, string, error) {
+	content, err := RenderAdminRoutesFile(repoRoot, upsertModules...)
+	if err != nil {
+		return "", "", err
+	}
 	return writer.New(repoRoot).Write("vben-admin/apps/admin/src/generated/routes.ts", content, true)
+}
+
+func mergeGeneratedModules(items []GeneratedModule, upsertModules ...GeneratedModule) []GeneratedModule {
+	index := make(map[string]GeneratedModule, len(items)+len(upsertModules))
+	for _, item := range items {
+		index[item.ModuleName] = item
+	}
+	for _, item := range upsertModules {
+		if item.ModuleName == "" {
+			continue
+		}
+		index[item.ModuleName] = item
+	}
+
+	result := make([]GeneratedModule, 0, len(index))
+	for _, item := range index {
+		result = append(result, item)
+	}
+	sort.Slice(result, func(i, j int) bool {
+		return result[i].ModuleName < result[j].ModuleName
+	})
+	return result
 }

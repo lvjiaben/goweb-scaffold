@@ -10,16 +10,24 @@ func BuildPreview(moduleName string, tableName string, rawPayload json.RawMessag
 	moduleCode := ToSnake(moduleName)
 	modulePath := ToKebab(moduleName)
 	payload := parsePayload(rawPayload, columns)
+	tableComment := detectTableComment(columns)
 
 	inferredFields := inferFields(columns)
 	fieldIndex := make(map[string]InferredField, len(inferredFields))
+	columnIndex := make(map[string]ColumnInfo, len(columns))
 	for _, item := range inferredFields {
 		fieldIndex[item.ColumnName] = item
 	}
+	for _, item := range columns {
+		columnIndex[item.ColumnName] = item
+	}
+
+	title := firstNonEmpty(strings.TrimSpace(payload.Title), strings.TrimSpace(tableComment), HumanizeModuleName(moduleName))
 
 	return Preview{
-		ModuleName: moduleName,
-		TableName:  tableName,
+		ModuleName:   moduleName,
+		TableName:    tableName,
+		TableComment: tableComment,
 		Page: PageMeta{
 			RoutePath: fmt.Sprintf("/system/%s", modulePath),
 			PageName:  ToPascal(moduleName) + "Page",
@@ -33,27 +41,31 @@ func BuildPreview(moduleName string, tableName string, rawPayload json.RawMessag
 			Delete:     fmt.Sprintf("/admin-api/%s/delete", moduleCode),
 		},
 		InferredFields: inferredFields,
-		FormSchema:     buildFormSchema(payload.FormFields, fieldIndex),
-		ListSchema:     buildListSchema(payload.ListFields, fieldIndex),
-		SearchSchema:   buildSearchSchema(payload.SearchFields, fieldIndex),
+		FormSchema:     buildFormSchema(payload.FormFields, fieldIndex, columnIndex, payload.FieldOverrides),
+		ListSchema:     buildListSchema(payload.ListFields, fieldIndex, columnIndex, payload.FieldOverrides),
+		SearchSchema:   buildSearchSchema(payload.SearchFields, fieldIndex, columnIndex, payload.FieldOverrides),
 		Payload:        payload,
-		Notes:          buildPreviewNotes(columns, inferredFields),
+		Notes:          buildPreviewNotes(columns, inferredFields, title),
 	}
 }
 
 func parsePayload(rawPayload json.RawMessage, columns []ColumnInfo) PayloadConfig {
 	payload := PayloadConfig{
-		ListFields:   []string{},
-		FormFields:   []string{},
-		SearchFields: []string{},
+		ListFields:     []string{},
+		FormFields:     []string{},
+		SearchFields:   []string{},
+		FieldOverrides: map[string]FieldOverride{},
 	}
 	if len(rawPayload) > 0 {
 		_ = json.Unmarshal(rawPayload, &payload)
 	}
+	if payload.FieldOverrides == nil {
+		payload.FieldOverrides = map[string]FieldOverride{}
+	}
 
 	defaultList := make([]string, 0, len(columns))
 	defaultForm := make([]string, 0, len(columns))
-	defaultSearch := make([]string, 0, 3)
+	defaultSearch := make([]string, 0, 4)
 
 	for _, column := range columns {
 		name := column.ColumnName
@@ -66,7 +78,7 @@ func parsePayload(rawPayload json.RawMessage, columns []ColumnInfo) PayloadConfi
 			defaultForm = append(defaultForm, name)
 		}
 
-		if canGuessSearchable(column) && len(defaultSearch) < 3 {
+		if canGuessSearchable(column) && len(defaultSearch) < 4 {
 			defaultSearch = append(defaultSearch, name)
 		}
 	}
@@ -95,6 +107,8 @@ func inferFields(columns []ColumnInfo) []InferredField {
 			DataType:             column.DataType,
 			IsNullable:           column.IsNullable,
 			IsPrimaryKey:         column.IsPrimaryKey,
+			ColumnComment:        strings.TrimSpace(column.ColumnComment),
+			GuessedLabel:         preferredLabel(column),
 			GuessedFormComponent: guessFormComponent(column),
 			GuessedListDisplay:   guessListDisplay(column),
 			GuessedSearchable:    canGuessSearchable(column),
@@ -104,69 +118,98 @@ func inferFields(columns []ColumnInfo) []InferredField {
 	return fields
 }
 
-func buildFormSchema(fields []string, fieldIndex map[string]InferredField) []SchemaField {
+func buildFormSchema(fields []string, inferred map[string]InferredField, columns map[string]ColumnInfo, overrides map[string]FieldOverride) []SchemaField {
 	result := make([]SchemaField, 0, len(fields))
 	for _, field := range fields {
-		item, ok := fieldIndex[field]
+		inferredField, ok := inferred[field]
 		if !ok {
 			continue
 		}
-		readonly := isReadonlyField(item.ColumnName, item.IsPrimaryKey)
+		column := columns[field]
+		override := overrides[field]
+		component := firstNonEmpty(override.Component, inferredField.GuessedFormComponent)
+		options := buildOptions(column, component, override)
+		required := pickBool(override.Required, !column.IsNullable && !isReadonlyField(field, column.IsPrimaryKey))
+		readonly := pickBool(override.Readonly, isReadonlyField(field, column.IsPrimaryKey))
+		hidden := pickBool(override.Hidden, isSoftDeleteField(field))
 		result = append(result, SchemaField{
-			Field:       item.ColumnName,
-			Label:       columnLabel(item.ColumnName),
-			Component:   item.GuessedFormComponent,
-			Required:    !item.IsNullable && !readonly,
-			Readonly:    readonly,
-			Hidden:      isSoftDeleteField(item.ColumnName),
-			Placeholder: buildPlaceholder(item),
+			Field:        field,
+			Label:        firstNonEmpty(override.Label, inferredField.GuessedLabel),
+			Component:    component,
+			Required:     required,
+			Readonly:     readonly,
+			Hidden:       hidden,
+			Placeholder:  firstNonEmpty(override.Placeholder, buildPlaceholder(firstNonEmpty(override.Label, inferredField.GuessedLabel), component)),
+			Width:        strings.TrimSpace(override.Width),
+			Options:      options,
+			DefaultValue: firstNonNil(override.DefaultValue, guessDefaultValue(column, component)),
 		})
 	}
 	return result
 }
 
-func buildListSchema(fields []string, fieldIndex map[string]InferredField) []SchemaField {
+func buildListSchema(fields []string, inferred map[string]InferredField, columns map[string]ColumnInfo, overrides map[string]FieldOverride) []SchemaField {
 	result := make([]SchemaField, 0, len(fields))
 	for _, field := range fields {
-		item, ok := fieldIndex[field]
+		inferredField, ok := inferred[field]
 		if !ok {
 			continue
 		}
+		column := columns[field]
+		override := overrides[field]
+		component := firstNonEmpty(override.Component, inferredField.GuessedFormComponent)
+		options := buildOptions(column, component, override)
+		display := guessedListDisplay(column, component, options)
 		result = append(result, SchemaField{
-			Field:      item.ColumnName,
-			Label:      columnLabel(item.ColumnName),
-			Display:    item.GuessedListDisplay,
-			Sortable:   item.GuessedSortable,
-			Searchable: item.GuessedSearchable,
-			Hidden:     isSoftDeleteField(item.ColumnName),
+			Field:        field,
+			Label:        firstNonEmpty(override.Label, inferredField.GuessedLabel),
+			Component:    component,
+			Display:      display,
+			Hidden:       pickBool(override.Hidden, isSoftDeleteField(field)),
+			Searchable:   pickBool(override.Searchable, inferredField.GuessedSearchable),
+			Sortable:     pickBool(override.Sortable, inferredField.GuessedSortable),
+			Width:        strings.TrimSpace(override.Width),
+			Options:      options,
+			DefaultValue: firstNonNil(override.DefaultValue, guessDefaultValue(column, component)),
 		})
 	}
 	return result
 }
 
-func buildSearchSchema(fields []string, fieldIndex map[string]InferredField) []SchemaField {
+func buildSearchSchema(fields []string, inferred map[string]InferredField, columns map[string]ColumnInfo, overrides map[string]FieldOverride) []SchemaField {
 	result := make([]SchemaField, 0, len(fields))
 	for _, field := range fields {
-		item, ok := fieldIndex[field]
+		inferredField, ok := inferred[field]
 		if !ok {
 			continue
 		}
+		column := columns[field]
+		override := overrides[field]
+		formComponent := firstNonEmpty(override.Component, inferredField.GuessedFormComponent)
+		options := buildOptions(column, formComponent, override)
+		component := guessSearchComponent(column, formComponent, options)
+		searchable := pickBool(override.Searchable, inferredField.GuessedSearchable)
 		result = append(result, SchemaField{
-			Field:      item.ColumnName,
-			Label:      columnLabel(item.ColumnName),
-			Component:  guessSearchComponent(item),
-			Operator:   guessSearchOperator(item),
-			Searchable: item.GuessedSearchable,
+			Field:        field,
+			Label:        firstNonEmpty(override.Label, inferredField.GuessedLabel),
+			Component:    component,
+			Operator:     guessSearchOperator(component),
+			Searchable:   searchable,
+			Width:        strings.TrimSpace(override.Width),
+			Options:      options,
+			Placeholder:  firstNonEmpty(override.Placeholder, buildSearchPlaceholder(firstNonEmpty(override.Label, inferredField.GuessedLabel), component)),
+			DefaultValue: firstNonNil(override.DefaultValue, guessDefaultValue(column, formComponent)),
 		})
 	}
 	return result
 }
 
-func buildPreviewNotes(columns []ColumnInfo, inferredFields []InferredField) []string {
+func buildPreviewNotes(columns []ColumnInfo, inferredFields []InferredField, title string) []string {
 	notes := []string{
 		"当前阶段会生成真实 admin CRUD 文件，不生成 user 端页面。",
-		"生成器输出包含后端模块、admin API 文件、admin 页面和可重建注册文件。",
-		"相同输入重复生成时，生成器会保持稳定输出。",
+		"生成器输出包含后端模块、admin API 文件、admin 页面、lock 文件和可重建注册文件。",
+		"preview、diff、generate、regenerate 共用同一套字段推断和字段级 overrides。",
+		fmt.Sprintf("当前模块标题候选为 %s。", title),
 	}
 
 	for _, column := range columns {
@@ -177,11 +220,13 @@ func buildPreviewNotes(columns []ColumnInfo, inferredFields []InferredField) []s
 			notes = append(notes, fmt.Sprintf("%s 被识别为软删除字段，默认不进入表单和搜索区。", column.ColumnName))
 		case column.ColumnName == "created_at" || column.ColumnName == "updated_at":
 			notes = append(notes, fmt.Sprintf("%s 被识别为时间审计字段，默认作为列表字段展示。", column.ColumnName))
+		case strings.TrimSpace(column.ColumnComment) != "":
+			notes = append(notes, fmt.Sprintf("%s 读取到了列注释，preview 会优先使用注释作为字段标签候选。", column.ColumnName))
 		}
 	}
 
 	for _, item := range inferredFields {
-		if item.DataType == "jsonb" {
+		if strings.EqualFold(strings.TrimSpace(item.DataType), "jsonb") {
 			notes = append(notes, fmt.Sprintf("%s 是 jsonb 字段，默认建议使用 JSON 文本编辑。", item.ColumnName))
 		}
 	}
@@ -190,7 +235,7 @@ func buildPreviewNotes(columns []ColumnInfo, inferredFields []InferredField) []s
 }
 
 func guessFormComponent(column ColumnInfo) string {
-	name := column.ColumnName
+	name := strings.ToLower(strings.TrimSpace(column.ColumnName))
 	switch {
 	case column.IsPrimaryKey:
 		return "readonly-text"
@@ -200,24 +245,36 @@ func guessFormComponent(column ColumnInfo) string {
 		return "readonly-datetime"
 	case isBooleanType(column.DataType):
 		return "switch"
-	case isIntegerType(column.DataType):
+	case strings.HasPrefix(name, "is_") || strings.HasPrefix(name, "has_"):
+		return "switch"
+	case name == "status" || name == "state":
+		return "select"
+	case name == "sort":
 		return "number-input"
-	case isTimestampType(column.DataType):
+	case strings.HasSuffix(name, "_at") || isTimestampType(column.DataType):
 		return "datetime-picker"
 	case strings.EqualFold(strings.TrimSpace(column.DataType), "jsonb"):
 		return "json-editor"
 	case isLongTextField(name, column.DataType):
 		return "textarea"
+	case isBigIntegerType(column.DataType) || isIntegerType(column.DataType):
+		return "number-input"
 	default:
 		return "text-input"
 	}
 }
 
 func guessListDisplay(column ColumnInfo) string {
+	return guessedListDisplay(column, guessFormComponent(column), buildOptions(column, guessFormComponent(column), FieldOverride{}))
+}
+
+func guessedListDisplay(column ColumnInfo, component string, options []FieldOption) string {
 	switch {
-	case isBooleanType(column.DataType):
+	case component == "switch" || isBooleanType(column.DataType):
 		return "boolean-tag"
-	case isTimestampType(column.DataType):
+	case len(options) > 0 && (component == "select" || component == "radio"):
+		return "option-tag"
+	case strings.HasSuffix(strings.ToLower(strings.TrimSpace(column.ColumnName)), "_at") || isTimestampType(column.DataType):
 		return "datetime"
 	case strings.EqualFold(strings.TrimSpace(column.DataType), "jsonb"):
 		return "json-preview"
@@ -229,18 +286,20 @@ func guessListDisplay(column ColumnInfo) string {
 }
 
 func canGuessSearchable(column ColumnInfo) bool {
-	name := column.ColumnName
+	name := strings.ToLower(strings.TrimSpace(column.ColumnName))
 	if column.IsPrimaryKey || isSoftDeleteField(name) || name == "created_at" || name == "updated_at" {
 		return false
 	}
 	switch {
 	case isTextType(column.DataType):
 		return true
-	case isIntegerType(column.DataType):
-		return strings.HasSuffix(name, "_id") || strings.Contains(name, "status") || strings.Contains(name, "type")
+	case isBigIntegerType(column.DataType), isIntegerType(column.DataType):
+		return strings.HasSuffix(name, "_id") || strings.Contains(name, "status") || strings.Contains(name, "state") || strings.Contains(name, "type")
 	case isBooleanType(column.DataType):
 		return true
-	case isTimestampType(column.DataType):
+	case strings.HasPrefix(name, "is_") || strings.HasPrefix(name, "has_"):
+		return true
+	case strings.HasSuffix(name, "_at") || isTimestampType(column.DataType):
 		return true
 	default:
 		return false
@@ -248,27 +307,33 @@ func canGuessSearchable(column ColumnInfo) bool {
 }
 
 func canGuessSortable(column ColumnInfo) bool {
-	if strings.EqualFold(strings.TrimSpace(column.DataType), "jsonb") || isLongTextField(column.ColumnName, column.DataType) {
+	name := strings.ToLower(strings.TrimSpace(column.ColumnName))
+	if isSoftDeleteField(name) {
 		return false
 	}
-	return !isSoftDeleteField(column.ColumnName)
+	if strings.EqualFold(strings.TrimSpace(column.DataType), "jsonb") || isLongTextField(name, column.DataType) {
+		return false
+	}
+	return true
 }
 
-func guessSearchComponent(field InferredField) string {
+func guessSearchComponent(column ColumnInfo, formComponent string, options []FieldOption) string {
 	switch {
-	case field.GuessedFormComponent == "switch":
+	case len(options) > 0 && (formComponent == "select" || formComponent == "radio" || formComponent == "switch"):
 		return "select"
-	case field.GuessedFormComponent == "datetime-picker" || strings.Contains(field.ColumnName, "_at"):
+	case formComponent == "switch":
+		return "select"
+	case formComponent == "datetime-picker" || formComponent == "readonly-datetime" || strings.HasSuffix(strings.ToLower(strings.TrimSpace(column.ColumnName)), "_at"):
 		return "datetime-range"
-	case field.GuessedFormComponent == "number-input":
+	case formComponent == "number-input":
 		return "number-input"
 	default:
 		return "text-input"
 	}
 }
 
-func guessSearchOperator(field InferredField) string {
-	switch guessSearchComponent(field) {
+func guessSearchOperator(component string) string {
+	switch component {
 	case "datetime-range":
 		return "between"
 	case "select", "number-input":
@@ -311,12 +376,14 @@ func isReadonlyField(name string, isPrimaryKey bool) bool {
 	}
 }
 
-func buildPlaceholder(field InferredField) string {
-	switch field.GuessedFormComponent {
+func buildPlaceholder(label string, component string) string {
+	switch component {
 	case "number-input":
 		return "请输入数字"
 	case "switch":
 		return "请选择开关状态"
+	case "select", "radio":
+		return "请选择" + label
 	case "datetime-picker":
 		return "请选择时间"
 	case "json-editor":
@@ -324,8 +391,28 @@ func buildPlaceholder(field InferredField) string {
 	case "textarea":
 		return "请输入详细内容"
 	default:
-		return "请输入" + columnLabel(field.ColumnName)
+		return "请输入" + label
 	}
+}
+
+func buildSearchPlaceholder(label string, component string) string {
+	switch component {
+	case "select":
+		return "请选择" + label
+	case "datetime-range":
+		return "请选择" + label + "范围"
+	case "number-input":
+		return "请输入" + label
+	default:
+		return "搜索" + label
+	}
+}
+
+func preferredLabel(column ColumnInfo) string {
+	if comment := strings.TrimSpace(column.ColumnComment); comment != "" {
+		return comment
+	}
+	return columnLabel(column.ColumnName)
 }
 
 func columnLabel(raw string) string {
@@ -339,5 +426,90 @@ func columnLabel(raw string) string {
 	case "deleted_at":
 		return "删除时间"
 	}
-	return HumanizeModuleName(raw)
+
+	parts := strings.Split(strings.TrimSpace(raw), "_")
+	for index, part := range parts {
+		if part == "" {
+			continue
+		}
+		parts[index] = strings.ToUpper(part[:1]) + part[1:]
+	}
+	return strings.Join(parts, " ")
+}
+
+func buildOptions(column ColumnInfo, component string, override FieldOverride) []FieldOption {
+	if len(override.Options) > 0 {
+		return normalizeOptions(override.Options)
+	}
+
+	name := strings.ToLower(strings.TrimSpace(column.ColumnName))
+	switch {
+	case component == "switch" || isBooleanType(column.DataType) || strings.HasPrefix(name, "is_") || strings.HasPrefix(name, "has_"):
+		return []FieldOption{
+			{Label: "是", Value: true},
+			{Label: "否", Value: false},
+		}
+	case component == "select" || component == "radio":
+		if name == "status" || name == "state" {
+			return []FieldOption{
+				{Label: "启用", Value: 1},
+				{Label: "禁用", Value: 2},
+			}
+		}
+	}
+	return []FieldOption{}
+}
+
+func normalizeOptions(items []FieldOption) []FieldOption {
+	result := make([]FieldOption, 0, len(items))
+	for _, item := range items {
+		label := strings.TrimSpace(item.Label)
+		if label == "" {
+			continue
+		}
+		result = append(result, FieldOption{Label: label, Value: item.Value})
+	}
+	return result
+}
+
+func guessDefaultValue(column ColumnInfo, component string) any {
+	name := strings.ToLower(strings.TrimSpace(column.ColumnName))
+	switch {
+	case component == "switch" || isBooleanType(column.DataType):
+		return parseBoolDefault(column.ColumnDefault)
+	case component == "select" || component == "radio":
+		if name == "status" || name == "state" {
+			return parseIntDefault(column.ColumnDefault, 1)
+		}
+	case component == "number-input":
+		return parseIntDefault(column.ColumnDefault, defaultIntegerHint(name))
+	case component == "json-editor":
+		return "{}"
+	case component == "datetime-picker", component == "readonly-datetime":
+		return ""
+	}
+	return ""
+}
+
+func detectTableComment(columns []ColumnInfo) string {
+	for _, item := range columns {
+		if strings.TrimSpace(item.TableComment) != "" {
+			return strings.TrimSpace(item.TableComment)
+		}
+	}
+	return ""
+}
+
+func pickBool(value *bool, fallback bool) bool {
+	if value == nil {
+		return fallback
+	}
+	return *value
+}
+
+func firstNonNil(value any, fallback any) any {
+	if value == nil {
+		return fallback
+	}
+	return value
 }

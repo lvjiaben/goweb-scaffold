@@ -2,6 +2,10 @@ package codegen
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/lvjiaben/goweb-core/httpx"
@@ -27,6 +31,20 @@ type generateRequest struct {
 	UpsertMenu     bool            `json:"upsert_menu"`
 }
 
+type regenerateRequest struct {
+	ModuleName     string `json:"module_name"`
+	HistoryID      int64  `json:"history_id"`
+	Overwrite      bool   `json:"overwrite"`
+	RegisterModule bool   `json:"register_module"`
+	UpsertMenu     bool   `json:"upsert_menu"`
+}
+
+type regenerateSource struct {
+	ModuleName string
+	TableName  string
+	Payload    json.RawMessage
+}
+
 func (Module) Name() string { return "codegen" }
 
 func (Module) Register(runtime *bootstrap.Runtime) error {
@@ -34,7 +52,9 @@ func (Module) Register(runtime *bootstrap.Runtime) error {
 	runtime.AdminProtectedGroup.GET("/codegen/tables", tables(runtime), httpx.WithPermission("codegen.list"))
 	runtime.AdminProtectedGroup.GET("/codegen/table-columns", tableColumns(runtime), httpx.WithPermission("codegen.list"))
 	runtime.AdminProtectedGroup.POST("/codegen/preview", preview(runtime), httpx.WithPermission("codegen.save"))
+	runtime.AdminProtectedGroup.POST("/codegen/diff", diff(runtime), httpx.WithPermission("codegen.save"))
 	runtime.AdminProtectedGroup.POST("/codegen/generate", generate(runtime), httpx.WithPermission("codegen.save"))
+	runtime.AdminProtectedGroup.POST("/codegen/regenerate", regenerate(runtime), httpx.WithPermission("codegen.save"))
 	runtime.AdminProtectedGroup.POST("/codegen/save", save(runtime), httpx.WithPermission("codegen.save"))
 	runtime.AdminProtectedGroup.POST("/codegen/delete", deleteHistory(runtime), httpx.WithPermission("codegen.delete"))
 	return nil
@@ -105,18 +125,54 @@ func preview(runtime *bootstrap.Runtime) httpx.HandlerFunc {
 			c.BadRequest(err.Error())
 			return
 		}
-		if len(req.Payload) == 0 {
-			req.Payload = json.RawMessage(`{}`)
-		}
-
-		columns, err := listTableColumns(runtime, req.TableName)
+		previewPayload, _, err := buildPreview(runtime, req.ModuleName, req.TableName, req.Payload)
 		if err != nil {
+			respondCodegenError(c, err)
+			return
+		}
+		c.Success(previewPayload)
+	}
+}
+
+func diff(runtime *bootstrap.Runtime) httpx.HandlerFunc {
+	return func(c *httpx.Context) {
+		var req generateRequest
+		if err := c.BindJSON(&req); err != nil {
 			c.Error(err)
 			return
 		}
+		req.ModuleName = strings.TrimSpace(req.ModuleName)
+		req.TableName = strings.TrimSpace(req.TableName)
+		if err := runtime.Validator.Struct(req); err != nil {
+			c.BadRequest(err.Error())
+			return
+		}
 
-		previewPayload := service.BuildPreview(req.ModuleName, req.TableName, req.Payload, columns)
-		c.Success(previewPayload)
+		previewPayload, columns, err := buildPreview(runtime, req.ModuleName, req.TableName, req.Payload)
+		if err != nil {
+			respondCodegenError(c, err)
+			return
+		}
+
+		result, err := (service.GeneratorService{
+			RepoRoot: runtime.RepoRoot,
+			DB:       runtime.DB,
+		}).Diff(service.GenerateInput{
+			ModuleName:     req.ModuleName,
+			TableName:      req.TableName,
+			Payload:        previewPayload.Payload,
+			Preview:        previewPayload,
+			Columns:        columns,
+			Overwrite:      req.Overwrite,
+			RegisterModule: req.RegisterModule,
+			UpsertMenu:     req.UpsertMenu,
+		})
+		if err != nil {
+			respondCodegenError(c, err)
+			return
+		}
+
+		c.Success(result)
 	}
 }
 
@@ -133,21 +189,11 @@ func generate(runtime *bootstrap.Runtime) httpx.HandlerFunc {
 			c.BadRequest(err.Error())
 			return
 		}
-		if len(req.Payload) == 0 {
-			req.Payload = json.RawMessage(`{}`)
-		}
-
-		columns, err := listTableColumns(runtime, req.TableName)
+		previewPayload, columns, err := buildPreview(runtime, req.ModuleName, req.TableName, req.Payload)
 		if err != nil {
-			c.Error(err)
+			respondCodegenError(c, err)
 			return
 		}
-		if len(columns) == 0 {
-			c.BadRequest("table has no available columns for generation")
-			return
-		}
-
-		previewPayload := service.BuildPreview(req.ModuleName, req.TableName, req.Payload, columns)
 		result, err := (service.GeneratorService{
 			RepoRoot: runtime.RepoRoot,
 			DB:       runtime.DB,
@@ -162,21 +208,90 @@ func generate(runtime *bootstrap.Runtime) httpx.HandlerFunc {
 			UpsertMenu:     req.UpsertMenu,
 		})
 		if err != nil {
-			c.Error(err)
+			respondCodegenError(c, err)
 			return
 		}
 
+		rawPayload, err := json.Marshal(previewPayload.Payload)
+		if err != nil {
+			c.Error(err)
+			return
+		}
 		record := model.CodegenHistory{
 			ModuleName:  req.ModuleName,
 			SourceTable: req.TableName,
 			Status:      "generated",
-			Payload:     model.JSON(req.Payload),
+			Payload:     model.JSON(rawPayload),
 			Remark:      "generated admin CRUD files",
 		}
 		if err := runtime.DB.Create(&record).Error; err != nil {
 			c.Error(err)
 			return
 		}
+		c.Success(result)
+	}
+}
+
+func regenerate(runtime *bootstrap.Runtime) httpx.HandlerFunc {
+	return func(c *httpx.Context) {
+		var req regenerateRequest
+		if err := c.BindJSON(&req); err != nil {
+			c.Error(err)
+			return
+		}
+		req.ModuleName = strings.TrimSpace(req.ModuleName)
+		if req.ModuleName == "" && req.HistoryID <= 0 {
+			c.BadRequest("module_name or history_id is required")
+			return
+		}
+
+		source, err := loadRegenerateSource(runtime, req)
+		if err != nil {
+			respondCodegenError(c, err)
+			return
+		}
+
+		previewPayload, columns, err := buildPreview(runtime, source.ModuleName, source.TableName, source.Payload)
+		if err != nil {
+			respondCodegenError(c, err)
+			return
+		}
+
+		result, err := (service.GeneratorService{
+			RepoRoot: runtime.RepoRoot,
+			DB:       runtime.DB,
+		}).Generate(service.GenerateInput{
+			ModuleName:     source.ModuleName,
+			TableName:      source.TableName,
+			Payload:        previewPayload.Payload,
+			Preview:        previewPayload,
+			Columns:        columns,
+			Overwrite:      req.Overwrite,
+			RegisterModule: req.RegisterModule,
+			UpsertMenu:     req.UpsertMenu,
+		})
+		if err != nil {
+			respondCodegenError(c, err)
+			return
+		}
+
+		rawPayload, err := json.Marshal(previewPayload.Payload)
+		if err != nil {
+			c.Error(err)
+			return
+		}
+		record := model.CodegenHistory{
+			ModuleName:  source.ModuleName,
+			SourceTable: source.TableName,
+			Status:      "regenerated",
+			Payload:     model.JSON(rawPayload),
+			Remark:      "regenerated admin CRUD files from lock/history",
+		}
+		if err := runtime.DB.Create(&record).Error; err != nil {
+			c.Error(err)
+			return
+		}
+
 		c.Success(result)
 	}
 }
@@ -188,22 +303,31 @@ func save(runtime *bootstrap.Runtime) httpx.HandlerFunc {
 			c.Error(err)
 			return
 		}
+		req.ModuleName = strings.TrimSpace(req.ModuleName)
+		req.TableName = strings.TrimSpace(req.TableName)
 		if err := runtime.Validator.Struct(req); err != nil {
 			c.BadRequest(err.Error())
 			return
 		}
-		req.ModuleName = strings.TrimSpace(req.ModuleName)
-		req.TableName = strings.TrimSpace(req.TableName)
-		if len(req.Payload) == 0 {
-			req.Payload = json.RawMessage(`{}`)
+
+		previewPayload, _, err := buildPreview(runtime, req.ModuleName, req.TableName, req.Payload)
+		if err != nil {
+			respondCodegenError(c, err)
+			return
+		}
+
+		rawPayload, err := json.Marshal(previewPayload.Payload)
+		if err != nil {
+			c.Error(err)
+			return
 		}
 
 		record := model.CodegenHistory{
 			ModuleName:  req.ModuleName,
 			SourceTable: req.TableName,
 			Status:      "draft",
-			Payload:     model.JSON(req.Payload),
-			Remark:      "preview draft for next stage real code generation; admin app only",
+			Payload:     model.JSON(rawPayload),
+			Remark:      "preview draft for admin codegen regenerate workflow",
 		}
 		if err := runtime.DB.Create(&record).Error; err != nil {
 			c.Error(err)
@@ -236,4 +360,101 @@ func deleteHistory(runtime *bootstrap.Runtime) httpx.HandlerFunc {
 		}
 		c.Success(map[string]any{"deleted": len(ids)})
 	}
+}
+
+func buildPreview(runtime *bootstrap.Runtime, moduleName string, tableName string, payload json.RawMessage) (service.Preview, []service.ColumnInfo, error) {
+	if len(payload) == 0 {
+		payload = json.RawMessage(`{}`)
+	}
+
+	columns, err := listTableColumns(runtime, tableName)
+	if err != nil {
+		return service.Preview{}, nil, err
+	}
+	if len(columns) == 0 {
+		return service.Preview{}, nil, fmt.Errorf("table %s has no available columns for generation", tableName)
+	}
+
+	previewPayload := service.BuildPreview(moduleName, tableName, payload, columns)
+	return previewPayload, columns, nil
+}
+
+func respondCodegenError(c *httpx.Context, err error) {
+	if err == nil {
+		return
+	}
+	switch {
+	case os.IsNotExist(err):
+		c.BadRequest("codegen lock file not found")
+	case strings.Contains(strings.ToLower(err.Error()), "not found"):
+		c.BadRequest(err.Error())
+	case strings.Contains(strings.ToLower(err.Error()), "required"):
+		c.BadRequest(err.Error())
+	case strings.Contains(strings.ToLower(err.Error()), "no available columns"):
+		c.BadRequest(err.Error())
+	default:
+		c.Error(err)
+	}
+}
+
+func loadRegenerateSource(runtime *bootstrap.Runtime, req regenerateRequest) (regenerateSource, error) {
+	if req.HistoryID > 0 {
+		return loadRegenerateSourceFromHistory(runtime, req.HistoryID)
+	}
+
+	lock, err := readModuleLock(runtime, req.ModuleName)
+	if err == nil {
+		rawPayload, marshalErr := json.Marshal(lock.Payload)
+		if marshalErr != nil {
+			return regenerateSource{}, marshalErr
+		}
+		return regenerateSource{
+			ModuleName: lock.ModuleName,
+			TableName:  lock.TableName,
+			Payload:    rawPayload,
+		}, nil
+	}
+	if !os.IsNotExist(err) {
+		return regenerateSource{}, err
+	}
+
+	var row model.CodegenHistory
+	if err := runtime.DB.Where("module_name = ?", req.ModuleName).Order("id DESC").First(&row).Error; err != nil {
+		return regenerateSource{}, fmt.Errorf("codegen source for module %s not found", req.ModuleName)
+	}
+	return regenerateSource{
+		ModuleName: row.ModuleName,
+		TableName:  row.SourceTable,
+		Payload:    json.RawMessage(row.Payload),
+	}, nil
+}
+
+func loadRegenerateSourceFromHistory(runtime *bootstrap.Runtime, historyID int64) (regenerateSource, error) {
+	var row model.CodegenHistory
+	if err := runtime.DB.First(&row, historyID).Error; err != nil {
+		return regenerateSource{}, fmt.Errorf("codegen history %d not found", historyID)
+	}
+	return regenerateSource{
+		ModuleName: strings.TrimSpace(row.ModuleName),
+		TableName:  strings.TrimSpace(row.SourceTable),
+		Payload:    json.RawMessage(row.Payload),
+	}, nil
+}
+
+func readModuleLock(runtime *bootstrap.Runtime, moduleName string) (service.LockFile, error) {
+	relPath := filepath.Join("internal/modules", moduleName, "codegen.lock.json")
+	fullPath := filepath.Join(runtime.RepoRoot, relPath)
+	raw, err := os.ReadFile(fullPath)
+	if err != nil {
+		return service.LockFile{}, err
+	}
+
+	var lock service.LockFile
+	if err := json.Unmarshal(raw, &lock); err != nil {
+		return service.LockFile{}, err
+	}
+	if strings.TrimSpace(lock.ModuleName) == "" || strings.TrimSpace(lock.TableName) == "" {
+		return service.LockFile{}, errors.New("invalid codegen lock file")
+	}
+	return lock, nil
 }
