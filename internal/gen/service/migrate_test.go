@@ -1,6 +1,7 @@
 package service
 
 import (
+	"bytes"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -35,6 +36,9 @@ func TestMigrateLegacyExportV5ToV6(t *testing.T) {
 	if len(next.PreviewSummary.Page.FeatureFlags) == 0 {
 		t.Fatalf("expected feature_flags filled after migration")
 	}
+	if next.Snapshot.Generated == nil {
+		t.Fatalf("expected snapshot structure initialized")
+	}
 }
 
 func TestMigrateLegacyLockV5ToV6AndPreviewStillWorks(t *testing.T) {
@@ -62,6 +66,55 @@ func TestMigrateLegacyLockV5ToV6AndPreviewStillWorks(t *testing.T) {
 	}
 	if len(preview.Page.FeatureFlags) == 0 {
 		t.Fatalf("expected preview feature_flags after migration")
+	}
+}
+
+func TestMigrateLegacyExportV6ToV7(t *testing.T) {
+	raw, err := os.ReadFile(filepath.Join("testdata", "legacy", "demo_article_export_v6.json"))
+	if err != nil {
+		t.Fatalf("read legacy export v6: %v", err)
+	}
+	var file ExportFile
+	if err := json.Unmarshal(raw, &file); err != nil {
+		t.Fatalf("decode legacy export v6: %v", err)
+	}
+
+	next, migration, err := MigrateExportFile(file)
+	if err != nil {
+		t.Fatalf("migrate export v6: %v", err)
+	}
+	if migration.FromVersion != gentemplates.V6Version || migration.ToVersion != gentemplates.CurrentVersion {
+		t.Fatalf("unexpected migration result: %+v", migration)
+	}
+	if next.TemplateVersion != gentemplates.CurrentVersion {
+		t.Fatalf("expected export template version upgraded, got %s", next.TemplateVersion)
+	}
+	rawNext, _ := json.Marshal(next)
+	if !bytes.Contains(rawNext, []byte(`"snapshot"`)) {
+		t.Fatalf("expected snapshot in migrated export json")
+	}
+}
+
+func TestMigrateLegacyLockV6ToV7(t *testing.T) {
+	raw, err := os.ReadFile(filepath.Join("testdata", "legacy", "demo_article_lock_v6.json"))
+	if err != nil {
+		t.Fatalf("read legacy lock v6: %v", err)
+	}
+	var lock LockFile
+	if err := json.Unmarshal(raw, &lock); err != nil {
+		t.Fatalf("decode legacy lock v6: %v", err)
+	}
+
+	next, migration, err := MigrateLockFile(lock)
+	if err != nil {
+		t.Fatalf("migrate lock v6: %v", err)
+	}
+	if migration.FromVersion != gentemplates.V6Version || migration.ToVersion != gentemplates.CurrentVersion {
+		t.Fatalf("unexpected migration result: %+v", migration)
+	}
+	rawNext, _ := json.Marshal(next)
+	if !bytes.Contains(rawNext, []byte(`"snapshot"`)) {
+		t.Fatalf("expected snapshot in migrated lock json")
 	}
 }
 

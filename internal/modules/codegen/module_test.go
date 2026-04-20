@@ -77,6 +77,14 @@ func TestDiffHandlerRejectsMissingTableName(t *testing.T) {
 	}
 }
 
+func TestCheckBreakingHandlerRejectsMissingModuleName(t *testing.T) {
+	runtime := newModuleTestRuntime(t)
+	resp := performJSONRequest(t, runtime, http.MethodPost, "/admin-api/codegen/check-breaking", `{"table_name":"demo_article"}`)
+	if resp.Code == 0 {
+		t.Fatalf("expected check-breaking validation error, got %+v", resp)
+	}
+}
+
 func TestGenerateHandlerRejectsMissingModuleName(t *testing.T) {
 	runtime := newModuleTestRuntime(t)
 	resp := performJSONRequest(t, runtime, http.MethodPost, "/admin-api/codegen/generate", `{"table_name":"demo_article"}`)

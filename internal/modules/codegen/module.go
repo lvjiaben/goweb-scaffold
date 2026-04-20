@@ -30,6 +30,13 @@ type generateRequest struct {
 	UpsertMenu     bool            `json:"upsert_menu"`
 }
 
+type checkBreakingRequest struct {
+	ModuleName     string          `json:"module_name" validate:"required"`
+	TableName      string          `json:"table_name"`
+	Payload        json.RawMessage `json:"payload"`
+	RegisterModule *bool           `json:"register_module"`
+}
+
 type regenerateRequest struct {
 	ModuleName     string `json:"module_name"`
 	HistoryID      int64  `json:"history_id"`
@@ -63,6 +70,7 @@ func (Module) Register(runtime *bootstrap.Runtime) error {
 	runtime.AdminProtectedGroup.GET("/codegen/export", exportFile(runtime), httpx.WithPermission("codegen.list"))
 	runtime.AdminProtectedGroup.POST("/codegen/preview", preview(runtime), httpx.WithPermission("codegen.save"))
 	runtime.AdminProtectedGroup.POST("/codegen/diff", diff(runtime), httpx.WithPermission("codegen.save"))
+	runtime.AdminProtectedGroup.POST("/codegen/check-breaking", checkBreaking(runtime), httpx.WithPermission("codegen.save"))
 	runtime.AdminProtectedGroup.POST("/codegen/generate", generate(runtime), httpx.WithPermission("codegen.save"))
 	runtime.AdminProtectedGroup.POST("/codegen/regenerate", regenerate(runtime), httpx.WithPermission("codegen.save"))
 	runtime.AdminProtectedGroup.POST("/codegen/remove", remove(runtime), httpx.WithPermission("codegen.delete"))
@@ -227,6 +235,33 @@ func diff(runtime *bootstrap.Runtime) httpx.HandlerFunc {
 			return
 		}
 
+		c.Success(result)
+	}
+}
+
+func checkBreaking(runtime *bootstrap.Runtime) httpx.HandlerFunc {
+	return func(c *httpx.Context) {
+		var req checkBreakingRequest
+		if err := c.BindJSON(&req); err != nil {
+			c.Error(err)
+			return
+		}
+		req.ModuleName = strings.TrimSpace(req.ModuleName)
+		req.TableName = strings.TrimSpace(req.TableName)
+		if err := runtime.Validator.Struct(req); err != nil {
+			c.BadRequest(err.Error())
+			return
+		}
+		result, err := NewRunner(runtime).CheckBreaking(CheckBreakingInput{
+			ModuleName:     req.ModuleName,
+			TableName:      req.TableName,
+			Payload:        req.Payload,
+			RegisterModule: req.RegisterModule == nil || *req.RegisterModule,
+		})
+		if err != nil {
+			respondCodegenError(c, err)
+			return
+		}
 		c.Success(result)
 	}
 }

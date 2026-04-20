@@ -20,6 +20,7 @@ type CLIBackend interface {
 	Modules() ([]service.ManagedModule, error)
 	Preview(moduleName string, tableName string, payload json.RawMessage) (service.Preview, []service.ColumnInfo, error)
 	Diff(input ActionInput) (service.DiffResult, error)
+	CheckBreaking(input CheckBreakingInput) (service.BreakingCheckResult, error)
 	Generate(input ActionInput) (service.GenerateResult, error)
 	Regenerate(input RegenerateInput) (service.GenerateResult, error)
 	Remove(input service.RemoveInput) (service.RemoveResult, error)
@@ -87,6 +88,8 @@ func (c *CLI) Run(args []string) int {
 		return c.runDiff(args[1:])
 	case "generate":
 		return c.runGenerate(args[1:])
+	case "check-breaking":
+		return c.runCheckBreaking(args[1:])
 	case "regenerate":
 		return c.runRegenerate(args[1:])
 	case "remove":
@@ -134,6 +137,15 @@ type actionCommand struct {
 	overwrite      bool
 	registerModule bool
 	upsertMenu     bool
+}
+
+type checkBreakingCommand struct {
+	commonFlags
+	moduleName     string
+	tableName      string
+	payload        string
+	from           string
+	registerModule bool
 }
 
 type regenerateCommand struct {
@@ -217,6 +229,23 @@ func parseActionCommand(name string, args []string) (actionCommand, error) {
 	fs.BoolVar(&cmd.overwrite, "overwrite", true, "overwrite generator-managed files")
 	fs.BoolVar(&cmd.registerModule, "register-module", true, "rebuild generated registry files")
 	fs.BoolVar(&cmd.upsertMenu, "upsert-menu", true, "upsert admin menu and role-menu")
+	if err := fs.Parse(args); err != nil {
+		return cmd, err
+	}
+	return cmd, nil
+}
+
+func parseCheckBreakingCommand(args []string) (checkBreakingCommand, error) {
+	cmd := checkBreakingCommand{
+		registerModule: true,
+	}
+	fs := newFlagSet("check-breaking")
+	registerCommonFlags(fs, &cmd.commonFlags)
+	fs.StringVar(&cmd.moduleName, "module", "", "module name")
+	fs.StringVar(&cmd.tableName, "table", "", "table name")
+	fs.StringVar(&cmd.payload, "payload", "", "payload json file")
+	fs.StringVar(&cmd.from, "from", "", "load from export or lock file")
+	fs.BoolVar(&cmd.registerModule, "register-module", true, "rebuild generated registry files in comparison model")
 	if err := fs.Parse(args); err != nil {
 		return cmd, err
 	}
@@ -316,7 +345,7 @@ func parseBatchCommand(args []string) (batchCommand, error) {
 	fs := newFlagSet("batch")
 	registerCommonFlags(fs, &cmd.commonFlags)
 	fs.StringVar(&cmd.planPath, "plan", "", "batch plan file")
-	fs.StringVar(&cmd.mode, "mode", string(BatchModeDiff), "batch mode: preview|diff|generate|regenerate|remove|export")
+	fs.StringVar(&cmd.mode, "mode", string(BatchModeDiff), "batch mode: preview|diff|generate|regenerate|remove|export|check-breaking")
 	fs.BoolVar(&cmd.continueOnError, "continue-on-error", false, "continue after module failure")
 	if err := fs.Parse(args); err != nil {
 		return cmd, err
@@ -468,6 +497,43 @@ func (c *CLI) runGenerate(args []string) int {
 		return c.writeJSON(result, cmd.outputPath)
 	}
 	c.writeTextSection("generate", result)
+	return 0
+}
+
+func (c *CLI) runCheckBreaking(args []string) int {
+	cmd, err := parseCheckBreakingCommand(args)
+	if err != nil {
+		return c.fail("text", err)
+	}
+	if strings.TrimSpace(cmd.moduleName) == "" && strings.TrimSpace(cmd.from) == "" {
+		return c.fail(cmd.format, errors.New("module or from is required"))
+	}
+	var resolved ResolvedInput
+	if strings.TrimSpace(cmd.from) != "" || strings.TrimSpace(cmd.payload) != "" || strings.TrimSpace(cmd.tableName) != "" {
+		resolvedInput, err := c.backend.ResolveInput(SourceInput{
+			ModuleName:  cmd.moduleName,
+			TableName:   cmd.tableName,
+			PayloadPath: cmd.payload,
+			FromPath:    cmd.from,
+		})
+		if err != nil {
+			return c.fail(cmd.format, err)
+		}
+		resolved = resolvedInput
+	}
+	result, err := c.backend.CheckBreaking(CheckBreakingInput{
+		ModuleName:     firstNonEmptyString(strings.TrimSpace(cmd.moduleName), resolved.ModuleName),
+		TableName:      resolved.TableName,
+		Payload:        resolved.Payload,
+		RegisterModule: cmd.registerModule,
+	})
+	if err != nil {
+		return c.fail(cmd.format, err)
+	}
+	if cmd.format == "json" {
+		return c.writeJSON(result, cmd.outputPath)
+	}
+	c.writeTextSection("check-breaking", result)
 	return 0
 }
 
@@ -779,6 +845,7 @@ Subcommands:
   preview
   diff
   generate
+  check-breaking
   regenerate
   remove
   export
@@ -824,9 +891,12 @@ func (c *CLI) writeBatchText(result BatchResult) {
 			_, _ = fmt.Fprintf(c.stdout, "  removed_files=%d registry=%d menus=%d\n", len(item.Remove.RemovedFiles), len(item.Remove.RegeneratedRegistryFiles), len(item.Remove.RemovedMenuRecords))
 		case item.Export != nil:
 			_, _ = fmt.Fprintf(c.stdout, "  export route=%s template=%s\n", item.Export.RoutePath, item.Export.TemplateVersion)
+		case item.Breaking != nil:
+			_, _ = fmt.Fprintf(c.stdout, "  level=%s changed=%d reasons=%d\n", item.Breaking.Level, len(item.Breaking.ChangedAreas), len(item.Breaking.Reasons))
 		case item.Preview != nil:
 			_, _ = fmt.Fprintf(c.stdout, "  route=%s api=%s\n", item.Preview.Page.RoutePath, item.Preview.API.ModuleCode)
 		}
 	}
-	_, _ = fmt.Fprintf(c.stdout, "summary total=%d success=%d failed=%d skipped=%d\n", result.Total, result.SuccessCount, result.FailedCount, result.SkippedCount)
+	_, _ = fmt.Fprintf(c.stdout, "summary total=%d success=%d failed=%d skipped=%d same=%d non_breaking=%d breaking=%d\n",
+		result.Total, result.SuccessCount, result.FailedCount, result.SkippedCount, result.SameCount, result.NonBreakingCount, result.BreakingCount)
 }

@@ -2,8 +2,8 @@
   "generated_by": "goweb-scaffold",
   "module_name": "demo_notice",
   "table_name": "demo_notice",
-  "generated_at": "2026-04-20T16:19:34+08:00",
-  "template_version": "v6",
+  "generated_at": "2026-04-20T16:50:01+08:00",
+  "template_version": "v7",
   "payload": {
     "list_fields": [
       "id",
@@ -330,6 +330,57 @@
           }
         ],
         "default_value": 1
+      }
+    ]
+  },
+  "snapshot": {
+    "preview_hash": "517d1fc1994641ffc842ee4bd23ecd8d681a5cc3b7a86ab1a4a3678bfce1d86d",
+    "schema_hashes": {
+      "inferred_fields": "24249e219ad9e42c0294e10f311444416c772f0d417c614b17b996997d353daa",
+      "form_schema": "f0ec3445a3ae95743aec1fcbfb84810f1766b58af9021be3bc9a0fdee38beae7",
+      "list_schema": "62519355766e47ecfd480336b824e52ee93488c16c21faa785bfacd2dd272cfb",
+      "search_schema": "7754df6d4cf31d13e98b7d04ccff2a97474bf22c0ceb2f24c61fac59781eed71"
+    },
+    "generated_files": [
+      {
+        "path": "internal/gen/modules_gen.go",
+        "sha256": "e3744ea1ec25325cf414c2aeb71ea9fea969677ad6aed756d6578dfd9258a314",
+        "bytes": 1349
+      },
+      {
+        "path": "internal/modules/demo_notice/meta.go",
+        "sha256": "7125559c772f2e550ff86d65bdbd5b38bd97e0000feab7742cb9f837c5ccbf27",
+        "bytes": 388
+      },
+      {
+        "path": "internal/modules/demo_notice/model.go",
+        "sha256": "9f927e15d9616d3430f1db4603fab5a48392d399fe0c6eb942911b3e89e3358d",
+        "bytes": 724
+      },
+      {
+        "path": "internal/modules/demo_notice/module.go",
+        "sha256": "93cf3fe5619491795a7bb0860f18356342fcec0d61e834ff3dc3dd2f75f92921",
+        "bytes": 3440
+      },
+      {
+        "path": "internal/modules/demo_notice/types.go",
+        "sha256": "37802142f453546dc6ed74f40793925c7d48ec4b46a0387daab6ccba34f91385",
+        "bytes": 304
+      },
+      {
+        "path": "vben-admin/apps/admin/src/api/demo_notice.ts",
+        "sha256": "405cbd381630d7277335c10e0f26c2f9b0656459664445ba8d066ea8086ecff1",
+        "bytes": 1081
+      },
+      {
+        "path": "vben-admin/apps/admin/src/generated/routes.ts",
+        "sha256": "d4f206edee602446a715aac8ce3ef2f662364f095f7312709da7c8f232bd3012",
+        "bytes": 579
+      },
+      {
+        "path": "vben-admin/apps/admin/src/views/system/DemoNoticePage.vue",
+        "sha256": "d84d58ccd4f60fe22d5fb08ed734d95cebebac4b49b9c9dc69353c12113d5d17",
+        "bytes": 19503
       }
     ]
   },

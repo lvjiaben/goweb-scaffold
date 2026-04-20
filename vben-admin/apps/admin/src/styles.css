@@ -474,6 +474,11 @@ pre {
   background: rgba(35, 81, 124, 0.12);
 }
 
+.status-pill.is-danger {
+  color: #8d2b2b;
+  background: rgba(173, 59, 59, 0.12);
+}
+
 .tree-label {
   display: flex;
   align-items: center;

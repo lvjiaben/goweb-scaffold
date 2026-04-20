@@ -22,7 +22,7 @@ type sourceMigrator struct {
 var sourceMigrators = map[string]sourceMigrator{
 	gentemplates.LegacyVersion: {
 		From: gentemplates.LegacyVersion,
-		To:   gentemplates.CurrentVersion,
+		To:   gentemplates.V6Version,
 		Apply: func(doc SourceDocument) (SourceDocument, []string, error) {
 			next := doc
 			title := strings.TrimSpace(next.PreviewSummary.Page.MenuTitle)
@@ -37,8 +37,18 @@ var sourceMigrators = map[string]sourceMigrator{
 			if len(next.PreviewSummary.Page.FeatureFlags) == 0 {
 				next.PreviewSummary.Page.FeatureFlags = []string{"admin-crud", "codegen"}
 			}
-			next.TemplateVersion = gentemplates.CurrentVersion
+			next.TemplateVersion = gentemplates.V6Version
 			return next, []string{"page.menu_title", "page.feature_flags"}, nil
+		},
+	},
+	gentemplates.V6Version: {
+		From: gentemplates.V6Version,
+		To:   gentemplates.CurrentVersion,
+		Apply: func(doc SourceDocument) (SourceDocument, []string, error) {
+			next := doc
+			next.Snapshot = emptySnapshot()
+			next.TemplateVersion = gentemplates.CurrentVersion
+			return next, []string{"snapshot.preview_hash", "snapshot.schema_hashes", "snapshot.generated_files"}, nil
 		},
 	},
 }
@@ -92,6 +102,7 @@ func MigrateLockFile(lock LockFile) (LockFile, MigrationResult, error) {
 		TemplateVersion: lock.TemplateVersion,
 		Payload:         lock.Payload,
 		PreviewSummary:  lock.PreviewSummary,
+		Snapshot:        lock.Snapshot,
 		PermissionCodes: append([]string{}, lock.PermissionCodes...),
 		RoutePath:       lock.RoutePath,
 	}
@@ -103,6 +114,7 @@ func MigrateLockFile(lock LockFile) (LockFile, MigrationResult, error) {
 	lock.TemplateVersion = next.TemplateVersion
 	lock.Payload = next.Payload
 	lock.PreviewSummary = next.PreviewSummary
+	lock.Snapshot = next.Snapshot
 	lock.PermissionCodes = append([]string{}, next.PermissionCodes...)
 	lock.RoutePath = next.RoutePath
 	return lock, migration, nil
@@ -117,6 +129,7 @@ func MigrateExportFile(file ExportFile) (ExportFile, MigrationResult, error) {
 		TemplateVersion: file.TemplateVersion,
 		Payload:         file.Payload,
 		PreviewSummary:  file.PreviewSummary,
+		Snapshot:        file.Snapshot,
 		PermissionCodes: append([]string{}, file.PermissionCodes...),
 		RoutePath:       file.RoutePath,
 	}
@@ -128,6 +141,7 @@ func MigrateExportFile(file ExportFile) (ExportFile, MigrationResult, error) {
 	file.TemplateVersion = next.TemplateVersion
 	file.Payload = next.Payload
 	file.PreviewSummary = next.PreviewSummary
+	file.Snapshot = next.Snapshot
 	file.PermissionCodes = append([]string{}, next.PermissionCodes...)
 	file.RoutePath = next.RoutePath
 	if strings.TrimSpace(file.Format) == "" {

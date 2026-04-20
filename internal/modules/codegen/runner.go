@@ -20,6 +20,13 @@ type ActionInput struct {
 	UpsertMenu     bool
 }
 
+type CheckBreakingInput struct {
+	ModuleName     string
+	TableName      string
+	Payload        json.RawMessage
+	RegisterModule bool
+}
+
 type RegenerateInput struct {
 	ModuleName     string
 	HistoryID      int64
@@ -144,6 +151,40 @@ func (r *Runner) Diff(input ActionInput) (service.DiffResult, error) {
 	})
 }
 
+func (r *Runner) CheckBreaking(input CheckBreakingInput) (service.BreakingCheckResult, error) {
+	moduleName := strings.TrimSpace(input.ModuleName)
+	tableName := strings.TrimSpace(input.TableName)
+	payload := input.Payload
+	if moduleName == "" {
+		return service.BreakingCheckResult{}, fmt.Errorf("module_name is required")
+	}
+	if tableName == "" {
+		source, err := r.resolveRegenerateSource(RegenerateInput{ModuleName: moduleName})
+		if err != nil {
+			return service.BreakingCheckResult{}, err
+		}
+		tableName = source.TableName
+		if len(payload) == 0 {
+			payload = source.Payload
+		}
+	}
+	if len(payload) == 0 {
+		payload = json.RawMessage(`{}`)
+	}
+	previewPayload, columns, err := r.Preview(moduleName, tableName, payload)
+	if err != nil {
+		return service.BreakingCheckResult{}, err
+	}
+	return r.generatorService().CheckBreaking(service.GenerateInput{
+		ModuleName:     moduleName,
+		TableName:      tableName,
+		Payload:        previewPayload.Payload,
+		Preview:        previewPayload,
+		Columns:        columns,
+		RegisterModule: input.RegisterModule,
+	})
+}
+
 func (r *Runner) Generate(input ActionInput) (service.GenerateResult, error) {
 	previewPayload, columns, err := r.Preview(input.ModuleName, input.TableName, input.Payload)
 	if err != nil {
@@ -242,6 +283,7 @@ func (r *Runner) Export(input ExportInput) (service.ExportFile, error) {
 				ListSchema:     previewPayload.ListSchema,
 				SearchSchema:   previewPayload.SearchSchema,
 			},
+			Snapshot: service.Snapshot{},
 			PermissionCodes: []string{
 				service.ToSnake(source.ModuleName) + ".list",
 				service.ToSnake(source.ModuleName) + ".save",
@@ -284,6 +326,7 @@ func (r *Runner) Export(input ExportInput) (service.ExportFile, error) {
 			ListSchema:     previewPayload.ListSchema,
 			SearchSchema:   previewPayload.SearchSchema,
 		},
+		Snapshot: service.Snapshot{},
 		PermissionCodes: []string{
 			service.ToSnake(source.ModuleName) + ".list",
 			service.ToSnake(source.ModuleName) + ".save",

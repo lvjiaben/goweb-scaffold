@@ -162,6 +162,7 @@ type ManagedModule struct {
 	Files           []string           `json:"files"`
 	Payload         PayloadConfig      `json:"payload"`
 	PreviewSummary  LockPreviewSummary `json:"preview_summary"`
+	Snapshot        Snapshot           `json:"snapshot"`
 }
 
 type RemoveInput struct {
@@ -210,6 +211,25 @@ type LockPreviewSummary struct {
 	SearchSchema   []SchemaField   `json:"search_schema"`
 }
 
+type SnapshotFile struct {
+	Path   string `json:"path"`
+	SHA256 string `json:"sha256"`
+	Bytes  int    `json:"bytes"`
+}
+
+type SnapshotSchemaHashes struct {
+	InferredFields string `json:"inferred_fields"`
+	FormSchema     string `json:"form_schema"`
+	ListSchema     string `json:"list_schema"`
+	SearchSchema   string `json:"search_schema"`
+}
+
+type Snapshot struct {
+	PreviewHash  string               `json:"preview_hash"`
+	SchemaHashes SnapshotSchemaHashes `json:"schema_hashes"`
+	Generated    []SnapshotFile       `json:"generated_files"`
+}
+
 type LockFile struct {
 	GeneratedBy     string             `json:"generated_by"`
 	ModuleName      string             `json:"module_name"`
@@ -218,9 +238,35 @@ type LockFile struct {
 	TemplateVersion string             `json:"template_version"`
 	Payload         PayloadConfig      `json:"payload"`
 	PreviewSummary  LockPreviewSummary `json:"preview_summary"`
+	Snapshot        Snapshot           `json:"snapshot"`
 	PermissionCodes []string           `json:"permission_codes"`
 	RoutePath       string             `json:"route_path"`
 	GeneratedFiles  []string           `json:"generated_files"`
+}
+
+type SnapshotFileChange struct {
+	Path    string `json:"path"`
+	Status  string `json:"status"`
+	OldHash string `json:"old_hash,omitempty"`
+	NewHash string `json:"new_hash,omitempty"`
+}
+
+type SnapshotDiff struct {
+	PreviewHashChanged  bool                 `json:"preview_hash_changed"`
+	SchemaHashesChanged map[string]bool      `json:"schema_hashes_changed"`
+	FileChanges         []SnapshotFileChange `json:"file_changes"`
+}
+
+type BreakingCheckResult struct {
+	ModuleName              string       `json:"module_name"`
+	TableName               string       `json:"table_name"`
+	PreviousTemplateVersion string       `json:"previous_template_version"`
+	CurrentTemplateVersion  string       `json:"current_template_version"`
+	Level                   string       `json:"level"`
+	ChangedAreas            []string     `json:"changed_areas"`
+	Reasons                 []string     `json:"reasons"`
+	Warnings                []string     `json:"warnings,omitempty"`
+	SnapshotDiff            SnapshotDiff `json:"snapshot_diff"`
 }
 
 type GeneratorService struct {

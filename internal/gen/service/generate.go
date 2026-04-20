@@ -366,13 +366,6 @@ func (s GeneratorService) prepareBundle(input GenerateInput) (generationBundle, 
 		return bundle, err
 	}
 
-	lockFile, lockContent, err := s.buildLockFile(paths["lock"], meta, preview, preview.Payload, basicGeneratedFiles, input.GeneratedAt)
-	if err != nil {
-		return bundle, err
-	}
-	bundle.Lock = lockFile
-	artifacts = append(artifacts, generatedArtifact{Path: paths["lock"], Content: lockContent})
-
 	if input.RegisterModule {
 		content, err := registry.RenderBackendModulesFile(s.RepoRoot, bundle.RegistryRef)
 		if err != nil {
@@ -386,6 +379,13 @@ func (s GeneratorService) prepareBundle(input GenerateInput) (generationBundle, 
 		}
 		artifacts = append(artifacts, generatedArtifact{Path: "vben-admin/apps/admin/src/generated/routes.ts", Content: content})
 	}
+
+	lockFile, lockContent, err := s.buildLockFile(paths["lock"], meta, preview, preview.Payload, basicGeneratedFiles, artifacts, input.GeneratedAt)
+	if err != nil {
+		return bundle, err
+	}
+	bundle.Lock = lockFile
+	artifacts = append(artifacts, generatedArtifact{Path: paths["lock"], Content: lockContent})
 
 	bundle.Artifacts = artifacts
 	return bundle, nil
@@ -600,7 +600,7 @@ func buildListColumns(fields []SchemaField) []map[string]any {
 	return result
 }
 
-func (s GeneratorService) buildLockFile(lockPath string, meta ModuleMeta, preview Preview, payload PayloadConfig, generatedFiles []string, generatedAt time.Time) (LockFile, []byte, error) {
+func (s GeneratorService) buildLockFile(lockPath string, meta ModuleMeta, preview Preview, payload PayloadConfig, generatedFiles []string, artifacts []generatedArtifact, generatedAt time.Time) (LockFile, []byte, error) {
 	lock := LockFile{
 		GeneratedBy:     GeneratorName,
 		ModuleName:      meta.ModuleName,
@@ -616,6 +616,7 @@ func (s GeneratorService) buildLockFile(lockPath string, meta ModuleMeta, previe
 			ListSchema:     preview.ListSchema,
 			SearchSchema:   preview.SearchSchema,
 		},
+		Snapshot:        buildCurrentSnapshot(meta.ModuleName, meta.TableName, payload, preview, artifacts),
 		PermissionCodes: append([]string{}, meta.PermissionCodes...),
 		RoutePath:       meta.RoutePath,
 		GeneratedFiles:  append([]string{}, generatedFiles...),

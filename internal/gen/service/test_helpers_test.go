@@ -45,6 +45,19 @@ func writeGoldenIfNeeded(t *testing.T, path string, value any) {
 	}
 }
 
+func writeSnapshotIfNeeded(t *testing.T, path string, content []byte) {
+	t.Helper()
+	if os.Getenv("UPDATE_SNAPSHOT") == "" {
+		return
+	}
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatalf("mkdir snapshot dir: %v", err)
+	}
+	if err := os.WriteFile(path, content, 0o644); err != nil {
+		t.Fatalf("write snapshot: %v", err)
+	}
+}
+
 func demoArticleColumns(t *testing.T) []ColumnInfo {
 	t.Helper()
 	return loadTestJSON[[]ColumnInfo](t, "demo_article_columns.json")

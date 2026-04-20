@@ -107,7 +107,7 @@ npm run dev
 - `AdminMenuPage`：菜单树、按钮节点、父级菜单维护
 - `SystemConfigPage`：系统配置列表与弹窗表单
 - `AttachmentPage`：上传、预览、复制 URL、删除
-- `CodegenPage`：业务表元数据、字段级配置、preview、diff、真实生成、regenerate、模块列表、lock 摘要、remove 生命周期面板
+- `CodegenPage`：业务表元数据、字段级配置、preview、diff、真实生成、regenerate、模块列表、lock 摘要、remove 生命周期面板、兼容性检查
 - `DemoArticlePage`：由 codegen 生成的样例 CRUD 页面
 - `DemoNoticePage`：由 batch codegen 生成的样例 CRUD 页面
 - `ForbiddenView`：无权限或不可访问路由兜底页
@@ -156,8 +156,10 @@ npm run dev
 - 可直接把菜单和按钮权限写入 `admin_menu` / `admin_role_menu`
 - 保存历史记录并可重新载入当前表单
 - 为每个生成模块写入 `internal/modules/{module_name}/codegen.lock.json`
+- 为每个 lock / export 写入稳定性 `snapshot`
 - 支持从 `codegen.lock.json` 或 `codegen_history` 重新生成
 - 支持生成前 diff 预览
+- 支持 `check-breaking` 兼容性判断
 - 支持字段级 overrides：
   `label`
   `component`
@@ -176,20 +178,32 @@ npm run dev
 
 ### 模板版本
 
-- 当前模板版本：`v6`
-- 历史模板版本：`v5`
+- 当前模板版本：`v7`
+- 支持的历史模板版本：`v5`、`v6`
 - `v6` 在 `page meta` 里统一补齐：
   - `menu_title`
   - `feature_flags`
-- 旧的 `lock/export` 在进入 `preview`、`diff`、`generate`、`regenerate` 前会先做内存迁移，不会直接改写源文件
+- `v7` 在 lock / export 里补齐稳定性 `snapshot`
+  - `preview_hash`
+  - `schema_hashes`
+  - `generated_files`
+- 旧的 `lock/export` 在进入 `preview`、`diff`、`generate`、`regenerate`、`check-breaking` 前会先做内存迁移，不会直接改写源文件
 
-### `v5 -> v6` 迁移
+### `v5 -> v6 -> v7` 迁移
 
-`v5` 到 `v6` 的迁移规则目前固定且可测：
+`v5 -> v6`：
 
 - 自动补齐 `preview_summary.page.menu_title`
 - 自动补齐 `preview_summary.page.feature_flags`
-- 将 `template_version` 升级为 `v6`
+
+`v6 -> v7`：
+
+- 自动补齐 `snapshot.preview_hash`
+- 自动补齐 `snapshot.schema_hashes`
+- 自动补齐 `snapshot.generated_files`
+- 将 `template_version` 升级为 `v7`
+
+如果旧 source 没有 snapshot，迁移后会先得到一个空结构；真正执行 `generate` / `regenerate` / `batch generate` 后，lock 会写回完整 snapshot。
 
 CLI 可以直接查看支持的模板版本：
 
@@ -201,7 +215,7 @@ go run ./cmd/codegen templates -format text
 
 ```bash
 go run ./cmd/codegen migrate-source -from internal/modules/demo_article/codegen.lock.json -format json
-go run ./cmd/codegen migrate-source -from internal/modules/demo_article/codegen.lock.json -write -output /tmp/demo_article.v6.lock.json
+go run ./cmd/codegen migrate-source -from internal/modules/demo_article/codegen.lock.json -write -output /tmp/demo_article.v7.lock.json
 ```
 
 ### 覆盖规则
@@ -219,8 +233,40 @@ go run ./cmd/codegen migrate-source -from internal/modules/demo_article/codegen.
 - 记录 `generated_at` 和 `template_version`
 - 固化 `payload` 与 `preview_summary`
 - 固化 `permission_codes`、`route_path`、`generated_files`
+- 固化 `snapshot`
 - 作为以后 `regenerate` 的稳定输入来源
-- 让生成器能做 diff、再生和结果追踪，而不只依赖 `codegen_history`
+- 让生成器能做 diff、再生、兼容性检查和结果追踪，而不只依赖 `codegen_history`
+
+### `snapshot` 结构
+
+`v7` 开始，lock / export 里都会带 snapshot：
+
+```json
+{
+  "snapshot": {
+    "preview_hash": "sha256...",
+    "schema_hashes": {
+      "inferred_fields": "sha256...",
+      "form_schema": "sha256...",
+      "list_schema": "sha256...",
+      "search_schema": "sha256..."
+    },
+    "generated_files": [
+      {
+        "path": "vben-admin/apps/admin/src/api/demo_article.ts",
+        "sha256": "sha256...",
+        "bytes": 1204
+      }
+    ]
+  }
+}
+```
+
+用途：
+
+- 稳定判断当前模板输出是否与旧模块一致
+- 为 `check-breaking` 提供 machine-readable 的比较基线
+- 给后续模板改动提供快照守卫
 
 ### 生成参数
 
@@ -237,6 +283,8 @@ go run ./cmd/codegen migrate-source -from internal/modules/demo_article/codegen.
   返回当前模块的 page/api/schema 方案稿
 - `POST /admin-api/codegen/diff`
   只计算本次生成会创建、覆盖、跳过哪些文件，不真正写盘
+- `POST /admin-api/codegen/check-breaking`
+  比较当前 preview/render 结果与 lock 快照，返回 `same` / `non_breaking` / `breaking`
 - `POST /admin-api/codegen/generate`
   真正生成文件、可重建注册文件、可 upsert 菜单权限
 - `POST /admin-api/codegen/regenerate`
@@ -268,6 +316,8 @@ CLI 不走本地 HTTP，而是直接复用当前 codegen runner / generator serv
   不写盘，只输出本次 diff
 - `generate`
   真生成 admin CRUD 文件
+- `check-breaking`
+  对单个模块执行兼容性判断，输出 `same` / `non_breaking` / `breaking`
 - `regenerate`
   按 `module_name` 或 `history_id` 再生
 - `remove`
@@ -281,7 +331,7 @@ CLI 不走本地 HTTP，而是直接复用当前 codegen runner / generator serv
 - `migrate-source`
   把旧版 lock/export 做模板迁移并输出迁移后的视图
 - `batch`
-  读取 `codegen.plan.json`，按计划批量 preview、diff、generate、regenerate、remove 或 export
+  读取 `codegen.plan.json`，按计划批量 preview、diff、generate、regenerate、remove、export 或 check-breaking
 
 ### 通用参数
 
@@ -335,9 +385,14 @@ CLI 不走本地 HTTP，而是直接复用当前 codegen runner / generator serv
   "version": "v1",
   "module_name": "demo_article",
   "table_name": "demo_article",
-  "template_version": "v5",
+  "template_version": "v7",
   "payload": {},
   "preview_summary": {},
+  "snapshot": {
+    "preview_hash": "",
+    "schema_hashes": {},
+    "generated_files": []
+  },
   "permission_codes": ["demo_article.list", "demo_article.save", "demo_article.delete"],
   "route_path": "/system/demo-article"
 }
@@ -464,11 +519,18 @@ go run ./cmd/codegen templates -format text
 go run ./cmd/codegen migrate-source -from internal/modules/demo_article/codegen.lock.json -format json
 ```
 
-批量 diff / generate：
+单模块兼容性检查：
+
+```bash
+go run ./cmd/codegen check-breaking -config configs/config.yaml -module demo_article -format json
+```
+
+批量 diff / generate / check-breaking：
 
 ```bash
 go run ./cmd/codegen batch -config configs/config.yaml -plan examples/codegen/demo.plan.json -mode diff -format json
 go run ./cmd/codegen batch -config configs/config.yaml -plan examples/codegen/demo.plan.json -mode generate -format json
+go run ./cmd/codegen batch -config configs/config.yaml -plan examples/codegen/demo.plan.json -mode check-breaking -format json
 ```
 
 ### 终端完整链路
@@ -479,10 +541,11 @@ go run ./cmd/codegen batch -config configs/config.yaml -plan examples/codegen/de
 2. `preview`
 3. `diff`
 4. `generate`
-5. `modules`
-6. `export`
-7. `remove`
-8. `import` 或 `regenerate`
+5. `check-breaking`
+6. `modules`
+7. `export`
+8. `remove`
+9. `import` 或 `regenerate`
 
 ### 字段级 overrides 结构
 
@@ -553,12 +616,45 @@ go run ./cmd/codegen batch -config configs/config.yaml -plan examples/codegen/de
 3. `preview`
 4. `diff`
 5. `generate`
-6. `modules`
-7. `export`
-8. `migrate-source`
-9. `batch`
-10. `remove`
-11. `import` 或 `regenerate`
+6. `check-breaking`
+7. `modules`
+8. `export`
+9. `migrate-source`
+10. `batch`
+11. `remove`
+12. `import` 或 `regenerate`
+
+### `check-breaking` 判定规则
+
+`level` 只会返回：
+
+- `same`
+- `non_breaking`
+- `breaking`
+
+判定为 `breaking` 的典型场景：
+
+- `route_path` 改变
+- `permission_codes` 改变
+- `api.list/detail/save/delete` 任一路径改变
+- 旧 schema 里已有字段被移除
+- 旧生成文件路径被删除
+- 模块名或表名发生不兼容变化
+
+判定为 `non_breaking` 的典型场景：
+
+- `label` 变化
+- `placeholder` 变化
+- `width` 变化
+- `menu_title` 变化
+- `feature_flags` 变化
+- `options` 文案变化
+- 文件内容变化但路径不变
+
+判定为 `same` 的典型场景：
+
+- snapshot 哈希一致
+- 或只有 `generated_at` 之类的非功能字段变化
 
 ### 卸载 / 回滚模块
 
@@ -606,11 +702,18 @@ golden 与固定输入位于：
 UPDATE_GOLDEN=1 go test ./...
 ```
 
+更新 snapshot 快照的命令：
+
+```bash
+UPDATE_SNAPSHOT=1 go test ./...
+```
+
 ## 本地验证命令
 
 完整本地验证：
 
 ```bash
+UPDATE_GOLDEN=1 UPDATE_SNAPSHOT=1 go test ./...
 go test ./...
 go build ./...
 cd vben-admin/apps/admin && npm run build
@@ -633,8 +736,10 @@ make codegen-regenerate MODULE=demo_article FORMAT=json
 make codegen-remove MODULE=demo_article FORMAT=json
 make codegen-templates FORMAT=text
 make codegen-migrate-source FROM=internal/modules/demo_article/codegen.lock.json FORMAT=json
+make codegen-check-breaking MODULE=demo_article FORMAT=json
 make codegen-batch-diff PLAN=examples/codegen/demo.plan.json FORMAT=json
 make codegen-batch-generate PLAN=examples/codegen/demo.plan.json FORMAT=json
+make codegen-batch-check-breaking PLAN=examples/codegen/demo.plan.json FORMAT=json
 make codegen-batch-remove PLAN=examples/codegen/demo.plan.json FORMAT=json
 ```
 

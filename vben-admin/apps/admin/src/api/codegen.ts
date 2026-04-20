@@ -1,5 +1,6 @@
 import { request } from './request';
 import type {
+  CodegenBreakingResult,
   CodegenColumn,
   CodegenDiffResult,
   CodegenExportFile,
@@ -68,6 +69,10 @@ export function fetchCodegenPreview(payload: CodegenPayload) {
 
 export function fetchCodegenDiff(payload: CodegenGeneratePayload) {
   return request.post<CodegenDiffResult>('/codegen/diff', payload);
+}
+
+export function fetchCodegenBreaking(payload: CodegenPayload & { register_module?: boolean }) {
+  return request.post<CodegenBreakingResult>('/codegen/check-breaking', payload);
 }
 
 export function generateCodegenFiles(payload: CodegenGeneratePayload) {

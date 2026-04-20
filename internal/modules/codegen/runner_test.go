@@ -290,6 +290,60 @@ func TestRunnerBatchGenerateContinuesOnError(t *testing.T) {
 	}
 }
 
+func TestRunnerBatchCheckBreakingSummary(t *testing.T) {
+	runner := newFixtureRunner(t)
+	payload := loadRunnerPayload(t)
+	if _, err := runner.Generate(ActionInput{
+		ModuleName:     "demo_article",
+		TableName:      "demo_article",
+		Payload:        payload,
+		Overwrite:      true,
+		RegisterModule: true,
+		UpsertMenu:     false,
+	}); err != nil {
+		t.Fatalf("generate fixture module: %v", err)
+	}
+
+	exportFile, err := runner.Export(ExportInput{ModuleName: "demo_article"})
+	if err != nil {
+		t.Fatalf("export fixture module: %v", err)
+	}
+	exportPath := filepath.Join(t.TempDir(), "demo_article.codegen.json")
+	rawExport, err := json.Marshal(exportFile)
+	if err != nil {
+		t.Fatalf("marshal export: %v", err)
+	}
+	if err := os.WriteFile(exportPath, rawExport, 0o644); err != nil {
+		t.Fatalf("write export: %v", err)
+	}
+
+	planPath := filepath.Join(t.TempDir(), "codegen.plan.json")
+	if err := os.WriteFile(planPath, []byte(`{
+  "generated_by": "goweb-scaffold",
+  "format": "codegen-plan",
+  "version": "v1",
+  "defaults": {
+    "register_module": true
+  },
+  "modules": [
+    { "module_name": "demo_article", "from": "`+exportPath+`" }
+  ]
+}`), 0o644); err != nil {
+		t.Fatalf("write batch plan: %v", err)
+	}
+
+	result, err := runner.RunBatch(BatchInput{
+		PlanPath: planPath,
+		Mode:     BatchModeCheckBreaking,
+	})
+	if err != nil {
+		t.Fatalf("run batch check-breaking: %v", err)
+	}
+	if result.SameCount != 1 || result.BreakingCount != 0 {
+		t.Fatalf("unexpected compatibility summary: %+v", result)
+	}
+}
+
 func containsPath(items []string, target string) bool {
 	for _, item := range items {
 		if item == target {

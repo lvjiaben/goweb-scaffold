@@ -49,6 +49,7 @@ func (s GeneratorService) ListModules() ([]ManagedModule, error) {
 			Files:           append([]string{}, lock.GeneratedFiles...),
 			Payload:         lock.Payload,
 			PreviewSummary:  lock.PreviewSummary,
+			Snapshot:        lock.Snapshot,
 		})
 	}
 

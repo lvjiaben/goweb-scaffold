@@ -21,6 +21,7 @@ type ExportFile struct {
 	TemplateVersion string             `json:"template_version,omitempty"`
 	Payload         PayloadConfig      `json:"payload"`
 	PreviewSummary  LockPreviewSummary `json:"preview_summary"`
+	Snapshot        Snapshot           `json:"snapshot"`
 	PermissionCodes []string           `json:"permission_codes"`
 	RoutePath       string             `json:"route_path"`
 }
@@ -33,6 +34,7 @@ type SourceDocument struct {
 	TemplateVersion string
 	Payload         PayloadConfig
 	PreviewSummary  LockPreviewSummary
+	Snapshot        Snapshot
 	PermissionCodes []string
 	RoutePath       string
 }
@@ -47,6 +49,7 @@ func BuildExportFromLock(lock LockFile) ExportFile {
 		TemplateVersion: lock.TemplateVersion,
 		Payload:         lock.Payload,
 		PreviewSummary:  lock.PreviewSummary,
+		Snapshot:        lock.Snapshot,
 		PermissionCodes: append([]string{}, lock.PermissionCodes...),
 		RoutePath:       lock.RoutePath,
 	}
@@ -68,6 +71,7 @@ func DecodeSourceDocument(raw []byte) (SourceDocument, error) {
 				TemplateVersion: lock.TemplateVersion,
 				Payload:         lock.Payload,
 				PreviewSummary:  lock.PreviewSummary,
+				Snapshot:        lock.Snapshot,
 				PermissionCodes: append([]string{}, lock.PermissionCodes...),
 				RoutePath:       lock.RoutePath,
 			}
@@ -87,6 +91,7 @@ func DecodeSourceDocument(raw []byte) (SourceDocument, error) {
 				TemplateVersion: exportFile.TemplateVersion,
 				Payload:         exportFile.Payload,
 				PreviewSummary:  exportFile.PreviewSummary,
+				Snapshot:        exportFile.Snapshot,
 				PermissionCodes: append([]string{}, exportFile.PermissionCodes...),
 				RoutePath:       exportFile.RoutePath,
 			}

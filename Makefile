@@ -55,11 +55,17 @@ codegen-templates:
 codegen-migrate-source:
 	go run ./cmd/codegen migrate-source -config $(CONFIG) $(if $(FROM),-from $(FROM),) $(if $(OUTPUT),-output $(OUTPUT),) -format $(FORMAT)
 
+codegen-check-breaking:
+	go run ./cmd/codegen check-breaking -config $(CONFIG) -module $(MODULE) $(if $(TABLE),-table $(TABLE),) $(if $(PAYLOAD),-payload $(PAYLOAD),) $(if $(FROM),-from $(FROM),) -format $(FORMAT)
+
 codegen-batch-diff:
 	go run ./cmd/codegen batch -config $(CONFIG) -plan $(PLAN) -mode diff -format $(FORMAT)
 
 codegen-batch-generate:
 	go run ./cmd/codegen batch -config $(CONFIG) -plan $(PLAN) -mode generate -format $(FORMAT)
+
+codegen-batch-check-breaking:
+	go run ./cmd/codegen batch -config $(CONFIG) -plan $(PLAN) -mode check-breaking -format $(FORMAT)
 
 codegen-batch-remove:
 	go run ./cmd/codegen batch -config $(CONFIG) -plan $(PLAN) -mode remove -format $(FORMAT)

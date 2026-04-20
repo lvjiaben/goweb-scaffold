@@ -2,6 +2,7 @@
 import { computed, onMounted, reactive, ref } from 'vue';
 
 import {
+  fetchCodegenBreaking,
   deleteCodegenHistory,
   fetchCodegenExport,
   fetchCodegenDiff,
@@ -22,8 +23,9 @@ import AppTable from '@/components/AppTable.vue';
 import FormField from '@/components/FormField.vue';
 import PermissionButton from '@/components/PermissionButton.vue';
 import { formatTime, getErrorMessage, prettyJSON } from '@/helpers';
-import { notifyError, notifyInfo, notifySuccess } from '@/notify';
+import { notifyError, notifyInfo, notifySuccess, notifyWarning } from '@/notify';
 import type {
+  CodegenBreakingResult,
   CodegenColumn,
   CodegenDiffResult,
   CodegenExportFile,
@@ -36,6 +38,7 @@ import type {
   CodegenPreview,
   CodegenRemoveResult,
   CodegenSchemaItem,
+  CodegenSnapshot,
   CodegenSourceKind,
   CodegenTableInfo,
   TableColumn,
@@ -120,6 +123,12 @@ const diffTable: TableColumn[] = [
   { key: 'changed_sections', title: '变更摘要' },
 ];
 
+const breakingFileTable: TableColumn[] = [
+  { key: 'path', title: '文件路径', width: '360px' },
+  { key: 'status', title: '状态', width: '120px' },
+  { key: 'hashes', title: '哈希摘要', width: '220px' },
+];
+
 const tables = ref<CodegenTableInfo[]>([]);
 const modules = ref<CodegenManagedModule[]>([]);
 const columns = ref<CodegenColumn[]>([]);
@@ -128,6 +137,7 @@ const fieldConfigs = ref<FieldConfigRow[]>([]);
 const preview = ref<CodegenPreview | null>(null);
 const diffResult = ref<CodegenDiffResult | null>(null);
 const generateResult = ref<CodegenGenerateResult | null>(null);
+const breakingResults = ref<Record<string, CodegenBreakingResult>>({});
 const removeResult = ref<CodegenRemoveResult | null>(null);
 const loadingTables = ref(false);
 const loadingModules = ref(false);
@@ -138,6 +148,8 @@ const diffing = ref(false);
 const saving = ref(false);
 const generating = ref(false);
 const removing = ref(false);
+const checkingCurrent = ref(false);
+const checkingModules = ref<Record<string, boolean>>({});
 const regeneratingHistoryId = ref<number | null>(null);
 const regeneratingModuleName = ref('');
 const selectedManagedModuleName = ref('');
@@ -224,6 +236,14 @@ const selectedOverrideEntries = computed(() => {
   }));
 });
 
+const selectedBreakingResult = computed(() => {
+  const moduleName = selectedManagedModuleName.value;
+  if (!moduleName) {
+    return null;
+  }
+  return breakingResults.value[moduleName] || null;
+});
+
 const removeTargetFiles = computed(() => {
   const target = removeTargetModule.value;
   if (!target) {
@@ -264,6 +284,32 @@ function setActionError(error: unknown, fallback: string) {
   const message = getErrorMessage(error, fallback);
   errorMessage.value = message;
   notifyError(message);
+}
+
+function hasSnapshot(snapshot?: CodegenSnapshot | null) {
+  return Boolean(
+    snapshot &&
+      (snapshot.preview_hash ||
+        snapshot.schema_hashes?.inferred_fields ||
+        snapshot.schema_hashes?.form_schema ||
+        snapshot.schema_hashes?.list_schema ||
+        snapshot.schema_hashes?.search_schema ||
+        snapshot.generated_files?.length),
+  );
+}
+
+function compatibilityLevelLabel(level?: string) {
+  if (level === 'same') return 'same';
+  if (level === 'non_breaking') return 'non_breaking';
+  if (level === 'breaking') return 'breaking';
+  return '未检查';
+}
+
+function compatibilityLevelClass(level?: string) {
+  if (level === 'same') return 'is-active';
+  if (level === 'non_breaking') return 'is-warning';
+  if (level === 'breaking') return 'is-danger';
+  return 'is-muted';
 }
 
 function boolOverrideToInput(value: boolean | undefined): OverrideBoolValue {
@@ -522,11 +568,67 @@ async function loadModules() {
     const result = await fetchCodegenModules();
     modules.value = result.list || [];
     ensureManagedModuleSelection(modules.value);
+    await refreshCompatibility(modules.value);
   } catch (error) {
     setActionError(error, '加载已生成模块失败');
   } finally {
     loadingModules.value = false;
   }
+}
+
+async function checkManagedModule(module: CodegenManagedModule, options?: { silent?: boolean }) {
+  checkingModules.value = {
+    ...checkingModules.value,
+    [module.module_name]: true,
+  };
+  try {
+    const result = await fetchCodegenBreaking({
+      module_name: module.module_name,
+      table_name: module.table_name,
+      payload: module.payload,
+      register_module: generateOptions.register_module,
+    });
+    breakingResults.value = {
+      ...breakingResults.value,
+      [module.module_name]: result,
+    };
+    if (!options?.silent) {
+      selectedManagedModuleName.value = module.module_name;
+    }
+    if (!options?.silent) {
+      if (result.level === 'breaking') {
+        notifyWarning(`模块 ${module.module_name} 检测到 breaking 变更`);
+      } else {
+        notifySuccess(`模块 ${module.module_name} 变更检查完成`);
+      }
+    }
+    return result;
+  } catch (error) {
+    if (!options?.silent) {
+      setActionError(error, '检查模块兼容性失败');
+    }
+    return null;
+  } finally {
+    checkingModules.value = {
+      ...checkingModules.value,
+      [module.module_name]: false,
+    };
+  }
+}
+
+async function refreshCompatibility(items: CodegenManagedModule[]) {
+  if (!items.length) {
+    breakingResults.value = {};
+    return;
+  }
+  const next: Record<string, CodegenBreakingResult> = {};
+  for (const item of items) {
+    const result = await checkManagedModule(item, { silent: true });
+    if (result) {
+      next[item.module_name] = result;
+    }
+  }
+  breakingResults.value = next;
 }
 
 async function loadHistory() {
@@ -699,6 +801,37 @@ async function generateCurrent() {
     setActionError(error, '生成文件失败');
   } finally {
     generating.value = false;
+  }
+}
+
+async function checkCurrent() {
+  if (!canOperate.value) {
+    notifyError('请先选择业务表并填写模块名');
+    return;
+  }
+  checkingCurrent.value = true;
+  errorMessage.value = '';
+  try {
+    const result = await fetchCodegenBreaking({
+      module_name: form.module_name.trim(),
+      table_name: form.table_name.trim(),
+      payload: payloadSnapshot().payload,
+      register_module: generateOptions.register_module,
+    });
+    selectedManagedModuleName.value = form.module_name.trim();
+    breakingResults.value = {
+      ...breakingResults.value,
+      [form.module_name.trim()]: result,
+    };
+    if (result.level === 'breaking') {
+      notifyWarning(`模块 ${result.module_name} 检测到 breaking 变更`);
+    } else {
+      notifyInfo(`模块 ${result.module_name} 兼容性等级：${result.level}`);
+    }
+  } catch (error) {
+    setActionError(error, '检查当前配置变更失败');
+  } finally {
+    checkingCurrent.value = false;
   }
 }
 
@@ -969,6 +1102,11 @@ onMounted(async () => {
                 </button>
               </PermissionButton>
               <PermissionButton code="codegen.save">
+                <button class="btn secondary" type="button" :disabled="checkingCurrent" @click="checkCurrent()">
+                  {{ checkingCurrent ? '检查中...' : '检查变更' }}
+                </button>
+              </PermissionButton>
+              <PermissionButton code="codegen.save">
                 <button class="btn" type="button" :disabled="generating" @click="generateCurrent()">
                   生成文件
                 </button>
@@ -1041,10 +1179,14 @@ onMounted(async () => {
               <div class="module-meta-list">
                 <span>生成时间：{{ formatTime(item.generated_at) }}</span>
                 <span>模板版本：{{ item.template_version }}</span>
+                <span>Snapshot：{{ hasSnapshot(item.snapshot) ? '已存在' : '缺失' }}</span>
                 <span>文件数：{{ item.files.length }}</span>
               </div>
 
               <div class="tag-list">
+                <span class="status-pill" :class="compatibilityLevelClass(breakingResults[item.module_name]?.level)">
+                  {{ compatibilityLevelLabel(breakingResults[item.module_name]?.level) }}
+                </span>
                 <span v-for="code in item.permission_codes" :key="code" class="tag-chip">
                   {{ code }}
                 </span>
@@ -1069,6 +1211,16 @@ onMounted(async () => {
                 <PermissionButton code="codegen.save">
                   <button class="btn secondary btn-sm" type="button" @click="viewManagedDiff(item)">
                     查看 Diff
+                  </button>
+                </PermissionButton>
+                <PermissionButton code="codegen.save">
+                  <button
+                    class="btn secondary btn-sm"
+                    type="button"
+                    :disabled="checkingModules[item.module_name]"
+                    @click="checkManagedModule(item)"
+                  >
+                    {{ checkingModules[item.module_name] ? '检查中...' : '检查变更' }}
                   </button>
                 </PermissionButton>
                 <PermissionButton code="codegen.save">
@@ -1108,6 +1260,16 @@ onMounted(async () => {
                 <span>路由：{{ selectedManagedModule.route_path }}</span>
                 <span>生成时间：{{ formatTime(selectedManagedModule.generated_at) }}</span>
                 <span>模板版本：{{ selectedManagedModule.template_version }}</span>
+                <span>Snapshot：{{ hasSnapshot(selectedManagedModule.snapshot) ? '已存在' : '缺失' }}</span>
+                <span>
+                  兼容性：
+                  <span
+                    class="status-pill"
+                    :class="compatibilityLevelClass(selectedBreakingResult?.level)"
+                  >
+                    {{ compatibilityLevelLabel(selectedBreakingResult?.level) }}
+                  </span>
+                </span>
               </div>
             </section>
 
@@ -1136,6 +1298,11 @@ onMounted(async () => {
             <section class="preview-card inset-card">
               <strong>Generated Files</strong>
               <pre class="mini-code">{{ prettyJSON(selectedManagedModule.files) }}</pre>
+            </section>
+
+            <section class="preview-card inset-card">
+              <strong>Snapshot 摘要</strong>
+              <pre class="mini-code">{{ prettyJSON(selectedManagedModule.snapshot) }}</pre>
             </section>
 
             <section class="preview-card preview-card--full inset-card">
@@ -1396,6 +1563,74 @@ onMounted(async () => {
                   </div>
                 </template>
               </AppTable>
+            </section>
+          </div>
+        </article>
+
+        <article v-if="selectedBreakingResult" class="card page-card">
+          <div class="section-heading compact">
+            <div>
+              <h3>兼容性检查</h3>
+              <p>用于提前判断这次模板变更是 same、non_breaking 还是 breaking。</p>
+            </div>
+          </div>
+
+          <div class="preview-grid">
+            <section class="preview-card inset-card">
+              <strong>检查结果</strong>
+              <div class="stack-xs">
+                <span>模块：{{ selectedBreakingResult.module_name }}</span>
+                <span>数据表：{{ selectedBreakingResult.table_name }}</span>
+                <span>模板版本：{{ selectedBreakingResult.previous_template_version }} -> {{ selectedBreakingResult.current_template_version }}</span>
+                <span>
+                  等级：
+                  <span
+                    class="status-pill"
+                    :class="compatibilityLevelClass(selectedBreakingResult.level)"
+                  >
+                    {{ selectedBreakingResult.level }}
+                  </span>
+                </span>
+              </div>
+            </section>
+            <section class="preview-card inset-card">
+              <strong>Changed Areas</strong>
+              <pre class="mini-code">{{ prettyJSON(selectedBreakingResult.changed_areas) }}</pre>
+            </section>
+            <section
+              class="preview-card inset-card"
+              :class="{ 'warning-banner': selectedBreakingResult.level === 'breaking' }"
+            >
+              <strong>Reasons</strong>
+              <pre class="mini-code">{{ prettyJSON(selectedBreakingResult.reasons) }}</pre>
+            </section>
+            <section class="preview-card inset-card">
+              <strong>Snapshot Diff</strong>
+              <pre class="mini-code">{{ prettyJSON({
+                preview_hash_changed: selectedBreakingResult.snapshot_diff.preview_hash_changed,
+                schema_hashes_changed: selectedBreakingResult.snapshot_diff.schema_hashes_changed,
+              }) }}</pre>
+            </section>
+            <section class="preview-card preview-card--full inset-card">
+              <strong>文件变更摘要</strong>
+              <AppTable
+                :columns="breakingFileTable"
+                :rows="selectedBreakingResult.snapshot_diff.file_changes"
+                empty-text="当前没有检测到文件层面的变化"
+              >
+                <template #cell-status="{ value }">
+                  <span class="status-pill" :class="compatibilityLevelClass(value === 'removed' ? 'breaking' : value === 'changed' ? 'non_breaking' : 'same')">
+                    {{ value }}
+                  </span>
+                </template>
+                <template #cell-hashes="{ row }">
+                  <code>{{ diffHashes(row) }}</code>
+                </template>
+              </AppTable>
+            </section>
+            <section v-if="selectedBreakingResult.warnings?.length" class="preview-card preview-card--full inset-card">
+              <strong>Warnings</strong>
+              <pre class="mini-code">{{ prettyJSON(selectedBreakingResult.warnings) }}</pre>
             </section>
           </div>
         </article>

@@ -276,6 +276,23 @@ export interface CodegenPreviewSummary {
   search_schema: CodegenSchemaItem[];
 }
 
+export interface CodegenSnapshotFile {
+  path: string;
+  sha256: string;
+  bytes: number;
+}
+
+export interface CodegenSnapshot {
+  preview_hash: string;
+  schema_hashes: {
+    inferred_fields: string;
+    form_schema: string;
+    list_schema: string;
+    search_schema: string;
+  };
+  generated_files: CodegenSnapshotFile[];
+}
+
 export interface CodegenManagedModule {
   module_name: string;
   table_name: string;
@@ -286,6 +303,7 @@ export interface CodegenManagedModule {
   files: string[];
   payload: CodegenPayloadBody;
   preview_summary: CodegenPreviewSummary;
+  snapshot: CodegenSnapshot;
 }
 
 export type CodegenSourceKind = 'direct' | 'payload' | 'export' | 'lock' | 'history';
@@ -299,8 +317,34 @@ export interface CodegenExportFile {
   template_version?: string;
   payload: CodegenPayloadBody;
   preview_summary: CodegenPreviewSummary;
+  snapshot: CodegenSnapshot;
   permission_codes: string[];
   route_path: string;
+}
+
+export type CodegenCompatibilityLevel = 'same' | 'non_breaking' | 'breaking';
+
+export interface CodegenBreakingFileChange {
+  path: string;
+  status: string;
+  old_hash?: string;
+  new_hash?: string;
+}
+
+export interface CodegenBreakingResult {
+  module_name: string;
+  table_name: string;
+  previous_template_version: string;
+  current_template_version: string;
+  level: CodegenCompatibilityLevel;
+  changed_areas: string[];
+  reasons: string[];
+  warnings?: string[];
+  snapshot_diff: {
+    preview_hash_changed: boolean;
+    schema_hashes_changed: Record<string, boolean>;
+    file_changes: CodegenBreakingFileChange[];
+  };
 }
 
 export interface CodegenRemovePayload {

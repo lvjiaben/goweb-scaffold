@@ -11,12 +11,13 @@ import (
 type BatchMode string
 
 const (
-	BatchModePreview    BatchMode = "preview"
-	BatchModeDiff       BatchMode = "diff"
-	BatchModeGenerate   BatchMode = "generate"
-	BatchModeRegenerate BatchMode = "regenerate"
-	BatchModeRemove     BatchMode = "remove"
-	BatchModeExport     BatchMode = "export"
+	BatchModePreview       BatchMode = "preview"
+	BatchModeDiff          BatchMode = "diff"
+	BatchModeGenerate      BatchMode = "generate"
+	BatchModeRegenerate    BatchMode = "regenerate"
+	BatchModeRemove        BatchMode = "remove"
+	BatchModeExport        BatchMode = "export"
+	BatchModeCheckBreaking BatchMode = "check-breaking"
 )
 
 type BatchInput struct {
@@ -26,26 +27,30 @@ type BatchInput struct {
 }
 
 type BatchModuleResult struct {
-	ModuleName string                  `json:"module_name"`
-	TableName  string                  `json:"table_name,omitempty"`
-	SourceKind string                  `json:"source_kind,omitempty"`
-	Status     string                  `json:"status"`
-	Preview    *service.Preview        `json:"preview,omitempty"`
-	Diff       *service.DiffResult     `json:"diff,omitempty"`
-	Generate   *service.GenerateResult `json:"generate,omitempty"`
-	Remove     *service.RemoveResult   `json:"remove,omitempty"`
-	Export     *service.ExportFile     `json:"export,omitempty"`
-	Error      string                  `json:"error,omitempty"`
+	ModuleName string                       `json:"module_name"`
+	TableName  string                       `json:"table_name,omitempty"`
+	SourceKind string                       `json:"source_kind,omitempty"`
+	Status     string                       `json:"status"`
+	Preview    *service.Preview             `json:"preview,omitempty"`
+	Diff       *service.DiffResult          `json:"diff,omitempty"`
+	Generate   *service.GenerateResult      `json:"generate,omitempty"`
+	Remove     *service.RemoveResult        `json:"remove,omitempty"`
+	Export     *service.ExportFile          `json:"export,omitempty"`
+	Breaking   *service.BreakingCheckResult `json:"breaking,omitempty"`
+	Error      string                       `json:"error,omitempty"`
 }
 
 type BatchResult struct {
-	Mode         BatchMode           `json:"mode"`
-	PlanPath     string              `json:"plan_path"`
-	Total        int                 `json:"total"`
-	SuccessCount int                 `json:"success_count"`
-	FailedCount  int                 `json:"failed_count"`
-	SkippedCount int                 `json:"skipped_count"`
-	Results      []BatchModuleResult `json:"results"`
+	Mode             BatchMode           `json:"mode"`
+	PlanPath         string              `json:"plan_path"`
+	Total            int                 `json:"total"`
+	SuccessCount     int                 `json:"success_count"`
+	FailedCount      int                 `json:"failed_count"`
+	SkippedCount     int                 `json:"skipped_count"`
+	SameCount        int                 `json:"same_count,omitempty"`
+	NonBreakingCount int                 `json:"non_breaking_count,omitempty"`
+	BreakingCount    int                 `json:"breaking_count,omitempty"`
+	Results          []BatchModuleResult `json:"results"`
 }
 
 type resolvedPlanEntry struct {
@@ -210,6 +215,30 @@ func (r *Runner) RunBatch(input BatchInput) (BatchResult, error) {
 			} else {
 				item.Export = &exportResult
 				result.SuccessCount++
+			}
+		case BatchModeCheckBreaking:
+			breakingResult, err := r.CheckBreaking(CheckBreakingInput{
+				ModuleName:     resolved.ModuleName,
+				TableName:      resolved.TableName,
+				Payload:        resolved.Payload,
+				RegisterModule: resolved.RegisterModule,
+			})
+			if err != nil {
+				item.Status = "failed"
+				item.Error = err.Error()
+				result.FailedCount++
+			} else {
+				item.Breaking = &breakingResult
+				item.Status = breakingResult.Level
+				result.SuccessCount++
+				switch breakingResult.Level {
+				case service.CompatibilitySame:
+					result.SameCount++
+				case service.CompatibilityNonBreaking:
+					result.NonBreakingCount++
+				case service.CompatibilityBreaking:
+					result.BreakingCount++
+				}
 			}
 		default:
 			return result, fmt.Errorf("unsupported batch mode: %s", input.Mode)
