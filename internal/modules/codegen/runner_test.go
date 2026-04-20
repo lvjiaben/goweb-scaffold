@@ -68,19 +68,39 @@ func newFixtureRunner(t *testing.T) *Runner {
 	runner := NewRunner(runtime)
 	columns := loadRunnerColumns(t)
 	runner.listColumnsFunc = func(_ *bootstrap.Runtime, tableName string) ([]service.ColumnInfo, error) {
-		if tableName != "demo_article" {
+		if tableName != "demo_article" && tableName != "demo_notice" {
 			return nil, os.ErrNotExist
 		}
 		return columns, nil
 	}
 	runner.listTablesFunc = func(_ *bootstrap.Runtime) ([]BusinessTable, error) {
-		return []BusinessTable{{
-			TableName:    "demo_article",
-			DisplayName:  "演示文章",
-			TableComment: "演示文章",
-		}}, nil
+		return []BusinessTable{
+			{
+				TableName:    "demo_article",
+				DisplayName:  "演示文章",
+				TableComment: "演示文章",
+			},
+			{
+				TableName:    "demo_notice",
+				DisplayName:  "演示公告",
+				TableComment: "演示公告",
+			},
+		}, nil
 	}
 	return runner
+}
+
+func writeFixtureExportFile(t *testing.T) string {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), "demo_article.codegen.json")
+	raw, err := os.ReadFile(filepath.Join("..", "..", "gen", "service", "testdata", "legacy", "demo_article_export_v5.json"))
+	if err != nil {
+		t.Fatalf("read export fixture: %v", err)
+	}
+	if err := os.WriteFile(path, raw, 0o644); err != nil {
+		t.Fatalf("write export fixture: %v", err)
+	}
+	return path
 }
 
 func TestRunnerExportImportRoundTrip(t *testing.T) {
@@ -188,6 +208,85 @@ func TestRunnerRemoveAndRegenerateWithLock(t *testing.T) {
 	}
 	if !strings.Contains(string(raw), "demo_article") {
 		t.Fatalf("expected modules_gen.go to restore demo_article")
+	}
+}
+
+func TestRunnerBatchDiffStopsOnErrorByDefault(t *testing.T) {
+	runner := newFixtureRunner(t)
+	planPath := filepath.Join(t.TempDir(), "codegen.plan.json")
+	if err := os.WriteFile(planPath, []byte(`{
+  "generated_by": "goweb-scaffold",
+  "format": "codegen-plan",
+  "version": "v1",
+  "defaults": {
+    "overwrite": true,
+    "register_module": true,
+    "upsert_menu": false
+  },
+  "modules": [
+    { "module_name": "demo_article", "table_name": "demo_article", "payload": {"title":"演示文章"} },
+    { "module_name": "missing_demo", "table_name": "missing_demo" },
+    { "module_name": "demo_notice", "table_name": "demo_notice", "payload": {"title":"演示公告"} }
+  ]
+}`), 0o644); err != nil {
+		t.Fatalf("write batch plan: %v", err)
+	}
+
+	result, err := runner.RunBatch(BatchInput{
+		PlanPath:        planPath,
+		Mode:            BatchModeDiff,
+		ContinueOnError: false,
+	})
+	if err != nil {
+		t.Fatalf("run batch diff: %v", err)
+	}
+	if len(result.Results) != 2 {
+		t.Fatalf("expected batch to stop after failure, got %+v", result)
+	}
+	if result.FailedCount != 1 {
+		t.Fatalf("expected one failure, got %+v", result)
+	}
+}
+
+func TestRunnerBatchGenerateContinuesOnError(t *testing.T) {
+	runner := newFixtureRunner(t)
+	planPath := filepath.Join(t.TempDir(), "codegen.plan.json")
+	if err := os.WriteFile(planPath, []byte(`{
+  "generated_by": "goweb-scaffold",
+  "format": "codegen-plan",
+  "version": "v1",
+  "defaults": {
+    "overwrite": true,
+    "register_module": true,
+    "upsert_menu": false
+  },
+  "modules": [
+    { "module_name": "demo_article", "table_name": "demo_article", "payload": {"title":"演示文章"} },
+    { "module_name": "missing_demo", "table_name": "missing_demo" },
+    { "module_name": "demo_notice", "table_name": "demo_notice", "payload": {"title":"演示公告"} }
+  ]
+}`), 0o644); err != nil {
+		t.Fatalf("write batch plan: %v", err)
+	}
+
+	result, err := runner.RunBatch(BatchInput{
+		PlanPath:        planPath,
+		Mode:            BatchModeGenerate,
+		ContinueOnError: true,
+	})
+	if err != nil {
+		t.Fatalf("run batch generate: %v", err)
+	}
+	if len(result.Results) != 3 {
+		t.Fatalf("expected all batch results, got %+v", result)
+	}
+	if result.SuccessCount != 2 || result.FailedCount != 1 {
+		t.Fatalf("unexpected batch counts: %+v", result)
+	}
+
+	noticePath := filepath.Join(runner.Runtime.RepoRoot, "internal/modules/demo_notice/module.go")
+	if _, err := os.Stat(noticePath); err != nil {
+		t.Fatalf("expected demo_notice generated, stat err=%v", err)
 	}
 }
 

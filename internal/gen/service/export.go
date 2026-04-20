@@ -60,7 +60,7 @@ func DecodeSourceDocument(raw []byte) (SourceDocument, error) {
 	var lock LockFile
 	if err := json.Unmarshal(raw, &lock); err == nil && strings.TrimSpace(lock.ModuleName) != "" && strings.TrimSpace(lock.TableName) != "" {
 		if strings.TrimSpace(lock.GeneratedBy) == GeneratorName && len(lock.GeneratedFiles) > 0 {
-			return SourceDocument{
+			doc := SourceDocument{
 				Kind:            "lock",
 				GeneratedBy:     lock.GeneratedBy,
 				ModuleName:      lock.ModuleName,
@@ -70,14 +70,16 @@ func DecodeSourceDocument(raw []byte) (SourceDocument, error) {
 				PreviewSummary:  lock.PreviewSummary,
 				PermissionCodes: append([]string{}, lock.PermissionCodes...),
 				RoutePath:       lock.RoutePath,
-			}, nil
+			}
+			next, _, migrateErr := MigrateSourceDocument(doc)
+			return next, migrateErr
 		}
 	}
 
 	var exportFile ExportFile
 	if err := json.Unmarshal(raw, &exportFile); err == nil && strings.TrimSpace(exportFile.ModuleName) != "" && strings.TrimSpace(exportFile.TableName) != "" {
 		if strings.TrimSpace(exportFile.Format) == ExportFormatName {
-			return SourceDocument{
+			doc := SourceDocument{
 				Kind:            "export",
 				GeneratedBy:     exportFile.GeneratedBy,
 				ModuleName:      exportFile.ModuleName,
@@ -87,7 +89,9 @@ func DecodeSourceDocument(raw []byte) (SourceDocument, error) {
 				PreviewSummary:  exportFile.PreviewSummary,
 				PermissionCodes: append([]string{}, exportFile.PermissionCodes...),
 				RoutePath:       exportFile.RoutePath,
-			}, nil
+			}
+			next, _, migrateErr := MigrateSourceDocument(doc)
+			return next, migrateErr
 		}
 	}
 

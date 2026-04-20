@@ -5,7 +5,12 @@
   "page": {
     "route_path": "/system/demo-article",
     "page_name": "DemoArticlePage",
-    "view_file": "views/system/DemoArticlePage.vue"
+    "view_file": "views/system/DemoArticlePage.vue",
+    "menu_title": "演示文章",
+    "feature_flags": [
+      "admin-crud",
+      "codegen"
+    ]
   },
   "api": {
     "module_code": "demo_article",

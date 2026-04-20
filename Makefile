@@ -13,6 +13,8 @@ UNREGISTER_MODULE ?= true
 REMOVE_MENU ?= true
 REMOVE_HISTORY ?= false
 REMOVE_LOCK ?= true
+PLAN ?= examples/codegen/demo.plan.json
+OUTPUT ?=
 
 test:
 	go test ./...
@@ -46,3 +48,18 @@ codegen-regenerate:
 
 codegen-remove:
 	go run ./cmd/codegen remove -config $(CONFIG) -module $(MODULE) -remove-files=$(REMOVE_FILES) -unregister-module=$(UNREGISTER_MODULE) -remove-menu=$(REMOVE_MENU) -remove-history=$(REMOVE_HISTORY) -remove-lock=$(REMOVE_LOCK) -format $(FORMAT)
+
+codegen-templates:
+	go run ./cmd/codegen templates -config $(CONFIG) -format $(FORMAT)
+
+codegen-migrate-source:
+	go run ./cmd/codegen migrate-source -config $(CONFIG) $(if $(FROM),-from $(FROM),) $(if $(OUTPUT),-output $(OUTPUT),) -format $(FORMAT)
+
+codegen-batch-diff:
+	go run ./cmd/codegen batch -config $(CONFIG) -plan $(PLAN) -mode diff -format $(FORMAT)
+
+codegen-batch-generate:
+	go run ./cmd/codegen batch -config $(CONFIG) -plan $(PLAN) -mode generate -format $(FORMAT)
+
+codegen-batch-remove:
+	go run ./cmd/codegen batch -config $(CONFIG) -plan $(PLAN) -mode remove -format $(FORMAT)

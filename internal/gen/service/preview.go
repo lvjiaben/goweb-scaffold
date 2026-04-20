@@ -29,9 +29,11 @@ func BuildPreview(moduleName string, tableName string, rawPayload json.RawMessag
 		TableName:    tableName,
 		TableComment: tableComment,
 		Page: PageMeta{
-			RoutePath: fmt.Sprintf("/system/%s", modulePath),
-			PageName:  ToPascal(moduleName) + "Page",
-			ViewFile:  fmt.Sprintf("views/system/%sPage.vue", ToPascal(moduleName)),
+			RoutePath:    fmt.Sprintf("/system/%s", modulePath),
+			PageName:     ToPascal(moduleName) + "Page",
+			ViewFile:     fmt.Sprintf("views/system/%sPage.vue", ToPascal(moduleName)),
+			MenuTitle:    title,
+			FeatureFlags: []string{"admin-crud", "codegen"},
 		},
 		API: APIMeta{
 			ModuleCode: moduleCode,

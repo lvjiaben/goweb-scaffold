@@ -12,6 +12,7 @@ import (
 	"text/tabwriter"
 
 	"github.com/lvjiaben/goweb-scaffold/internal/gen/service"
+	gentemplates "github.com/lvjiaben/goweb-scaffold/internal/gen/templates"
 )
 
 type CLIBackend interface {
@@ -25,6 +26,7 @@ type CLIBackend interface {
 	Export(input ExportInput) (service.ExportFile, error)
 	Import(input ImportInput) (ImportResult, error)
 	ResolveInput(input SourceInput) (ResolvedInput, error)
+	RunBatch(input BatchInput) (BatchResult, error)
 }
 
 type CLI struct {
@@ -93,6 +95,12 @@ func (c *CLI) Run(args []string) int {
 		return c.runExport(args[1:])
 	case "import":
 		return c.runImport(args[1:])
+	case "templates":
+		return c.runTemplates(args[1:])
+	case "migrate-source":
+		return c.runMigrateSource(args[1:])
+	case "batch":
+		return c.runBatch(args[1:])
 	case "-h", "--help", "help":
 		c.writeUsage()
 		return 0
@@ -165,6 +173,19 @@ type importCommand struct {
 	overwrite      bool
 	registerModule bool
 	upsertMenu     bool
+}
+
+type migrateSourceCommand struct {
+	commonFlags
+	from      string
+	writeBack bool
+}
+
+type batchCommand struct {
+	commonFlags
+	planPath        string
+	mode            string
+	continueOnError bool
 }
 
 func parsePreviewCommand(args []string) (previewCommand, error) {
@@ -272,6 +293,31 @@ func parseImportCommand(args []string) (importCommand, error) {
 	fs.BoolVar(&cmd.overwrite, "overwrite", true, "overwrite generator-managed files")
 	fs.BoolVar(&cmd.registerModule, "register-module", true, "rebuild generated registry files")
 	fs.BoolVar(&cmd.upsertMenu, "upsert-menu", true, "upsert admin menu and role-menu")
+	if err := fs.Parse(args); err != nil {
+		return cmd, err
+	}
+	return cmd, nil
+}
+
+func parseMigrateSourceCommand(args []string) (migrateSourceCommand, error) {
+	cmd := migrateSourceCommand{}
+	fs := newFlagSet("migrate-source")
+	registerCommonFlags(fs, &cmd.commonFlags)
+	fs.StringVar(&cmd.from, "from", "", "migrate from export or lock file")
+	fs.BoolVar(&cmd.writeBack, "write", false, "write migrated source back to file")
+	if err := fs.Parse(args); err != nil {
+		return cmd, err
+	}
+	return cmd, nil
+}
+
+func parseBatchCommand(args []string) (batchCommand, error) {
+	cmd := batchCommand{}
+	fs := newFlagSet("batch")
+	registerCommonFlags(fs, &cmd.commonFlags)
+	fs.StringVar(&cmd.planPath, "plan", "", "batch plan file")
+	fs.StringVar(&cmd.mode, "mode", string(BatchModeDiff), "batch mode: preview|diff|generate|regenerate|remove|export")
+	fs.BoolVar(&cmd.continueOnError, "continue-on-error", false, "continue after module failure")
 	if err := fs.Parse(args); err != nil {
 		return cmd, err
 	}
@@ -548,6 +594,115 @@ func (c *CLI) runImport(args []string) int {
 	return 0
 }
 
+func (c *CLI) runTemplates(args []string) int {
+	common, err := parseSimpleCommand("templates", args)
+	if err != nil {
+		return c.fail("text", err)
+	}
+	payload := map[string]any{
+		"current":   gentemplates.CurrentVersion,
+		"default":   gentemplates.DefaultVersion,
+		"supported": gentemplates.SupportedVersions,
+	}
+	if common.format == "json" {
+		return c.writeJSON(payload, common.outputPath)
+	}
+	_, _ = fmt.Fprintf(c.stdout, "current=%s\ndefault=%s\n", gentemplates.CurrentVersion, gentemplates.DefaultVersion)
+	for _, item := range gentemplates.SupportedVersions {
+		_, _ = fmt.Fprintf(c.stdout, "- %s [%s] %s\n", item.Name, item.Status, item.Description)
+	}
+	return 0
+}
+
+func (c *CLI) runMigrateSource(args []string) int {
+	cmd, err := parseMigrateSourceCommand(args)
+	if err != nil {
+		return c.fail("text", err)
+	}
+	if strings.TrimSpace(cmd.from) == "" {
+		return c.fail(cmd.format, errors.New("from is required"))
+	}
+	raw, err := os.ReadFile(cmd.from)
+	if err != nil {
+		return c.fail(cmd.format, err)
+	}
+
+	var payload any
+	var migration service.MigrationResult
+	var outputPath string
+	if outputPath = strings.TrimSpace(cmd.outputPath); outputPath == "" && cmd.writeBack {
+		outputPath = cmd.from
+	}
+
+	var lockFile service.LockFile
+	if err := json.Unmarshal(raw, &lockFile); err == nil && strings.TrimSpace(lockFile.GeneratedBy) == service.GeneratorName && len(lockFile.GeneratedFiles) > 0 {
+		next, migrationResult, migrateErr := service.MigrateLockFile(lockFile)
+		if migrateErr != nil {
+			return c.fail(cmd.format, migrateErr)
+		}
+		payload = next
+		migration = migrationResult
+	} else {
+		var exportFile service.ExportFile
+		if err := json.Unmarshal(raw, &exportFile); err != nil {
+			return c.fail(cmd.format, errors.New("unsupported source document"))
+		}
+		next, migrationResult, migrateErr := service.MigrateExportFile(exportFile)
+		if migrateErr != nil {
+			return c.fail(cmd.format, migrateErr)
+		}
+		payload = next
+		migration = migrationResult
+	}
+
+	envelope := map[string]any{
+		"migration": migration,
+		"document":  payload,
+	}
+	if outputPath != "" {
+		rawPayload, marshalErr := json.MarshalIndent(payload, "", "  ")
+		if marshalErr != nil {
+			return c.fail(cmd.format, marshalErr)
+		}
+		if err := os.WriteFile(outputPath, append(rawPayload, '\n'), 0o644); err != nil {
+			return c.fail(cmd.format, err)
+		}
+		if cmd.format != "json" {
+			_, _ = fmt.Fprintf(c.stdout, "migrated source written to %s\n", outputPath)
+			return 0
+		}
+		envelope["written_to"] = outputPath
+	}
+	if cmd.format == "json" {
+		return c.writeJSON(envelope, "")
+	}
+	c.writeTextSection("migrate-source", envelope)
+	return 0
+}
+
+func (c *CLI) runBatch(args []string) int {
+	cmd, err := parseBatchCommand(args)
+	if err != nil {
+		return c.fail("text", err)
+	}
+	if strings.TrimSpace(cmd.planPath) == "" {
+		return c.fail(cmd.format, errors.New("plan is required"))
+	}
+	result, err := c.backend.RunBatch(BatchInput{
+		PlanPath:        cmd.planPath,
+		Mode:            BatchMode(strings.TrimSpace(cmd.mode)),
+		ContinueOnError: cmd.continueOnError,
+	})
+	if err != nil {
+		return c.fail(cmd.format, err)
+	}
+	if cmd.format == "json" {
+		return c.writeJSON(result, cmd.outputPath)
+	}
+	c.writeBatchText(result)
+	return 0
+}
+
 func parseSimpleCommand(name string, args []string) (commonFlags, error) {
 	var common commonFlags
 	fs := newFlagSet(name)
@@ -628,6 +783,9 @@ Subcommands:
   remove
   export
   import
+  templates
+  migrate-source
+  batch
 `)
 }
 
@@ -644,4 +802,31 @@ func firstNonEmptyString(values ...string) string {
 		}
 	}
 	return ""
+}
+
+func (c *CLI) writeBatchText(result BatchResult) {
+	for _, item := range result.Results {
+		_, _ = fmt.Fprintf(c.stdout, "[%s] %s", result.Mode, item.ModuleName)
+		if item.TableName != "" {
+			_, _ = fmt.Fprintf(c.stdout, " (%s)", item.TableName)
+		}
+		_, _ = fmt.Fprintf(c.stdout, " status=%s source=%s\n", item.Status, item.SourceKind)
+		if item.Error != "" {
+			_, _ = fmt.Fprintf(c.stdout, "  error: %s\n", item.Error)
+			continue
+		}
+		switch {
+		case item.Diff != nil:
+			_, _ = fmt.Fprintf(c.stdout, "  create=%d overwrite=%d skip=%d\n", len(item.Diff.WouldCreateFiles), len(item.Diff.WouldOverwriteFiles), len(item.Diff.WouldSkipFiles))
+		case item.Generate != nil:
+			_, _ = fmt.Fprintf(c.stdout, "  generated=%d overwritten=%d skipped=%d\n", len(item.Generate.GeneratedFiles), len(item.Generate.OverwrittenFiles), len(item.Generate.SkippedFiles))
+		case item.Remove != nil:
+			_, _ = fmt.Fprintf(c.stdout, "  removed_files=%d registry=%d menus=%d\n", len(item.Remove.RemovedFiles), len(item.Remove.RegeneratedRegistryFiles), len(item.Remove.RemovedMenuRecords))
+		case item.Export != nil:
+			_, _ = fmt.Fprintf(c.stdout, "  export route=%s template=%s\n", item.Export.RoutePath, item.Export.TemplateVersion)
+		case item.Preview != nil:
+			_, _ = fmt.Fprintf(c.stdout, "  route=%s api=%s\n", item.Preview.Page.RoutePath, item.Preview.API.ModuleCode)
+		}
+	}
+	_, _ = fmt.Fprintf(c.stdout, "summary total=%d success=%d failed=%d skipped=%d\n", result.Total, result.SuccessCount, result.FailedCount, result.SkippedCount)
 }

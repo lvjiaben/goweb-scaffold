@@ -2,6 +2,7 @@ import { request } from './request';
 import type {
   CodegenColumn,
   CodegenDiffResult,
+  CodegenExportFile,
   CodegenGenerateResult,
   CodegenHistoryItem,
   CodegenManagedModule,
@@ -40,6 +41,15 @@ export function fetchCodegenHistory() {
 
 export function fetchCodegenModules() {
   return request.get<{ list: CodegenManagedModule[] }>('/codegen/modules');
+}
+
+export function fetchCodegenExport(moduleName: string, historyId?: number) {
+  return request.get<CodegenExportFile>('/codegen/export', {
+    params: {
+      module_name: moduleName || undefined,
+      history_id: historyId || undefined,
+    },
+  });
 }
 
 export function fetchCodegenTables() {

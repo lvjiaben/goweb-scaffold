@@ -3,11 +3,12 @@ package service
 import (
 	"time"
 
+	gentemplates "github.com/lvjiaben/goweb-scaffold/internal/gen/templates"
 	"gorm.io/gorm"
 )
 
 const (
-	TemplateVersion = "v5"
+	TemplateVersion = gentemplates.CurrentVersion
 	GeneratorName   = "goweb-scaffold"
 )
 
@@ -80,9 +81,11 @@ type PayloadConfig struct {
 }
 
 type PageMeta struct {
-	RoutePath string `json:"route_path"`
-	PageName  string `json:"page_name"`
-	ViewFile  string `json:"view_file"`
+	RoutePath    string   `json:"route_path"`
+	PageName     string   `json:"page_name"`
+	ViewFile     string   `json:"view_file"`
+	MenuTitle    string   `json:"menu_title,omitempty"`
+	FeatureFlags []string `json:"feature_flags,omitempty"`
 }
 
 type APIMeta struct {

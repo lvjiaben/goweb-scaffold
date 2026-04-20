@@ -12,4 +12,13 @@ export const generatedSystemRoutes: RouteRecordRaw[] = [
       requiresMenu: true,
     },
   },
+  {
+    path: "/system/demo-notice",
+    name: "demo_notice",
+    component: () => import("@/views/system/DemoNoticePage.vue"),
+    meta: {
+      title: "演示公告",
+      requiresMenu: true,
+    },
+  },
 ];

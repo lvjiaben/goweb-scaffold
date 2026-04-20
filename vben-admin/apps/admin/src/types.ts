@@ -190,6 +190,8 @@ export interface CodegenPreview {
     route_path: string;
     page_name: string;
     view_file: string;
+    menu_title?: string;
+    feature_flags?: string[];
   };
   api: {
     module_code: string;
@@ -258,6 +260,8 @@ export interface CodegenPreviewSummary {
     route_path: string;
     page_name: string;
     view_file: string;
+    menu_title?: string;
+    feature_flags?: string[];
   };
   api: {
     module_code: string;
@@ -282,6 +286,21 @@ export interface CodegenManagedModule {
   files: string[];
   payload: CodegenPayloadBody;
   preview_summary: CodegenPreviewSummary;
+}
+
+export type CodegenSourceKind = 'direct' | 'payload' | 'export' | 'lock' | 'history';
+
+export interface CodegenExportFile {
+  generated_by: string;
+  format: string;
+  version: string;
+  module_name: string;
+  table_name: string;
+  template_version?: string;
+  payload: CodegenPayloadBody;
+  preview_summary: CodegenPreviewSummary;
+  permission_codes: string[];
+  route_path: string;
 }
 
 export interface CodegenRemovePayload {

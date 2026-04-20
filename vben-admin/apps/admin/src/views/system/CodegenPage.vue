@@ -3,6 +3,7 @@ import { computed, onMounted, reactive, ref } from 'vue';
 
 import {
   deleteCodegenHistory,
+  fetchCodegenExport,
   fetchCodegenDiff,
   fetchCodegenHistory,
   fetchCodegenModules,
@@ -25,6 +26,7 @@ import { notifyError, notifyInfo, notifySuccess } from '@/notify';
 import type {
   CodegenColumn,
   CodegenDiffResult,
+  CodegenExportFile,
   CodegenFieldOption,
   CodegenFieldOverride,
   CodegenGenerateResult,
@@ -33,6 +35,8 @@ import type {
   CodegenMenuRecord,
   CodegenPreview,
   CodegenRemoveResult,
+  CodegenSchemaItem,
+  CodegenSourceKind,
   CodegenTableInfo,
   TableColumn,
 } from '@/types';
@@ -138,6 +142,16 @@ const regeneratingHistoryId = ref<number | null>(null);
 const regeneratingModuleName = ref('');
 const selectedManagedModuleName = ref('');
 const errorMessage = ref('');
+const loadedSourceKind = ref<CodegenSourceKind>('direct');
+const exportFileInput = ref<HTMLInputElement | null>(null);
+
+const sourceKindLabels: Record<CodegenSourceKind, string> = {
+  direct: '直接选表',
+  payload: 'Payload 文件',
+  export: 'Export 文件',
+  lock: 'Lock 文件',
+  history: '历史记录',
+};
 
 const form = reactive<{
   module_name: string;
@@ -190,6 +204,8 @@ const removeTargetModule = computed(
 const effectiveTitle = computed(() => {
   return preview.value?.payload.title || selectedTableInfo.value?.display_name || form.module_name || '未命名模块';
 });
+
+const loadedSourceKindLabel = computed(() => sourceKindLabels[loadedSourceKind.value] || loadedSourceKind.value);
 
 const tableHint = computed(() => {
   if (!preview.value) {
@@ -478,6 +494,16 @@ function ensureManagedModuleSelection(items: CodegenManagedModule[]) {
   }
 }
 
+function downloadJSONFile(fileName: string, value: unknown) {
+  const blob = new Blob([`${prettyJSON(value)}\n`], { type: 'application/json;charset=utf-8' });
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = fileName;
+  link.click();
+  window.URL.revokeObjectURL(url);
+}
+
 async function loadTables() {
   loadingTables.value = true;
   try {
@@ -528,6 +554,7 @@ async function loadColumns(tableName: string) {
     generateResult.value = null;
     removeResult.value = null;
     form.table_name = '';
+    loadedSourceKind.value = 'direct';
     return;
   }
 
@@ -548,7 +575,7 @@ async function loadColumns(tableName: string) {
   }
 }
 
-async function changeTable(tableName: string, payload?: CodegenPayloadBody) {
+async function changeTable(tableName: string, payload?: CodegenPayloadBody, sourceKind: CodegenSourceKind = 'direct') {
   const previousTable = form.table_name;
   if (!form.module_name || form.module_name === previousTable) {
     form.module_name = tableName;
@@ -560,6 +587,7 @@ async function changeTable(tableName: string, payload?: CodegenPayloadBody) {
   form.payload.form_fields = normalized ? [...normalized.form_fields] : [];
   form.payload.search_fields = normalized ? [...normalized.search_fields] : [];
   form.payload.title = normalized?.title || '';
+  loadedSourceKind.value = sourceKind;
 
   if (tableName) {
     await previewCurrent(false);
@@ -691,7 +719,7 @@ async function applyHistory(row: CodegenHistoryItem) {
   const payload = normalizePayload(row.payload);
   form.module_name = row.module_name;
   selectedManagedModuleName.value = row.module_name;
-  await changeTable(row.table_name, payload);
+  await changeTable(row.table_name, payload, 'history');
   notifySuccess(`已载入历史配置 #${row.id}`);
 }
 
@@ -729,9 +757,49 @@ async function regenerateFromHistory(row: CodegenHistoryItem) {
 async function applyManagedModule(module: CodegenManagedModule, showNotice = true) {
   selectedManagedModuleName.value = module.module_name;
   form.module_name = module.module_name;
-  await changeTable(module.table_name, module.payload);
+  await changeTable(module.table_name, module.payload, 'lock');
   if (showNotice) {
     notifySuccess(`已载入模块 ${module.module_name} 的 lock 配置`);
+  }
+}
+
+async function exportManagedModule(module: CodegenManagedModule) {
+  try {
+    const result = await fetchCodegenExport(module.module_name);
+    downloadJSONFile(`${module.module_name}.codegen.json`, result);
+    notifySuccess(`已导出模块 ${module.module_name} 的配置`);
+  } catch (error) {
+    setActionError(error, '导出配置失败');
+  }
+}
+
+function openExportImportDialog() {
+  exportFileInput.value?.click();
+}
+
+async function applyExportDocument(document: CodegenExportFile) {
+  if (document.format !== 'codegen-export' || !document.module_name || !document.table_name) {
+    throw new Error('导入文件不是合法的 codegen export');
+  }
+  selectedManagedModuleName.value = document.module_name;
+  form.module_name = document.module_name;
+  await changeTable(document.table_name, document.payload, 'export');
+}
+
+async function handleExportImport(event: Event) {
+  const input = event.target as HTMLInputElement;
+  const file = input.files?.[0];
+  if (!file) {
+    return;
+  }
+  try {
+    const raw = JSON.parse(await file.text()) as CodegenExportFile;
+    await applyExportDocument(raw);
+    notifySuccess(`已载入 export 文件 ${file.name}`);
+  } catch (error) {
+    setActionError(error, '载入 export 文件失败');
+  } finally {
+    input.value = '';
   }
 }
 
@@ -880,6 +948,11 @@ onMounted(async () => {
               <p>{{ tableHint }}</p>
             </div>
             <div class="table-actions align-end">
+              <PermissionButton code="codegen.list">
+                <button class="btn secondary" type="button" @click="openExportImportDialog()">
+                  载入 Export
+                </button>
+              </PermissionButton>
               <PermissionButton code="codegen.save">
                 <button class="btn secondary" type="button" :disabled="previewing" @click="previewCurrent()">
                   生成 Preview
@@ -911,6 +984,12 @@ onMounted(async () => {
             </FormField>
             <FormField label="表名" required>
               <input v-model="form.table_name" class="input" readonly />
+            </FormField>
+            <FormField label="载入来源">
+              <div class="tag-list">
+                <span class="tag-chip">{{ loadedSourceKindLabel }}</span>
+                <span class="tag-chip">source kind: {{ loadedSourceKind }}</span>
+              </div>
             </FormField>
             <FormField label="标题覆盖">
               <input
@@ -982,6 +1061,11 @@ onMounted(async () => {
                     载入配置
                   </button>
                 </PermissionButton>
+                <PermissionButton code="codegen.list">
+                  <button class="btn secondary btn-sm" type="button" @click="exportManagedModule(item)">
+                    导出配置
+                  </button>
+                </PermissionButton>
                 <PermissionButton code="codegen.save">
                   <button class="btn secondary btn-sm" type="button" @click="viewManagedDiff(item)">
                     查看 Diff
@@ -1030,11 +1114,13 @@ onMounted(async () => {
             <section class="preview-card inset-card">
               <strong>Route / API</strong>
               <div class="stack-xs">
+                <span>菜单标题：{{ selectedManagedModule.preview_summary.page.menu_title || selectedManagedModule.module_name }}</span>
                 <span>页面：{{ selectedManagedModule.preview_summary.page.page_name }}</span>
                 <span>视图文件：{{ selectedManagedModule.preview_summary.page.view_file }}</span>
                 <span>List：{{ selectedManagedModule.preview_summary.api.list }}</span>
                 <span>Save：{{ selectedManagedModule.preview_summary.api.save }}</span>
                 <span>Delete：{{ selectedManagedModule.preview_summary.api.delete }}</span>
+                <span>Feature Flags：{{ (selectedManagedModule.preview_summary.page.feature_flags || []).join(', ') || '-' }}</span>
               </div>
             </section>
 
@@ -1222,9 +1308,11 @@ onMounted(async () => {
               <strong>页面元信息</strong>
               <div class="stack-xs">
                 <span>标题：{{ preview.payload.title || effectiveTitle }}</span>
+                <span>菜单标题：{{ preview.page.menu_title || effectiveTitle }}</span>
                 <span>路由：{{ preview.page.route_path }}</span>
                 <span>页面名：{{ preview.page.page_name }}</span>
                 <span>文件：{{ preview.page.view_file }}</span>
+                <span>Feature Flags：{{ (preview.page.feature_flags || []).join(', ') || '-' }}</span>
               </div>
             </section>
             <section class="preview-card inset-card">
@@ -1514,4 +1602,12 @@ onMounted(async () => {
       </div>
     </template>
   </AppModal>
+
+  <input
+    ref="exportFileInput"
+    type="file"
+    accept="application/json,.json"
+    style="display: none"
+    @change="handleExportImport"
+  />
 </template>

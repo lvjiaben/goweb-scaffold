@@ -32,6 +32,9 @@ func (s GeneratorService) ListModules() ([]ManagedModule, error) {
 		if err := json.Unmarshal(raw, &lock); err != nil {
 			return nil, err
 		}
+		if migrated, _, err := MigrateLockFile(lock); err == nil {
+			lock = migrated
+		}
 		if strings.TrimSpace(lock.ModuleName) == "" {
 			continue
 		}
@@ -58,6 +61,10 @@ func (s GeneratorService) ListModules() ([]ManagedModule, error) {
 func (s GeneratorService) LoadLock(moduleName string) (LockFile, error) {
 	paths := ModulePaths(ToSnake(moduleName))
 	lock, err := s.readLockFile(paths["lock"])
+	if err != nil {
+		return LockFile{}, err
+	}
+	lock, _, err = MigrateLockFile(lock)
 	if err != nil {
 		return LockFile{}, err
 	}

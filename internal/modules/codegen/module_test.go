@@ -104,6 +104,14 @@ func TestModulesHandlerReturnsEmptyListWithoutLocks(t *testing.T) {
 	}
 }
 
+func TestExportHandlerRejectsMissingModuleNameAndHistoryID(t *testing.T) {
+	runtime := newModuleTestRuntime(t)
+	resp := performJSONRequest(t, runtime, http.MethodGet, "/admin-api/codegen/export", ``)
+	if resp.Code == 0 {
+		t.Fatalf("expected export validation error, got %+v", resp)
+	}
+}
+
 func TestRemoveHandlerWarnsWhenModuleDoesNotExist(t *testing.T) {
 	runtime := newModuleTestRuntime(t)
 	resp := performJSONRequest(t, runtime, http.MethodPost, "/admin-api/codegen/remove", `{"module_name":"missing_demo","remove_files":true,"unregister_module":true,"remove_lock":true}`)

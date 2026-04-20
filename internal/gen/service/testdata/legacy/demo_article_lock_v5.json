@@ -1,0 +1,42 @@
+{
+  "generated_by": "goweb-scaffold",
+  "module_name": "demo_article",
+  "table_name": "demo_article",
+  "generated_at": "2026-04-20T05:13:34+08:00",
+  "template_version": "v5",
+  "payload": {
+    "list_fields": ["id", "title", "summary", "status", "sort", "created_at", "updated_at"],
+    "form_fields": ["title", "summary", "status", "sort"],
+    "search_fields": ["title", "status"]
+  },
+  "preview_summary": {
+    "table_comment": "演示文章",
+    "page": {
+      "route_path": "/system/demo-article",
+      "page_name": "DemoArticlePage",
+      "view_file": "views/system/DemoArticlePage.vue"
+    },
+    "api": {
+      "module_code": "demo_article",
+      "list": "/admin-api/demo_article/list",
+      "detail": "/admin-api/demo_article/detail",
+      "save": "/admin-api/demo_article/save",
+      "delete": "/admin-api/demo_article/delete"
+    },
+    "inferred_fields": [],
+    "form_schema": [],
+    "list_schema": [],
+    "search_schema": []
+  },
+  "permission_codes": ["demo_article.list", "demo_article.save", "demo_article.delete"],
+  "route_path": "/system/demo-article",
+  "generated_files": [
+    "internal/modules/demo_article/model.go",
+    "internal/modules/demo_article/types.go",
+    "internal/modules/demo_article/module.go",
+    "internal/modules/demo_article/meta.go",
+    "internal/modules/demo_article/codegen.lock.json",
+    "vben-admin/apps/admin/src/api/demo_article.ts",
+    "vben-admin/apps/admin/src/views/system/DemoArticlePage.vue"
+  ]
+}

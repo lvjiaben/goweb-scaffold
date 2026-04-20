@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/lvjiaben/goweb-core/httpx"
@@ -59,6 +60,7 @@ func (Module) Register(runtime *bootstrap.Runtime) error {
 	runtime.AdminProtectedGroup.GET("/codegen/modules", modules(runtime), httpx.WithPermission("codegen.list"))
 	runtime.AdminProtectedGroup.GET("/codegen/tables", tables(runtime), httpx.WithPermission("codegen.list"))
 	runtime.AdminProtectedGroup.GET("/codegen/table-columns", tableColumns(runtime), httpx.WithPermission("codegen.list"))
+	runtime.AdminProtectedGroup.GET("/codegen/export", exportFile(runtime), httpx.WithPermission("codegen.list"))
 	runtime.AdminProtectedGroup.POST("/codegen/preview", preview(runtime), httpx.WithPermission("codegen.save"))
 	runtime.AdminProtectedGroup.POST("/codegen/diff", diff(runtime), httpx.WithPermission("codegen.save"))
 	runtime.AdminProtectedGroup.POST("/codegen/generate", generate(runtime), httpx.WithPermission("codegen.save"))
@@ -132,6 +134,36 @@ func tableColumns(runtime *bootstrap.Runtime) httpx.HandlerFunc {
 			return
 		}
 		c.Success(map[string]any{"list": items})
+	}
+}
+
+func exportFile(runtime *bootstrap.Runtime) httpx.HandlerFunc {
+	return func(c *httpx.Context) {
+		moduleName := strings.TrimSpace(c.Query("module_name"))
+		historyRaw := strings.TrimSpace(c.Query("history_id"))
+		var historyID int64
+		if historyRaw != "" {
+			value, err := strconv.ParseInt(historyRaw, 10, 64)
+			if err != nil {
+				c.BadRequest("history_id must be a valid integer")
+				return
+			}
+			historyID = value
+		}
+		if moduleName == "" && historyID <= 0 {
+			c.BadRequest("module_name or history_id is required")
+			return
+		}
+
+		result, err := NewRunner(runtime).Export(ExportInput{
+			ModuleName: moduleName,
+			HistoryID:  historyID,
+		})
+		if err != nil {
+			respondCodegenError(c, err)
+			return
+		}
+		c.Success(result)
 	}
 }
 

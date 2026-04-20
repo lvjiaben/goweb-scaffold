@@ -1,14 +1,13 @@
 {
   "generated_by": "goweb-scaffold",
-  "module_name": "demo_article",
-  "table_name": "demo_article",
+  "module_name": "demo_notice",
+  "table_name": "demo_notice",
   "generated_at": "2026-04-20T16:19:34+08:00",
   "template_version": "v6",
   "payload": {
     "list_fields": [
       "id",
       "title",
-      "summary",
       "status",
       "sort",
       "created_at",
@@ -16,7 +15,7 @@
     ],
     "form_fields": [
       "title",
-      "summary",
+      "content",
       "status",
       "sort"
     ],
@@ -24,7 +23,13 @@
       "title",
       "status"
     ],
+    "title": "演示公告",
     "field_overrides": {
+      "content": {
+        "label": "公告内容",
+        "placeholder": "请输入公告正文",
+        "width": "360px"
+      },
       "sort": {
         "label": "排序值",
         "width": "100px"
@@ -48,35 +53,31 @@
           }
         ]
       },
-      "summary": {
-        "label": "文章摘要",
-        "placeholder": "请输入文章摘要，用于列表简介"
-      },
       "title": {
-        "label": "文章标题",
-        "placeholder": "请输入文章标题",
+        "label": "公告标题",
+        "placeholder": "请输入公告标题",
         "width": "220px"
       }
     }
   },
   "preview_summary": {
-    "table_comment": "演示文章",
+    "table_comment": "演示公告",
     "page": {
-      "route_path": "/system/demo-article",
-      "page_name": "DemoArticlePage",
-      "view_file": "views/system/DemoArticlePage.vue",
-      "menu_title": "演示文章",
+      "route_path": "/system/demo-notice",
+      "page_name": "DemoNoticePage",
+      "view_file": "views/system/DemoNoticePage.vue",
+      "menu_title": "演示公告",
       "feature_flags": [
         "admin-crud",
         "codegen"
       ]
     },
     "api": {
-      "module_code": "demo_article",
-      "list": "/admin-api/demo_article/list",
-      "detail": "/admin-api/demo_article/detail",
-      "save": "/admin-api/demo_article/save",
-      "delete": "/admin-api/demo_article/delete"
+      "module_code": "demo_notice",
+      "list": "/admin-api/demo_notice/list",
+      "detail": "/admin-api/demo_notice/detail",
+      "save": "/admin-api/demo_notice/save",
+      "delete": "/admin-api/demo_notice/delete"
     },
     "inferred_fields": [
       {
@@ -95,20 +96,20 @@
         "data_type": "character varying",
         "is_nullable": false,
         "is_primary_key": false,
-        "column_comment": "文章标题",
-        "guessed_label": "文章标题",
+        "column_comment": "公告标题",
+        "guessed_label": "公告标题",
         "guessed_form_component": "text-input",
         "guessed_list_display": "text",
         "guessed_searchable": true,
         "guessed_sortable": true
       },
       {
-        "column_name": "summary",
+        "column_name": "content",
         "data_type": "text",
         "is_nullable": false,
         "is_primary_key": false,
-        "column_comment": "文章摘要",
-        "guessed_label": "文章摘要",
+        "column_comment": "公告内容",
+        "guessed_label": "公告内容",
         "guessed_form_component": "textarea",
         "guessed_list_display": "text",
         "guessed_searchable": true,
@@ -177,19 +178,20 @@
     "form_schema": [
       {
         "field": "title",
-        "label": "文章标题",
+        "label": "公告标题",
         "component": "text-input",
         "required": true,
-        "placeholder": "请输入文章标题",
+        "placeholder": "请输入公告标题",
         "width": "220px",
         "default_value": ""
       },
       {
-        "field": "summary",
-        "label": "文章摘要",
+        "field": "content",
+        "label": "公告内容",
         "component": "textarea",
         "required": true,
-        "placeholder": "请输入文章摘要，用于列表简介",
+        "placeholder": "请输入公告正文",
+        "width": "360px",
         "default_value": ""
       },
       {
@@ -236,20 +238,12 @@
       },
       {
         "field": "title",
-        "label": "文章标题",
+        "label": "公告标题",
         "component": "text-input",
         "display": "text",
         "searchable": true,
         "sortable": true,
         "width": "220px",
-        "default_value": ""
-      },
-      {
-        "field": "summary",
-        "label": "文章摘要",
-        "component": "textarea",
-        "display": "text",
-        "searchable": true,
         "default_value": ""
       },
       {
@@ -305,11 +299,11 @@
     "search_schema": [
       {
         "field": "title",
-        "label": "文章标题",
+        "label": "公告标题",
         "component": "text-input",
         "operator": "like",
         "searchable": true,
-        "placeholder": "请输入文章标题",
+        "placeholder": "请输入公告标题",
         "width": "220px",
         "default_value": ""
       },
@@ -340,19 +334,19 @@
     ]
   },
   "permission_codes": [
-    "demo_article.list",
-    "demo_article.save",
-    "demo_article.delete"
+    "demo_notice.list",
+    "demo_notice.save",
+    "demo_notice.delete"
   ],
-  "route_path": "/system/demo-article",
+  "route_path": "/system/demo-notice",
   "generated_files": [
-    "internal/modules/demo_article/model.go",
-    "internal/modules/demo_article/types.go",
-    "internal/modules/demo_article/module.go",
-    "internal/modules/demo_article/meta.go",
-    "internal/modules/demo_article/codegen.lock.json",
-    "vben-admin/apps/admin/src/api/demo_article.ts",
-    "vben-admin/apps/admin/src/views/system/DemoArticlePage.vue",
+    "internal/modules/demo_notice/model.go",
+    "internal/modules/demo_notice/types.go",
+    "internal/modules/demo_notice/module.go",
+    "internal/modules/demo_notice/meta.go",
+    "internal/modules/demo_notice/codegen.lock.json",
+    "vben-admin/apps/admin/src/api/demo_notice.ts",
+    "vben-admin/apps/admin/src/views/system/DemoNoticePage.vue",
     "internal/gen/modules_gen.go",
     "vben-admin/apps/admin/src/generated/routes.ts"
   ]

@@ -13,6 +13,7 @@ import (
 	attachment "github.com/lvjiaben/goweb-scaffold/internal/modules/attachment"
 	codegen "github.com/lvjiaben/goweb-scaffold/internal/modules/codegen"
 	demo_article "github.com/lvjiaben/goweb-scaffold/internal/modules/demo_article"
+	demo_notice "github.com/lvjiaben/goweb-scaffold/internal/modules/demo_notice"
 	system_config "github.com/lvjiaben/goweb-scaffold/internal/modules/system_config"
 )
 
@@ -29,5 +30,6 @@ func RegisterModules(runtime *bootstrap.Runtime) error {
 		app_user.Module{},
 		codegen.Module{},
 		demo_article.Module{},
+		demo_notice.Module{},
 	)
 }
