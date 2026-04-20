@@ -13,6 +13,7 @@ import (
 
 	"github.com/lvjiaben/goweb-scaffold/internal/gen/service"
 	gentemplates "github.com/lvjiaben/goweb-scaffold/internal/gen/templates"
+	"github.com/lvjiaben/goweb-scaffold/internal/releaseinfo"
 )
 
 type CLIBackend interface {
@@ -104,6 +105,8 @@ func (c *CLI) Run(args []string) int {
 		return c.runMigrateSource(args[1:])
 	case "batch":
 		return c.runBatch(args[1:])
+	case "version":
+		return c.runVersion(args[1:])
 	case "-h", "--help", "help":
 		c.writeUsage()
 		return 0
@@ -769,6 +772,32 @@ func (c *CLI) runBatch(args []string) int {
 	return 0
 }
 
+func (c *CLI) runVersion(args []string) int {
+	common, err := parseSimpleCommand("version", args)
+	if err != nil {
+		return c.fail("text", err)
+	}
+	root, err := releaseinfo.DetectRepoRoot("")
+	if err != nil {
+		return c.fail(common.format, err)
+	}
+	info, err := releaseinfo.LoadVersionInfo(root)
+	if err != nil {
+		return c.fail(common.format, err)
+	}
+	if common.format == "json" {
+		return c.writeJSON(info, common.outputPath)
+	}
+	_, _ = fmt.Fprintf(c.stdout, "repo=%s\nversion=%s\ntemplate_version=%s\ncompatible_core=%s\nsupported_template_versions=%s\n",
+		info.Repo,
+		info.Version,
+		info.TemplateVersion,
+		info.CompatibleCore,
+		strings.Join(info.SupportedTemplateVersions, ", "),
+	)
+	return 0
+}
+
 func parseSimpleCommand(name string, args []string) (commonFlags, error) {
 	var common commonFlags
 	fs := newFlagSet(name)
@@ -853,6 +882,7 @@ Subcommands:
   templates
   migrate-source
   batch
+  version
 `)
 }
 

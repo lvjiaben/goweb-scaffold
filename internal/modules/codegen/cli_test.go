@@ -186,6 +186,27 @@ func TestCLIMigrateSourceOutputsJSON(t *testing.T) {
 	}
 }
 
+func TestCLIVersionOutputsJSON(t *testing.T) {
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+
+	code := NewCLI(&fakeCLIBackend{}, &stdout, &stderr).Run([]string{"version", "-format", "json"})
+	if code != 0 {
+		t.Fatalf("expected success, got code=%d stderr=%s", code, stderr.String())
+	}
+
+	var payload map[string]any
+	if err := json.Unmarshal(stdout.Bytes(), &payload); err != nil {
+		t.Fatalf("decode version payload: %v", err)
+	}
+	if payload["repo"] != "goweb-scaffold" {
+		t.Fatalf("unexpected version payload: %+v", payload)
+	}
+	if payload["template_version"] != "v7" {
+		t.Fatalf("unexpected template version payload: %+v", payload)
+	}
+}
+
 func TestCLIBatchOutputsJSON(t *testing.T) {
 	backend := &fakeCLIBackend{
 		batchResult: BatchResult{

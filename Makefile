@@ -28,6 +28,12 @@ build-admin:
 build-user:
 	cd vben-admin/apps/user && npm run build
 
+print-version:
+	go run ./cmd/codegen version -format text
+
+release-check:
+	go run ./cmd/releasecheck -format text
+
 codegen-tables:
 	go run ./cmd/codegen tables -config $(CONFIG) -format $(FORMAT)
 

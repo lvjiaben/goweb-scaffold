@@ -2,6 +2,22 @@
 
 `goweb-scaffold` 是可直接运行的业务脚手架，运行时依赖 `goweb-core`。
 
+## 当前版本
+
+- repo version: `v0.9.0-rc.1`
+- template version: `v7`
+- compatible core: `goweb-core v0.9.0-rc.1` / `v0.9.x`
+- 发布状态：release candidate，不是 final stable
+
+## 文档入口
+
+- [Versioning](docs/versioning.md)
+- [Compatibility](docs/compatibility.md)
+- [Release Policy](docs/releases/RELEASE_POLICY.md)
+- [Release Checklist](docs/releases/RELEASE_CHECKLIST.md)
+- [Release Notes](docs/releases/v0.9.0-rc.1.md)
+- [Upgrade Guide](docs/upgrade/UPGRADE_v0.9.0-rc.1.md)
+
 ## 目录
 
 - `cmd/server`：HTTP 服务入口
@@ -332,6 +348,8 @@ CLI 不走本地 HTTP，而是直接复用当前 codegen runner / generator serv
   把旧版 lock/export 做模板迁移并输出迁移后的视图
 - `batch`
   读取 `codegen.plan.json`，按计划批量 preview、diff、generate、regenerate、remove、export 或 check-breaking
+- `version`
+  输出当前 repo version、template version、兼容 core 版本和支持的 template version
 
 ### 通用参数
 
@@ -513,6 +531,12 @@ go run ./cmd/codegen import -config configs/config.yaml -from /tmp/demo_article.
 go run ./cmd/codegen templates -format text
 ```
 
+查看当前版本信息：
+
+```bash
+go run ./cmd/codegen version -format json
+```
+
 迁移旧 source：
 
 ```bash
@@ -624,6 +648,19 @@ go run ./cmd/codegen batch -config configs/config.yaml -plan examples/codegen/de
 11. `remove`
 12. `import` 或 `regenerate`
 
+## 发布治理
+
+当前阶段已经补齐：
+
+- `VERSION`
+- `CHANGELOG.md`
+- `docs/versioning.md`
+- `docs/compatibility.md`
+- `docs/releases/*`
+- `docs/upgrade/*`
+- `make release-check`
+- `go run ./cmd/codegen version -format json`
+
 ### `check-breaking` 判定规则
 
 `level` 只会返回：
@@ -727,6 +764,8 @@ make test
 make build
 make build-admin
 make build-user
+make print-version
+make release-check
 make codegen-tables
 make codegen-modules
 make codegen-preview MODULE=demo_article TABLE=demo_article
