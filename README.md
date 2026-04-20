@@ -105,7 +105,6 @@ npm run dev
 - `AdminMenuPage`：菜单树、按钮节点、父级菜单维护
 - `SystemConfigPage`：系统配置列表与弹窗表单
 - `AttachmentPage`：上传、预览、复制 URL、删除
-- `CodegenPage`：业务表元数据、字段级配置、preview、diff、真实生成、regenerate、历史记录、结果面板
 - `CodegenPage`：业务表元数据、字段级配置、preview、diff、真实生成、regenerate、模块列表、lock 摘要、remove 生命周期面板
 - `DemoArticlePage`：由 codegen 生成的样例 CRUD 页面
 - `ForbiddenView`：无权限或不可访问路由兜底页
@@ -213,6 +212,178 @@ npm run dev
   扫描所有 `codegen.lock.json`，返回当前已生成模块列表与 lock 摘要
 - `POST /admin-api/codegen/remove`
   安全卸载生成模块，只删除生成器管理的文件，并可选择移除菜单权限、历史记录、lock 与注册项
+
+## Codegen CLI
+
+第七阶段新增正式 CLI 入口：
+
+- `cmd/codegen/main.go`
+
+CLI 不走本地 HTTP，而是直接复用当前 codegen runner / generator service。
+
+### 子命令
+
+- `tables`
+  列出当前业务表，显示 `table_name`、`display_name`、`table_comment`
+- `modules`
+  列出当前已生成模块，显示 `module_name`、`table_name`、`generated_at`、`template_version`、`route_path`
+- `preview`
+  读取表结构和 payload，输出 preview
+- `diff`
+  不写盘，只输出本次 diff
+- `generate`
+  真生成 admin CRUD 文件
+- `regenerate`
+  按 `module_name` 或 `history_id` 再生
+- `remove`
+  卸载模块
+- `export`
+  导出 lock / payload / preview 摘要为独立 JSON
+- `import`
+  从 export 或 lock 导入，可直接 preview、diff 或 generate
+
+### 通用参数
+
+- `-config`
+  配置文件路径，默认 `configs/config.yaml`
+- `-format`
+  输出格式，支持 `text` / `json`
+- `-output`
+  把 JSON 结果额外写到文件
+
+### 输入优先级
+
+涉及 `preview` / `diff` / `generate` / `import` 的命令统一支持三种输入来源：
+
+1. `-from`
+   先读取 export 或 lock 文件，作为基础输入
+2. `-module` / `-table`
+   如果显式传入，会覆盖 `-from` 中的模块名或表名
+3. `-payload`
+   如果显式传入 payload JSON 文件，会覆盖 `-from` 中的 payload
+
+简化理解：
+
+- `-from` 提供默认值
+- `-module`、`-table`、`-payload` 提供显式覆盖
+
+### payload 文件格式
+
+```json
+{
+  "title": "演示文章",
+  "list_fields": ["id", "title", "status", "created_at"],
+  "form_fields": ["title", "summary", "status"],
+  "search_fields": ["title", "status"],
+  "field_overrides": {
+    "title": {
+      "label": "文章标题",
+      "placeholder": "请输入文章标题",
+      "width": "220px"
+    }
+  }
+}
+```
+
+### export 文件格式
+
+```json
+{
+  "generated_by": "goweb-scaffold",
+  "format": "codegen-export",
+  "version": "v1",
+  "module_name": "demo_article",
+  "table_name": "demo_article",
+  "template_version": "v5",
+  "payload": {},
+  "preview_summary": {},
+  "permission_codes": ["demo_article.list", "demo_article.save", "demo_article.delete"],
+  "route_path": "/system/demo-article"
+}
+```
+
+说明：
+
+- `lock`
+  是生成器内部文件，位于模块目录内，用于稳定再生
+- `export`
+  是可迁移、可拷贝到其他仓库或终端环境的外部文件
+
+### CLI 示例
+
+列出业务表：
+
+```bash
+go run ./cmd/codegen tables -config configs/config.yaml
+```
+
+列出已生成模块：
+
+```bash
+go run ./cmd/codegen modules -config configs/config.yaml
+```
+
+输出 preview JSON：
+
+```bash
+go run ./cmd/codegen preview -config configs/config.yaml -module demo_article -table demo_article --format json
+```
+
+从 export 文件做 diff：
+
+```bash
+go run ./cmd/codegen diff -config configs/config.yaml -from /tmp/demo_article.codegen.json --format json
+```
+
+真实生成：
+
+```bash
+go run ./cmd/codegen generate -config configs/config.yaml -module demo_article -table demo_article -payload /tmp/demo_article.payload.json
+```
+
+按模块再生：
+
+```bash
+go run ./cmd/codegen regenerate -config configs/config.yaml -module demo_article --format json
+```
+
+卸载模块：
+
+```bash
+go run ./cmd/codegen remove -config configs/config.yaml -module demo_article --format json
+```
+
+导出：
+
+```bash
+go run ./cmd/codegen export -config configs/config.yaml -module demo_article -output /tmp/demo_article.codegen.json
+```
+
+导入后只做 preview / diff：
+
+```bash
+go run ./cmd/codegen import -config configs/config.yaml -from /tmp/demo_article.codegen.json --format json
+go run ./cmd/codegen import -config configs/config.yaml -from /tmp/demo_article.codegen.json -diff --format json
+```
+
+导入后直接 generate：
+
+```bash
+go run ./cmd/codegen import -config configs/config.yaml -from /tmp/demo_article.codegen.json -generate --format json
+```
+
+### 终端完整链路
+
+终端里现在可以完整走这条链路：
+
+1. `tables`
+2. `preview`
+3. `diff`
+4. `generate`
+5. `modules`
+6. `export`
+7. `remove`
+8. `import` 或 `regenerate`
 
 ### 字段级 overrides 结构
 
@@ -340,6 +511,13 @@ make test
 make build
 make build-admin
 make build-user
+make codegen-tables
+make codegen-modules
+make codegen-preview MODULE=demo_article TABLE=demo_article
+make codegen-diff MODULE=demo_article FROM=/tmp/demo_article.codegen.json FORMAT=json
+make codegen-generate MODULE=demo_article TABLE=demo_article PAYLOAD=/tmp/demo_article.payload.json
+make codegen-regenerate MODULE=demo_article FORMAT=json
+make codegen-remove MODULE=demo_article FORMAT=json
 ```
 
 ### 当前样例

@@ -28,7 +28,13 @@ type tableInfo struct {
 	TableComment string `json:"table_comment" gorm:"column:table_comment"`
 }
 
-func listBusinessTables(runtime *bootstrap.Runtime) ([]map[string]any, error) {
+type BusinessTable struct {
+	TableName    string `json:"table_name"`
+	DisplayName  string `json:"display_name"`
+	TableComment string `json:"table_comment,omitempty"`
+}
+
+func listBusinessTables(runtime *bootstrap.Runtime) ([]BusinessTable, error) {
 	var rows []tableInfo
 	if err := runtime.DB.Raw(`
 SELECT
@@ -41,7 +47,7 @@ ORDER BY t.table_name ASC`).Scan(&rows).Error; err != nil {
 		return nil, err
 	}
 
-	items := make([]map[string]any, 0, len(rows))
+	items := make([]BusinessTable, 0, len(rows))
 	for _, row := range rows {
 		if isExcludedTable(row.TableName) {
 			continue
@@ -50,10 +56,10 @@ ORDER BY t.table_name ASC`).Scan(&rows).Error; err != nil {
 		if displayName == "" {
 			displayName = row.TableName
 		}
-		items = append(items, map[string]any{
-			"table_name":    row.TableName,
-			"display_name":  displayName,
-			"table_comment": strings.TrimSpace(row.TableComment),
+		items = append(items, BusinessTable{
+			TableName:    row.TableName,
+			DisplayName:  displayName,
+			TableComment: strings.TrimSpace(row.TableComment),
 		})
 	}
 	return items, nil
