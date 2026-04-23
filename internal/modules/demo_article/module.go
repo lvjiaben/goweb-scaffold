@@ -15,10 +15,11 @@ type Module struct{}
 func (Module) Name() string { return GeneratedModuleName }
 
 func (Module) Register(runtime *bootstrap.Runtime) error {
-	runtime.AdminProtectedGroup.GET("/demo_article/list", list(runtime), httpx.WithPermission("demo_article.list"))
-	runtime.AdminProtectedGroup.GET("/demo_article/detail", detail(runtime), httpx.WithPermission("demo_article.list"))
-	runtime.AdminProtectedGroup.POST("/demo_article/save", save(runtime), httpx.WithPermission("demo_article.save"))
-	runtime.AdminProtectedGroup.POST("/demo_article/delete", deleteRows(runtime), httpx.WithPermission("demo_article.delete"))
+	group := runtime.BackendProtectedGroup.Group("/app/demo_article")
+	group.GET("/list", list(runtime), httpx.WithPermission("demo_article.list"))
+	group.GET("/detail", detail(runtime), httpx.WithPermission("demo_article.list"))
+	group.POST("/save", save(runtime), httpx.WithPermission("demo_article.save"))
+	group.POST("/delete", deleteRows(runtime), httpx.WithPermission("demo_article.delete"))
 	return nil
 }
 

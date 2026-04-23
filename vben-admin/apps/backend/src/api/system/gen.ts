@@ -197,7 +197,7 @@ function normalizeConfig(
 async function getTableList(params?: { search?: string }) {
   const response = await requestClient.get<{
     list?: GenApi.TableInfo[];
-  }>('/codegen/tables');
+  }>('/system/codegen/tables');
   const keyword = params?.search?.trim().toLowerCase();
   return (response?.list ?? []).filter((item) => {
     if (!keyword) {
@@ -216,7 +216,7 @@ async function getTableList(params?: { search?: string }) {
 async function getTableInfo(params: { table_name: string }) {
   const response = await requestClient.get<{
     list?: Array<Record<string, any>>;
-  }>('/codegen/table-columns', { params });
+  }>('/system/codegen/table-columns', { params });
   return response?.list ?? [];
 }
 
@@ -227,7 +227,7 @@ async function getTableConfig(params: { table_name: string }) {
   const response = await requestClient.get<{
     list?: Array<Record<string, any>>;
   }>(
-    '/codegen/table-columns',
+    '/system/codegen/table-columns',
     {
       params,
     },
@@ -247,7 +247,7 @@ async function getTableConfig(params: { table_name: string }) {
  */
 async function previewCode(data: { config: GenApi.GenConfig }) {
   const config = data.config;
-  const response = await requestClient.post<any>('/codegen/preview', {
+  const response = await requestClient.post<any>('/system/codegen/preview', {
     module_name: config.module_name,
     payload: {
       field_overrides: {},
@@ -295,7 +295,7 @@ async function previewCode(data: { config: GenApi.GenConfig }) {
  */
 async function generateCode(data: { config: GenApi.GenConfig }) {
   const config = data.config;
-  return requestClient.post('/codegen/generate', {
+  return requestClient.post('/system/codegen/generate', {
     module_name: config.module_name,
     overwrite: true,
     payload: {
@@ -317,7 +317,7 @@ async function generateCode(data: { config: GenApi.GenConfig }) {
 async function getHistory() {
   const response = await requestClient.get<{
     list?: Array<Record<string, any>>;
-  }>('/codegen/list');
+  }>('/system/codegen/list');
   return (response?.list ?? []).map((item) => ({
     config: toPretty(item.payload ?? {}),
     created_at: Date.parse(item.created_at ?? '') || 0,
@@ -336,7 +336,7 @@ async function getHistory() {
  * 删除生成的代码
  */
 async function deleteGenerated(data: { id: number }) {
-  return requestClient.post('/codegen/delete', data);
+  return requestClient.post('/system/codegen/delete', data);
 }
 
 /**
@@ -344,7 +344,7 @@ async function deleteGenerated(data: { id: number }) {
  */
 async function downloadCode(data: { config: GenApi.GenConfig }): Promise<Blob> {
   const config = data.config;
-  const exportPayload = await requestClient.get<any>('/codegen/export', {
+  const exportPayload = await requestClient.get<any>('/system/codegen/export', {
     params: { module_name: config.module_name },
   });
   return new Blob([JSON.stringify(exportPayload, null, 2)], {

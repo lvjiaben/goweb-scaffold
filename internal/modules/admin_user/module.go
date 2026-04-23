@@ -28,10 +28,11 @@ type saveRequest struct {
 func (Module) Name() string { return "admin_user" }
 
 func (Module) Register(runtime *bootstrap.Runtime) error {
-	runtime.AdminProtectedGroup.GET("/admin_user/list", list(runtime), httpx.WithPermission("admin_user.list"))
-	runtime.AdminProtectedGroup.GET("/admin_user/detail", detail(runtime), httpx.WithPermission("admin_user.list"))
-	runtime.AdminProtectedGroup.POST("/admin_user/save", save(runtime), httpx.WithPermission("admin_user.save"))
-	runtime.AdminProtectedGroup.POST("/admin_user/delete", deleteUsers(runtime), httpx.WithPermission("admin_user.delete"))
+	group := runtime.BackendProtectedGroup.Group("/admin/user")
+	group.GET("/list", list(runtime), httpx.WithPermission("admin_user.list"))
+	group.GET("/detail", detail(runtime), httpx.WithPermission("admin_user.list"))
+	group.POST("/save", save(runtime), httpx.WithPermission("admin_user.save"))
+	group.POST("/delete", deleteUsers(runtime), httpx.WithPermission("admin_user.delete"))
 	return nil
 }
 

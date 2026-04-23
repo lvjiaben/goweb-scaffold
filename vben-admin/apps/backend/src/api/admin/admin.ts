@@ -74,7 +74,7 @@ async function getAdminList(params: AdminAdminApi.ListParams) {
     list?: Array<Record<string, any>>;
     page?: number;
     total?: number;
-  }>('/admin_user/list', { params });
+  }>('/admin/user/list', { params });
   return {
     limit: Number(response?.limit ?? params.page_size ?? 10),
     list: (response?.list ?? []).map(normalizeAdmin),
@@ -85,7 +85,7 @@ async function getAdminList(params: AdminAdminApi.ListParams) {
 
 async function getAdminDetail(id: number) {
   const response = await requestClient.get<Record<string, any>>(
-    '/admin_user/detail',
+    '/admin/user/detail',
     { params: { id } },
   );
   return normalizeAdmin(response ?? {});
@@ -111,11 +111,11 @@ async function saveAdmin(
   if (!payload.password) {
     delete payload.password;
   }
-  return requestClient.post('/admin_user/save', payload);
+  return requestClient.post('/admin/user/save', payload);
 }
 
 async function deleteAdmin(data: { ids: number[] }) {
-  return requestClient.post('/admin_user/delete', data);
+  return requestClient.post('/admin/user/delete', data);
 }
 
 export { deleteAdmin, getAdminDetail, getAdminList, saveAdmin };

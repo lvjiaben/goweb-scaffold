@@ -15,10 +15,11 @@ type Module struct{}
 func (Module) Name() string { return "attachment" }
 
 func (Module) Register(runtime *bootstrap.Runtime) error {
-	runtime.AdminProtectedGroup.POST("/attachment/upload", upload(runtime), httpx.WithPermission("attachment.upload"))
-	runtime.AdminProtectedGroup.GET("/attachment/directories", directories(runtime), httpx.WithPermission("attachment.list"))
-	runtime.AdminProtectedGroup.GET("/attachment/list", list(runtime), httpx.WithPermission("attachment.list"))
-	runtime.AdminProtectedGroup.POST("/attachment/delete", deleteFiles(runtime), httpx.WithPermission("attachment.delete"))
+	group := runtime.BackendProtectedGroup.Group("/system/attachment")
+	group.POST("/upload", upload(runtime), httpx.WithPermission("attachment.upload"))
+	group.GET("/directories", directories(runtime), httpx.WithPermission("attachment.list"))
+	group.GET("/list", list(runtime), httpx.WithPermission("attachment.list"))
+	group.POST("/delete", deleteFiles(runtime), httpx.WithPermission("attachment.delete"))
 	return nil
 }
 

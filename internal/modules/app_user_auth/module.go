@@ -32,11 +32,13 @@ type loginRequest struct {
 func (Module) Name() string { return "app_user_auth" }
 
 func (Module) Register(runtime *bootstrap.Runtime) error {
-	runtime.AppPublicGroup.POST("/login", login(runtime))
-	runtime.AppPublicGroup.POST("/register", register(runtime))
-	runtime.AppAuthGroup.POST("/logout", logout(runtime))
-	runtime.Engine.Group("/api/user").POST("/login", login(runtime))
-	runtime.AppUserGroup.POST("/logout", logout(runtime))
+	public := runtime.AppPublicGroup.Group("/auth")
+	authed := runtime.AppAuthedGroup.Group("/auth")
+	public.POST("/login", login(runtime))
+	public.POST("/register", register(runtime))
+	authed.POST("/logout", logout(runtime))
+	runtime.AppPublicGroup.Group("/user").POST("/login", login(runtime))
+	runtime.AppProtectedGroup.Group("/user").POST("/logout", logout(runtime))
 	return nil
 }
 

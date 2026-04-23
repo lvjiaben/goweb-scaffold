@@ -62,7 +62,7 @@ async function getDemoArticleList(params: DemoArticleApi.ListParams) {
     list?: Array<Record<string, any>>;
     page?: number;
     total?: number;
-  }>('/demo_article/list', { params });
+  }>('/app/demo_article/list', { params });
   return {
     limit: Number(response?.limit ?? params.page_size ?? 10),
     list: (response?.list ?? []).map(normalizeDemoArticle),
@@ -72,7 +72,7 @@ async function getDemoArticleList(params: DemoArticleApi.ListParams) {
 }
 
 async function getDemoArticleDetail(id: number) {
-  const response = await requestClient.get<Record<string, any>>('/demo_article/detail', {
+  const response = await requestClient.get<Record<string, any>>('/app/demo_article/detail', {
     params: { id },
   });
   return normalizeDemoArticle(response ?? {});
@@ -91,11 +91,11 @@ async function saveDemoArticle(
   if (id > 0) {
     payload.id = id;
   }
-  return requestClient.post('/demo_article/save', payload);
+  return requestClient.post('/app/demo_article/save', payload);
 }
 
 async function deleteDemoArticle(data: { ids: number[] }) {
-  return requestClient.post('/demo_article/delete', data);
+  return requestClient.post('/app/demo_article/delete', data);
 }
 
 export { deleteDemoArticle, getDemoArticleDetail, getDemoArticleList, saveDemoArticle };

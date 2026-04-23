@@ -25,11 +25,12 @@ type saveRequest struct {
 func (Module) Name() string { return "admin_role" }
 
 func (Module) Register(runtime *bootstrap.Runtime) error {
-	runtime.AdminProtectedGroup.GET("/admin_role/list", list(runtime), httpx.WithPermission("admin_role.list"))
-	runtime.AdminProtectedGroup.GET("/admin_role/detail", detail(runtime), httpx.WithPermission("admin_role.list"))
-	runtime.AdminProtectedGroup.GET("/admin_role/options", options(runtime), httpx.WithPermission("admin_user.save"))
-	runtime.AdminProtectedGroup.POST("/admin_role/save", save(runtime), httpx.WithPermission("admin_role.save"))
-	runtime.AdminProtectedGroup.POST("/admin_role/delete", deleteRoles(runtime), httpx.WithPermission("admin_role.delete"))
+	group := runtime.BackendProtectedGroup.Group("/admin/role")
+	group.GET("/list", list(runtime), httpx.WithPermission("admin_role.list"))
+	group.GET("/detail", detail(runtime), httpx.WithPermission("admin_role.list"))
+	group.GET("/options", options(runtime), httpx.WithPermission("admin_user.save"))
+	group.POST("/save", save(runtime), httpx.WithPermission("admin_role.save"))
+	group.POST("/delete", deleteRoles(runtime), httpx.WithPermission("admin_role.delete"))
 	return nil
 }
 
@@ -91,13 +92,13 @@ func list(runtime *bootstrap.Runtime) httpx.HandlerFunc {
 		items := make([]map[string]any, 0, len(roles))
 		for _, role := range roles {
 			items = append(items, map[string]any{
-				"id":         role.ID,
-				"name":       role.Name,
-				"code":       role.Code,
+				"id":          role.ID,
+				"name":        role.Name,
+				"code":        role.Code,
 				"description": role.Code,
-				"status":     role.Status,
-				"created_at": role.CreatedAt,
-				"updated_at": role.UpdatedAt,
+				"status":      role.Status,
+				"created_at":  role.CreatedAt,
+				"updated_at":  role.UpdatedAt,
 			})
 		}
 
@@ -126,14 +127,14 @@ func detail(runtime *bootstrap.Runtime) httpx.HandlerFunc {
 		}
 
 		c.Success(map[string]any{
-			"id":         role.ID,
-			"name":       role.Name,
-			"code":       role.Code,
+			"id":          role.ID,
+			"name":        role.Name,
+			"code":        role.Code,
 			"description": role.Code,
-			"status":     role.Status,
-			"menu_ids":   menuIDs,
-			"created_at": role.CreatedAt,
-			"updated_at": role.UpdatedAt,
+			"status":      role.Status,
+			"menu_ids":    menuIDs,
+			"created_at":  role.CreatedAt,
+			"updated_at":  role.UpdatedAt,
 		})
 	}
 }

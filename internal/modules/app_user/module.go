@@ -25,9 +25,10 @@ type passwordChangeRequest struct {
 func (Module) Name() string { return "app_user" }
 
 func (Module) Register(runtime *bootstrap.Runtime) error {
-	runtime.AppUserGroup.GET("/profile", profile(runtime))
-	runtime.AppUserGroup.POST("/profile/save", profileSave(runtime))
-	runtime.AppUserGroup.POST("/password/change", passwordChange(runtime))
+	group := runtime.AppProtectedGroup.Group("/user")
+	group.GET("/profile", profile(runtime))
+	group.POST("/profile/save", profileSave(runtime))
+	group.POST("/password/change", passwordChange(runtime))
 	return nil
 }
 

@@ -62,7 +62,7 @@ async function getDemoNoticeList(params: DemoNoticeApi.ListParams) {
     list?: Array<Record<string, any>>;
     page?: number;
     total?: number;
-  }>('/demo_notice/list', { params });
+  }>('/app/demo_notice/list', { params });
   return {
     limit: Number(response?.limit ?? params.page_size ?? 10),
     list: (response?.list ?? []).map(normalizeDemoNotice),
@@ -72,7 +72,7 @@ async function getDemoNoticeList(params: DemoNoticeApi.ListParams) {
 }
 
 async function getDemoNoticeDetail(id: number) {
-  const response = await requestClient.get<Record<string, any>>('/demo_notice/detail', {
+  const response = await requestClient.get<Record<string, any>>('/app/demo_notice/detail', {
     params: { id },
   });
   return normalizeDemoNotice(response ?? {});
@@ -91,11 +91,11 @@ async function saveDemoNotice(
   if (id > 0) {
     payload.id = id;
   }
-  return requestClient.post('/demo_notice/save', payload);
+  return requestClient.post('/app/demo_notice/save', payload);
 }
 
 async function deleteDemoNotice(data: { ids: number[] }) {
-  return requestClient.post('/demo_notice/delete', data);
+  return requestClient.post('/app/demo_notice/delete', data);
 }
 
 export { deleteDemoNotice, getDemoNoticeDetail, getDemoNoticeList, saveDemoNotice };

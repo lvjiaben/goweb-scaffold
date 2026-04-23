@@ -78,7 +78,7 @@ function createRequestClient(baseURL: string, options?: RequestClientOptions) {
       if (data?.code === 401) {
         const authStore = useAuthStore();
         await authStore.logout(false);
-        const tip = data?.msg ?? data?.message;
+        const tip = data?.message;
         if (tip) {
           message.error(tip);
         }
@@ -93,7 +93,7 @@ function createRequestClient(baseURL: string, options?: RequestClientOptions) {
     defaultResponseInterceptor({
       codeField: 'code',
       dataField: 'data',
-      successCode: 0,
+      successCode: 200,
     }),
   );
 
@@ -115,7 +115,7 @@ function createRequestClient(baseURL: string, options?: RequestClientOptions) {
       // 当前mock接口返回的错误字段是 error 或者 message
       const responseData = error?.response?.data ?? {};
       const errorMessage =
-        responseData?.error ?? responseData?.msg ?? responseData?.message ?? '';
+        responseData?.error ?? responseData?.message ?? '';
       // 如果没有错误信息，则会根据状态码进行提示
       message.error(errorMessage || msg);
     }),

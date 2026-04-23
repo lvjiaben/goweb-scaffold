@@ -22,22 +22,20 @@ func TestRegisteredRouteMethods(t *testing.T) {
 		AppJWT:         coreauth.NewManager(coreauth.JWTConfig{Secret: "test-app-secret"}),
 		CaptchaService: bootstrap.NewCaptchaService(0),
 	}
-	runtime.AdminPublicGroup = engine.Group("/admin-api/auth")
-	runtime.AdminCommonGroup = engine.Group("/admin-api/common")
-	runtime.AdminAuthGroup = engine.Group("/admin-api/auth")
-	runtime.AdminProtectedGroup = engine.Group("/admin-api")
-	runtime.AppPublicGroup = engine.Group("/api/auth")
-	runtime.AppCommonGroup = engine.Group("/api/common")
-	runtime.AppAuthGroup = engine.Group("/api/auth")
-	runtime.AppUserGroup = engine.Group("/api/user")
+	runtime.BackendPublicGroup = engine.Group("/backend")
+	runtime.BackendAuthedGroup = engine.Group("/backend")
+	runtime.BackendProtectedGroup = engine.Group("/backend")
+	runtime.AppPublicGroup = engine.Group("/api")
+	runtime.AppAuthedGroup = engine.Group("/api")
+	runtime.AppProtectedGroup = engine.Group("/api")
 
 	if err := RegisterModules(runtime); err != nil {
 		t.Fatalf("register modules: %v", err)
 	}
 
-	assertRouteMethod(t, engine.Routes(), http.MethodPost, "/admin-api/common/captcha")
-	assertRouteMethod(t, engine.Routes(), http.MethodPost, "/admin-api/auth/login")
-	assertRouteMethod(t, engine.Routes(), http.MethodGet, "/admin-api/auth/me")
+	assertRouteMethod(t, engine.Routes(), http.MethodPost, "/backend/common/captcha")
+	assertRouteMethod(t, engine.Routes(), http.MethodPost, "/backend/auth/login")
+	assertRouteMethod(t, engine.Routes(), http.MethodGet, "/backend/auth/me")
 }
 
 func assertRouteMethod(t *testing.T, routes []*httpx.Route, method string, path string) {

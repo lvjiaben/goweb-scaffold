@@ -92,7 +92,7 @@ async function getDirectories() {
   const response = await requestClient.get<{
     list?: AttachmentApi.Directory[];
   }>(
-    '/attachment/directories',
+    '/system/attachment/directories',
   );
   return response?.list ?? [];
 }
@@ -108,7 +108,7 @@ async function getAttachmentList(params?: AttachmentApi.ListParams) {
     page_size?: number;
     total?: number;
   }>(
-    '/attachment/list',
+    '/system/attachment/list',
     { params },
   );
   return {
@@ -129,7 +129,7 @@ async function uploadAttachment(file: File, parent?: string) {
     formData.append('parent', parent);
   }
   return requestClient.post<AttachmentApi.Attachment>(
-    '/attachment/upload',
+    '/system/attachment/upload',
     formData,
     {
       headers: {
@@ -143,7 +143,7 @@ async function uploadAttachment(file: File, parent?: string) {
  * 删除附件
  */
 async function deleteAttachment(ids: number[]) {
-  return requestClient.post('/attachment/delete', { ids });
+  return requestClient.post('/system/attachment/delete', { ids });
 }
 
 export { deleteAttachment, getAttachmentList, getDirectories, uploadAttachment };

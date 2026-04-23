@@ -79,7 +79,7 @@ async function getRoleList(params: AdminRoleApi.ListParams) {
     list?: Array<Record<string, any>>;
     page?: number;
     total?: number;
-  }>('/admin_role/list', { params });
+  }>('/admin/role/list', { params });
   return {
     limit: Number(response?.limit ?? params.page_size ?? 10),
     list: (response?.list ?? []).map(normalizeRole),
@@ -90,7 +90,7 @@ async function getRoleList(params: AdminRoleApi.ListParams) {
 
 async function getRoleDetail(id: number) {
   const response = await requestClient.get<Record<string, any>>(
-    '/admin_role/detail',
+    '/admin/role/detail',
     { params: { id } },
   );
   return normalizeRole(response ?? {});
@@ -99,7 +99,7 @@ async function getRoleDetail(id: number) {
 async function getRoleOptions() {
   const response = await requestClient.get<{
     list?: Array<Record<string, any>>;
-  }>('/admin_role/options');
+  }>('/admin/role/options');
   return (response?.list ?? []).map((item) => ({
     id: Number(item.value ?? item.id ?? 0),
     name: item.label ?? item.name ?? '',
@@ -109,7 +109,7 @@ async function getRoleOptions() {
 async function getMenuTree() {
   const response = await requestClient.get<{
     list?: Array<Record<string, any>>;
-  }>('/admin_menu/tree');
+  }>('/admin/menu/tree');
   return (response?.list ?? []).map((item) => normalizeMenuTree(item));
 }
 
@@ -126,11 +126,11 @@ async function saveRole(
   if (id > 0) {
     payload.id = id;
   }
-  return requestClient.post('/admin_role/save', payload);
+  return requestClient.post('/admin/role/save', payload);
 }
 
 async function deleteRole(data: { ids: number[] }) {
-  return requestClient.post('/admin_role/delete', data);
+  return requestClient.post('/admin/role/delete', data);
 }
 
 export {

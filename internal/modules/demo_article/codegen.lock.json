@@ -73,10 +73,10 @@
     },
     "api": {
       "module_code": "demo_article",
-      "list": "/admin-api/demo_article/list",
-      "detail": "/admin-api/demo_article/detail",
-      "save": "/admin-api/demo_article/save",
-      "delete": "/admin-api/demo_article/delete"
+      "list": "/backend/app/demo_article/list",
+      "detail": "/backend/app/demo_article/detail",
+      "save": "/backend/app/demo_article/save",
+      "delete": "/backend/app/demo_article/delete"
     },
     "inferred_fields": [
       {

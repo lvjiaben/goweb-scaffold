@@ -58,7 +58,7 @@ function stringifyValue(value: any) {
 export async function getConfigList() {
   const response = await requestClient.get<{
     list?: Array<Record<string, any>>;
-  }>('/system_config/list');
+  }>('/system/config/list');
   const groups = new Map<string, ConfigApi.ConfigGroup>();
   for (const item of response?.list ?? []) {
     const dir = item.dir ?? 'system';
@@ -90,7 +90,7 @@ export async function getConfigList() {
  * 创建配置
  */
 export async function createConfig(data: Partial<ConfigApi.Config>) {
-  return requestClient.post('/system_config/save', {
+  return requestClient.post('/system/config/save', {
     config_key: data.key,
     config_name: data.name,
     config_value: data.value ?? '',
@@ -106,7 +106,7 @@ export async function updateConfigs(data: Record<string, any>) {
   const configs = Object.entries(data);
   await Promise.all(
     configs.map(([key, value]) =>
-      requestClient.post('/system_config/save', {
+      requestClient.post('/system/config/save', {
         config_key: key,
         config_name: key,
         config_value: stringifyValue(value),
@@ -121,5 +121,5 @@ export async function updateConfigs(data: Record<string, any>) {
  * 删除配置
  */
 export async function deleteConfig(id: number) {
-  return requestClient.post('/system_config/delete', { ids: [id] });
+  return requestClient.post('/system/config/delete', { ids: [id] });
 }

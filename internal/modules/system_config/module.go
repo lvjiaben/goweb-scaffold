@@ -24,10 +24,11 @@ type saveRequest struct {
 func (Module) Name() string { return "system_config" }
 
 func (Module) Register(runtime *bootstrap.Runtime) error {
-	runtime.AdminProtectedGroup.GET("/system_config/list", list(runtime), httpx.WithPermission("system_config.list"))
-	runtime.AdminProtectedGroup.GET("/system_config/detail", detail(runtime), httpx.WithPermission("system_config.list"))
-	runtime.AdminProtectedGroup.POST("/system_config/save", save(runtime), httpx.WithPermission("system_config.save"))
-	runtime.AdminProtectedGroup.POST("/system_config/delete", deleteConfigs(runtime), httpx.WithPermission("system_config.delete"))
+	group := runtime.BackendProtectedGroup.Group("/system/config")
+	group.GET("/list", list(runtime), httpx.WithPermission("system_config.list"))
+	group.GET("/detail", detail(runtime), httpx.WithPermission("system_config.list"))
+	group.POST("/save", save(runtime), httpx.WithPermission("system_config.save"))
+	group.POST("/delete", deleteConfigs(runtime), httpx.WithPermission("system_config.delete"))
 	return nil
 }
 

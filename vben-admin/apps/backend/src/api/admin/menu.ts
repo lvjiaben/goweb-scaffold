@@ -80,7 +80,7 @@ async function getMenuList(params: AdminMenuApi.ListParams) {
     list?: Array<Record<string, any>>;
     page?: number;
     total?: number;
-  }>('/admin_menu/list', { params });
+  }>('/admin/menu/list', { params });
   return {
     limit: Number(response?.limit ?? params.page_size ?? 10),
     list: (response?.list ?? []).map(normalizeMenu),
@@ -91,7 +91,7 @@ async function getMenuList(params: AdminMenuApi.ListParams) {
 
 async function getMenuDetail(id: number) {
   const response = await requestClient.get<Record<string, any>>(
-    '/admin_menu/detail',
+    '/admin/menu/detail',
     { params: { id } },
   );
   return normalizeMenu(response ?? {});
@@ -100,7 +100,7 @@ async function getMenuDetail(id: number) {
 async function getMenuOptions() {
   const response = await requestClient.get<{
     list?: Array<Record<string, any>>;
-  }>('/admin_menu/options');
+  }>('/admin/menu/options');
   return (response?.list ?? []).map((item) => normalizeMenu(item));
 }
 
@@ -127,11 +127,11 @@ async function saveMenu(
   if (id > 0) {
     payload.id = id;
   }
-  return requestClient.post('/admin_menu/save', payload);
+  return requestClient.post('/admin/menu/save', payload);
 }
 
 async function deleteMenu(data: { ids: number[] }) {
-  return requestClient.post('/admin_menu/delete', data);
+  return requestClient.post('/admin/menu/delete', data);
 }
 
 export { deleteMenu, getMenuDetail, getMenuList, getMenuOptions, saveMenu };

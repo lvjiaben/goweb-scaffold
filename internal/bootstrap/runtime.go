@@ -34,14 +34,12 @@ type Runtime struct {
 	CaptchaService    *CaptchaService
 	PermissionService *PermissionService
 
-	AdminPublicGroup    *httpx.Group
-	AdminCommonGroup    *httpx.Group
-	AdminAuthGroup      *httpx.Group
-	AdminProtectedGroup *httpx.Group
-	AppPublicGroup      *httpx.Group
-	AppCommonGroup      *httpx.Group
-	AppAuthGroup        *httpx.Group
-	AppUserGroup        *httpx.Group
+	BackendPublicGroup    *httpx.Group
+	BackendAuthedGroup    *httpx.Group
+	BackendProtectedGroup *httpx.Group
+	AppPublicGroup        *httpx.Group
+	AppAuthedGroup        *httpx.Group
+	AppProtectedGroup     *httpx.Group
 }
 
 func NewRuntime(configPath string) (*Runtime, error) {
@@ -95,15 +93,13 @@ func NewRuntime(configPath string) (*Runtime, error) {
 }
 
 func (r *Runtime) initGroups() {
-	r.AdminPublicGroup = r.Engine.Group("/admin-api/auth")
-	r.AdminCommonGroup = r.Engine.Group("/admin-api/common")
-	r.AdminAuthGroup = r.Engine.Group("/admin-api/auth", r.AdminAuthMiddleware())
-	r.AdminProtectedGroup = r.Engine.Group("/admin-api", r.AdminAuthMiddleware(), corerbac.RequirePermission(r.PermissionService))
+	r.BackendPublicGroup = r.Engine.Group("/backend")
+	r.BackendAuthedGroup = r.Engine.Group("/backend", r.AdminAuthMiddleware())
+	r.BackendProtectedGroup = r.Engine.Group("/backend", r.AdminAuthMiddleware(), corerbac.RequirePermission(r.PermissionService))
 
-	r.AppPublicGroup = r.Engine.Group("/api/auth")
-	r.AppCommonGroup = r.Engine.Group("/api/common")
-	r.AppAuthGroup = r.Engine.Group("/api/auth", r.AppUserAuthMiddleware())
-	r.AppUserGroup = r.Engine.Group("/api/user", r.AppUserAuthMiddleware())
+	r.AppPublicGroup = r.Engine.Group("/api")
+	r.AppAuthedGroup = r.Engine.Group("/api", r.AppUserAuthMiddleware())
+	r.AppProtectedGroup = r.Engine.Group("/api", r.AppUserAuthMiddleware())
 }
 
 func (r *Runtime) Handler() http.Handler {

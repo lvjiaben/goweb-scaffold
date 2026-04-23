@@ -74,10 +74,10 @@
     },
     "api": {
       "module_code": "demo_notice",
-      "list": "/admin-api/demo_notice/list",
-      "detail": "/admin-api/demo_notice/detail",
-      "save": "/admin-api/demo_notice/save",
-      "delete": "/admin-api/demo_notice/delete"
+      "list": "/backend/app/demo_notice/list",
+      "detail": "/backend/app/demo_notice/detail",
+      "save": "/backend/app/demo_notice/save",
+      "delete": "/backend/app/demo_notice/delete"
     },
     "inferred_fields": [
       {

@@ -59,12 +59,13 @@ type menuOption struct {
 func (Module) Name() string { return "admin_menu" }
 
 func (Module) Register(runtime *bootstrap.Runtime) error {
-	runtime.AdminProtectedGroup.GET("/admin_menu/list", list(runtime), httpx.WithPermission("admin_menu.list"))
-	runtime.AdminProtectedGroup.GET("/admin_menu/detail", detail(runtime), httpx.WithPermission("admin_menu.list"))
-	runtime.AdminProtectedGroup.GET("/admin_menu/tree", tree(runtime), httpx.WithPermission("admin_role.save|admin_menu.save"))
-	runtime.AdminProtectedGroup.GET("/admin_menu/options", options(runtime), httpx.WithPermission("admin_menu.save"))
-	runtime.AdminProtectedGroup.POST("/admin_menu/save", save(runtime), httpx.WithPermission("admin_menu.save"))
-	runtime.AdminProtectedGroup.POST("/admin_menu/delete", deleteMenus(runtime), httpx.WithPermission("admin_menu.delete"))
+	group := runtime.BackendProtectedGroup.Group("/admin/menu")
+	group.GET("/list", list(runtime), httpx.WithPermission("admin_menu.list"))
+	group.GET("/detail", detail(runtime), httpx.WithPermission("admin_menu.list"))
+	group.GET("/tree", tree(runtime), httpx.WithPermission("admin_role.save|admin_menu.save"))
+	group.GET("/options", options(runtime), httpx.WithPermission("admin_menu.save"))
+	group.POST("/save", save(runtime), httpx.WithPermission("admin_menu.save"))
+	group.POST("/delete", deleteMenus(runtime), httpx.WithPermission("admin_menu.delete"))
 	return nil
 }
 
