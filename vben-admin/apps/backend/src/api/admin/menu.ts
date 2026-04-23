@@ -1,86 +1,137 @@
 import { requestClient } from '#/api/request';
 
 export namespace AdminMenuApi {
-  /** 菜单类型集合 */
-  export const MenuTypes = [
-    'menu', 
-    'button',
-    'iframe',
-    'link',
-  ] as const;
+  export const MenuTypes = ['menu', 'button'] as const;
 
-  /** 系统菜单 */
   export interface AdminMenu {
     [key: string]: any;
-    /** 子级 */
     children?: AdminMenu[];
-    /** 组件 */
     component?: string;
-    /** 菜单ID */
+    created_at?: number;
+    icon?: string;
     id: number;
-    /** 菜单名称 */
     name: string;
-    /** 菜单名称 */
-    enname: string;
-    /** 路由路径 */
     path: string;
-    /** 父级ID */
-    pid: number;
-    /** 菜单类型 */
-    type: (typeof MenuTypes)[number];
-    /** 权限标识 */
     permission?: string;
-    /** 外部链接 */
-    external: string;
-    /** 固定在标签栏 */
-    fixed_tag: number;
-    /** 菜单图标 */
-    icon: string;
-    /** 内嵌Iframe的URL */
-    iframe: string;
-    /** 路由路径 */
-    route: string;
-    /** 显示标签 */
-    show_tag: number;
-    /** 是否可见 */
-    visible: number;
-    /** 排序 */
+    pid: number;
     sort: number;
+    status: number;
+    title: string;
+    type: (typeof MenuTypes)[number];
+    updated_at?: number;
+    visible: number;
+  }
+
+  export interface ListParams {
+    page: number;
+    page_size: number;
+    search?: string;
+    filter?: string;
+    sort_by?: string;
+    sort_order?: 'asc' | 'desc';
+  }
+
+  export interface ListResponse {
+    list: AdminMenu[];
+    total: number;
+    page: number;
+    limit: number;
   }
 }
 
-/**
- * 获取菜单数据列表
- */
-async function getMenuList() {
-  return requestClient.get<Array<AdminMenuApi.AdminMenu>>('/admin/menu/list');
+function toUnixTimestamp(value?: null | number | string) {
+  if (!value) {
+    return 0;
+  }
+  if (typeof value === 'number') {
+    return value > 1_000_000_000_000 ? Math.floor(value / 1000) : value;
+  }
+  const timestamp = Date.parse(value);
+  return Number.isNaN(timestamp) ? 0 : Math.floor(timestamp / 1000);
 }
 
-/**
- * 保存单个菜单
- * @param data 菜单数据
- */
+function normalizeMenu(row: Record<string, any>): AdminMenuApi.AdminMenu {
+  return {
+    children: Array.isArray(row.children)
+      ? row.children.map((item: Record<string, any>) => normalizeMenu(item))
+      : [],
+    component: row.component ?? '',
+    created_at: toUnixTimestamp(row.created_at),
+    icon: row.icon ?? '',
+    id: Number(row.id ?? row.value ?? 0),
+    name: row.name ?? row.title ?? row.label ?? '',
+    path: row.path ?? '',
+    permission: row.permission_code ?? row.permission ?? '',
+    pid: Number(row.parent_id ?? row.pid ?? 0),
+    sort: Number(row.sort ?? 0),
+    status: Number(row.status ?? 1),
+    title: row.title ?? row.label ?? row.name ?? '',
+    type: row.menu_type ?? row.type ?? 'menu',
+    updated_at: toUnixTimestamp(row.updated_at),
+    visible: Number(
+      typeof row.visible === 'boolean' ? (row.visible ? 1 : 0) : row.visible ?? 1,
+    ),
+  };
+}
+
+async function getMenuList(params: AdminMenuApi.ListParams) {
+  const response = await requestClient.get<{
+    limit?: number;
+    list?: Array<Record<string, any>>;
+    page?: number;
+    total?: number;
+  }>('/admin_menu/list', { params });
+  return {
+    limit: Number(response?.limit ?? params.page_size ?? 10),
+    list: (response?.list ?? []).map(normalizeMenu),
+    page: Number(response?.page ?? params.page ?? 1),
+    total: Number(response?.total ?? 0),
+  } satisfies AdminMenuApi.ListResponse;
+}
+
+async function getMenuDetail(id: number) {
+  const response = await requestClient.get<Record<string, any>>(
+    '/admin_menu/detail',
+    { params: { id } },
+  );
+  return normalizeMenu(response ?? {});
+}
+
+async function getMenuOptions() {
+  const response = await requestClient.get<{
+    list?: Array<Record<string, any>>;
+  }>('/admin_menu/options');
+  return (response?.list ?? []).map((item) => normalizeMenu(item));
+}
+
 async function saveMenu(
-  id: any,
-  data: Omit<AdminMenuApi.AdminMenu, 'children' | 'id'>,
+  id: number,
+  data: Omit<
+    AdminMenuApi.AdminMenu,
+    'children' | 'created_at' | 'id' | 'updated_at'
+  >,
 ) {
-  if(typeof id === 'number' && id>0){
-    data.id = id;
+  const payload: Record<string, any> = {
+    component: data.component ?? '',
+    icon: data.icon ?? '',
+    menu_type: data.type,
+    name: data.name,
+    parent_id: Number(data.pid ?? 0),
+    path: data.path ?? '',
+    permission_code: data.permission ?? '',
+    sort: Number(data.sort ?? 0),
+    status: Number(data.status ?? 1),
+    title: data.title,
+    visible: Number(data.visible ?? 1) === 1,
+  };
+  if (id > 0) {
+    payload.id = id;
   }
-  return requestClient.post('/admin/menu/save', data);
+  return requestClient.post('/admin_menu/save', payload);
 }
 
-
-/**
- * 删除菜单
- * @param id 菜单 ID
- */
-async function deleteMenu(id: number) {
-  return requestClient.post('/admin/menu/delete', { id });
+async function deleteMenu(data: { ids: number[] }) {
+  return requestClient.post('/admin_menu/delete', data);
 }
 
-export {
-  saveMenu,
-  deleteMenu,
-  getMenuList,
-};
+export { deleteMenu, getMenuDetail, getMenuList, getMenuOptions, saveMenu };

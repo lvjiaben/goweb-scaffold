@@ -21,10 +21,11 @@ type moduleItem struct {
 }
 
 type routeItem struct {
-	ModuleName     string
-	RoutePath      string
-	Title          string
-	ViewImportPath string
+	ModuleName string
+	RoutePath  string
+	PageName   string
+	Title      string
+	Component  string
 }
 
 func RenderBackendModulesFile(repoRoot string, upsertModules ...GeneratedModule) ([]byte, error) {
@@ -70,11 +71,19 @@ func RenderBackendModulesFileWithOptions(repoRoot string, upsertModules []Genera
 	return format.Source(content)
 }
 
-func RenderAdminRoutesFile(repoRoot string, upsertModules ...GeneratedModule) ([]byte, error) {
-	return RenderAdminRoutesFileWithOptions(repoRoot, upsertModules, nil)
+func RebuildBackendModulesFile(repoRoot string, upsertModules ...GeneratedModule) (string, string, error) {
+	content, err := RenderBackendModulesFileWithOptions(repoRoot, upsertModules, nil)
+	if err != nil {
+		return "", "", err
+	}
+	return writer.New(repoRoot).Write("internal/gen/modules_gen.go", content, true)
 }
 
-func RenderAdminRoutesFileWithOptions(repoRoot string, upsertModules []GeneratedModule, excludeModules []string) ([]byte, error) {
+func RenderFrontendRouteModule(repoRoot string, upsertModules ...GeneratedModule) ([]byte, error) {
+	return RenderFrontendRouteModuleWithOptions(repoRoot, upsertModules, nil)
+}
+
+func RenderFrontendRouteModuleWithOptions(repoRoot string, upsertModules []GeneratedModule, excludeModules []string) ([]byte, error) {
 	items, err := DiscoverGeneratedModules(repoRoot)
 	if err != nil {
 		return nil, err
@@ -84,11 +93,17 @@ func RenderAdminRoutesFileWithOptions(repoRoot string, upsertModules []Generated
 
 	routes := make([]routeItem, 0, len(items))
 	for _, item := range items {
+		component := strings.TrimPrefix(strings.TrimSuffix(item.ViewFile, ".vue"), "views/")
+		component = strings.TrimPrefix(component, "/")
+		if component == "" {
+			component = strings.TrimSpace(item.ModuleName) + "/list"
+		}
 		routes = append(routes, routeItem{
-			ModuleName:     item.ModuleName,
-			RoutePath:      item.RoutePath,
-			Title:          item.Title,
-			ViewImportPath: "@/views/system/" + item.PageName + ".vue",
+			ModuleName: item.ModuleName,
+			RoutePath:  item.RoutePath,
+			PageName:   item.PageName,
+			Title:      item.Title,
+			Component:  component,
 		})
 	}
 
@@ -99,20 +114,12 @@ func RenderAdminRoutesFileWithOptions(repoRoot string, upsertModules []Generated
 	})
 }
 
-func RebuildBackendModulesFile(repoRoot string, upsertModules ...GeneratedModule) (string, string, error) {
-	content, err := RenderBackendModulesFileWithOptions(repoRoot, upsertModules, nil)
+func RebuildFrontendRouteModule(repoRoot string, upsertModules ...GeneratedModule) (string, string, error) {
+	content, err := RenderFrontendRouteModuleWithOptions(repoRoot, upsertModules, nil)
 	if err != nil {
 		return "", "", err
 	}
-	return writer.New(repoRoot).Write("internal/gen/modules_gen.go", content, true)
-}
-
-func RebuildAdminRoutesFile(repoRoot string, upsertModules ...GeneratedModule) (string, string, error) {
-	content, err := RenderAdminRoutesFileWithOptions(repoRoot, upsertModules, nil)
-	if err != nil {
-		return "", "", err
-	}
-	return writer.New(repoRoot).Write("vben-admin/apps/admin/src/generated/routes.ts", content, true)
+	return writer.New(repoRoot).Write("vben-admin/apps/backend/src/router/routes/modules/generated.ts", content, true)
 }
 
 func mergeGeneratedModules(items []GeneratedModule, upsertModules ...GeneratedModule) []GeneratedModule {

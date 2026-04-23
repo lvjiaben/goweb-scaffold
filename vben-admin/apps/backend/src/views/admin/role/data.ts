@@ -1,7 +1,18 @@
-import type { OnActionClickFn, VxeTableGridOptions } from '#/adapter/vxe-table';
+import type { VbenFormProps } from '#/adapter/form';
+import type { VxeTableGridOptions } from '#/adapter/vxe-table';
 import type { AdminRoleApi } from '#/api/admin/role';
 
 import { $t } from '#/locales';
+
+function formatDateTime(cellValue?: null | number | string) {
+  if (!cellValue) {
+    return '-';
+  }
+  if (typeof cellValue === 'number') {
+    return new Date(cellValue * 1000).toLocaleString();
+  }
+  return new Date(cellValue).toLocaleString();
+}
 
 export function getRoleStatusOptions() {
   return [
@@ -10,71 +21,88 @@ export function getRoleStatusOptions() {
   ];
 }
 
-export function getRoleTypeOptions() {
+export function useSearchFormSchema(): VbenFormProps['schema'] {
   return [
-    { color: 'default', label: $t('admin.role.typeNormal'), value: 0 },
-    { color: 'warning', label: $t('admin.role.typeSuper'), value: 1 },
+    {
+      component: 'Input',
+      fieldName: 'id',
+      label: 'ID',
+    },
+    {
+      component: 'Input',
+      fieldName: 'name',
+      label: $t('admin.role.roleName'),
+    },
+    {
+      component: 'Input',
+      fieldName: 'code',
+      label: '角色编码',
+    },
+    {
+      component: 'Select',
+      componentProps: {
+        allowClear: true,
+        options: [
+          { label: $t('common.all'), value: '' },
+          { label: $t('common.enable'), value: '1' },
+          { label: $t('common.disable'), value: '0' },
+        ],
+      },
+      fieldName: 'status',
+      label: $t('admin.role.status'),
+    },
   ];
 }
 
-export function useColumns(
-  onActionClick: OnActionClickFn<AdminRoleApi.AdminRole>,
-): VxeTableGridOptions<AdminRoleApi.AdminRole>['columns'] {
+export function useColumns(): VxeTableGridOptions<AdminRoleApi.AdminRole>['columns'] {
   return [
+    {
+      type: 'checkbox',
+      width: 50,
+      align: 'center',
+      fixed: 'left',
+    },
+    {
+      align: 'center',
+      field: 'id',
+      title: 'ID',
+      width: 80,
+      sortable: true,
+    },
     {
       align: 'left',
       field: 'name',
-      treeNode: true,
-      title: $t('admin.role.name'),
+      title: $t('admin.role.roleName'),
+      minWidth: 160,
+    },
+    {
+      align: 'left',
+      field: 'code',
+      title: '角色编码',
+      minWidth: 180,
     },
     {
       align: 'center',
-      cellRender: { name: 'CellTag', options: getRoleTypeOptions() },
-      field: 'is_super',
-      title: $t('admin.role.type'),
-    },
-    {
-      align: 'center',
-      cellRender: { name: 'CellTag', options: getRoleStatusOptions() },
       field: 'status',
+      slots: { default: 'status' },
       title: $t('admin.role.status'),
-    },
-    {
-      align: 'center',
-      field: 'sort',
-      title: $t('common.sort'),
+      width: 100,
     },
     {
       align: 'center',
       field: 'created_at',
-      formatter: ({ cellValue }) => {
-        return new Date(cellValue * 1000).toLocaleString();
-      },
+      formatter: ({ cellValue }) => formatDateTime(cellValue),
       title: $t('common.createTime'),
+      width: 180,
+      sortable: true,
     },
     {
-      align: 'right',
-      cellRender: {
-        attrs: {
-          nameField: 'name',
-          onClick: onActionClick,
-        },
-        name: 'CellOperation',
-        options: [
-          {
-            code: 'edit',
-            show: (row: AdminRoleApi.AdminRole) => row.id !== 1,
-          },
-          {
-            code: 'delete', 
-            show: (row: AdminRoleApi.AdminRole) => row.id !== 1,
-          },
-        ],
-      },
       field: 'operation',
+      fixed: 'right',
       headerAlign: 'center',
-      showOverflow: false,
+      slots: { default: 'operation' },
       title: $t('admin.role.operation'),
+      width: 180,
     },
   ];
 }

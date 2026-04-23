@@ -16,6 +16,7 @@ func (Module) Name() string { return "attachment" }
 
 func (Module) Register(runtime *bootstrap.Runtime) error {
 	runtime.AdminProtectedGroup.POST("/attachment/upload", upload(runtime), httpx.WithPermission("attachment.upload"))
+	runtime.AdminProtectedGroup.GET("/attachment/directories", directories(runtime), httpx.WithPermission("attachment.list"))
 	runtime.AdminProtectedGroup.GET("/attachment/list", list(runtime), httpx.WithPermission("attachment.list"))
 	runtime.AdminProtectedGroup.POST("/attachment/delete", deleteFiles(runtime), httpx.WithPermission("attachment.delete"))
 	return nil
@@ -29,7 +30,13 @@ func upload(runtime *bootstrap.Runtime) httpx.HandlerFunc {
 			return
 		}
 
-		saved, err := runtime.FileStore.Save(file, header, time.Now().Format("20060102"))
+		parent := normalizeDirectory(c.Request.FormValue("parent"))
+		saveDir := time.Now().Format("20060102")
+		if parent != "" {
+			saveDir = parent
+		}
+
+		saved, err := runtime.FileStore.Save(file, header, saveDir)
 		if err != nil {
 			c.Error(err)
 			return
@@ -65,20 +72,62 @@ func upload(runtime *bootstrap.Runtime) httpx.HandlerFunc {
 		c.Success(map[string]any{
 			"id":            record.ID,
 			"original_name": record.OriginalName,
+			"file_url":      record.FileURL,
+			"file_path":     record.FilePath,
+			"parent":        fileParent(record.FilePath),
 			"url":           record.FileURL,
 			"size":          record.FileSize,
 		})
 	}
 }
 
+func directories(runtime *bootstrap.Runtime) httpx.HandlerFunc {
+	return func(c *httpx.Context) {
+		var rows []model.FileAttachment
+		if err := runtime.DB.Select("id", "file_path").Order("file_path ASC").Find(&rows).Error; err != nil {
+			c.Error(err)
+			return
+		}
+
+		counts := map[string]int{}
+		for _, row := range rows {
+			counts[fileParent(row.FilePath)]++
+		}
+
+		items := make([]map[string]any, 0, len(counts)+1)
+		items = append(items, map[string]any{
+			"name":  "全部",
+			"path":  "",
+			"count": len(rows),
+		})
+		for path, count := range counts {
+			name := path
+			if name == "" {
+				name = "根目录"
+			}
+			items = append(items, map[string]any{
+				"name":  name,
+				"path":  path,
+				"count": count,
+			})
+		}
+
+		c.Success(map[string]any{"list": items})
+	}
+}
+
 func list(runtime *bootstrap.Runtime) httpx.HandlerFunc {
 	return func(c *httpx.Context) {
 		page, pageSize := bootstrap.Pagination(c)
-		keyword := bootstrap.LikeKeyword(c.Query("keyword"))
+		search := bootstrap.LikeKeyword(bootstrap.SearchKeyword(c))
+		parent := normalizeDirectory(bootstrap.QueryFirst(c, "parent", "directory"))
 
 		query := runtime.DB.Model(&model.FileAttachment{}).Order("id DESC")
-		if keyword != "" {
-			query = query.Where("original_name ILIKE ?", keyword)
+		if search != "" {
+			query = query.Where("original_name ILIKE ? OR file_path ILIKE ?", search, search)
+		}
+		if parent != "" {
+			query = query.Where("file_path ILIKE ?", parent+"/%")
 		}
 
 		var total int64
@@ -100,22 +149,21 @@ func list(runtime *bootstrap.Runtime) httpx.HandlerFunc {
 				"original_name": row.OriginalName,
 				"saved_name":    row.SavedName,
 				"url":           row.FileURL,
+				"file_url":      row.FileURL,
 				"file_path":     row.FilePath,
+				"path":          row.FilePath,
+				"parent":        fileParent(row.FilePath),
 				"file_ext":      row.FileExt,
 				"mime_type":     row.MimeType,
 				"file_size":     row.FileSize,
 				"uploader_kind": row.UploaderKind,
 				"uploader_id":   row.UploaderID,
 				"created_at":    row.CreatedAt,
+				"updated_at":    row.UpdatedAt,
 			})
 		}
 
-		c.Success(map[string]any{
-			"list":      items,
-			"total":     total,
-			"page":      page,
-			"page_size": pageSize,
-		})
+		c.Success(bootstrap.PagedResult(items, total, page, pageSize))
 	}
 }
 
@@ -155,4 +203,17 @@ func deleteFiles(runtime *bootstrap.Runtime) httpx.HandlerFunc {
 		}
 		c.Success(map[string]any{"deleted": len(ids)})
 	}
+}
+
+func normalizeDirectory(value string) string {
+	return strings.Trim(strings.TrimSpace(value), "/")
+}
+
+func fileParent(path string) string {
+	path = normalizeDirectory(path)
+	parts := strings.Split(path, "/")
+	if len(parts) <= 1 {
+		return ""
+	}
+	return strings.Join(parts[:len(parts)-1], "/")
 }

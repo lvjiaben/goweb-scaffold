@@ -27,17 +27,27 @@ func (Module) Register(runtime *bootstrap.Runtime) error {
 	runtime.AdminProtectedGroup.GET("/system_config/list", list(runtime), httpx.WithPermission("system_config.list"))
 	runtime.AdminProtectedGroup.GET("/system_config/detail", detail(runtime), httpx.WithPermission("system_config.list"))
 	runtime.AdminProtectedGroup.POST("/system_config/save", save(runtime), httpx.WithPermission("system_config.save"))
+	runtime.AdminProtectedGroup.POST("/system_config/delete", deleteConfigs(runtime), httpx.WithPermission("system_config.delete"))
 	return nil
 }
 
 func list(runtime *bootstrap.Runtime) httpx.HandlerFunc {
 	return func(c *httpx.Context) {
 		page, pageSize := bootstrap.Pagination(c)
-		keyword := bootstrap.LikeKeyword(c.Query("keyword"))
+		filters := bootstrap.ParseFilter(c)
+		keyword := bootstrap.LikeKeyword(bootstrap.SearchKeyword(c))
+		keyFilter := bootstrap.LikeKeyword(bootstrap.FilterString(filters, "config_key", "key"))
+		nameFilter := bootstrap.LikeKeyword(bootstrap.FilterString(filters, "config_name", "name"))
 
 		query := runtime.DB.Model(&model.SystemConfig{}).Order("id DESC")
 		if keyword != "" {
 			query = query.Where("config_key ILIKE ? OR config_name ILIKE ?", keyword, keyword)
+		}
+		if keyFilter != "" {
+			query = query.Where("config_key ILIKE ?", keyFilter)
+		}
+		if nameFilter != "" {
+			query = query.Where("config_name ILIKE ?", nameFilter)
 		}
 
 		var total int64
@@ -56,21 +66,18 @@ func list(runtime *bootstrap.Runtime) httpx.HandlerFunc {
 		for _, item := range rows {
 			items = append(items, map[string]any{
 				"id":           item.ID,
+				"dir":          "system",
 				"config_key":   item.ConfigKey,
 				"config_name":  item.ConfigName,
 				"config_value": json.RawMessage(item.ConfigValue),
 				"remark":       item.Remark,
+				"type":         "input",
 				"created_at":   item.CreatedAt,
 				"updated_at":   item.UpdatedAt,
 			})
 		}
 
-		c.Success(map[string]any{
-			"list":      items,
-			"total":     total,
-			"page":      page,
-			"page_size": pageSize,
-		})
+		c.Success(bootstrap.PagedResult(items, total, page, pageSize))
 	}
 }
 
@@ -90,10 +97,12 @@ func detail(runtime *bootstrap.Runtime) httpx.HandlerFunc {
 
 		c.Success(map[string]any{
 			"id":           item.ID,
+			"dir":          "system",
 			"config_key":   item.ConfigKey,
 			"config_name":  item.ConfigName,
 			"config_value": json.RawMessage(item.ConfigValue),
 			"remark":       item.Remark,
+			"type":         "input",
 			"created_at":   item.CreatedAt,
 			"updated_at":   item.UpdatedAt,
 		})
@@ -154,6 +163,26 @@ func save(runtime *bootstrap.Runtime) httpx.HandlerFunc {
 			return
 		}
 		c.Success(map[string]any{"id": item.ID})
+	}
+}
+
+func deleteConfigs(runtime *bootstrap.Runtime) httpx.HandlerFunc {
+	return func(c *httpx.Context) {
+		var req bootstrap.IDsPayload
+		if err := c.BindJSON(&req); err != nil {
+			c.Error(err)
+			return
+		}
+		ids := req.Values()
+		if len(ids) == 0 {
+			c.BadRequest("ids is required")
+			return
+		}
+		if err := runtime.DB.Where("id IN ?", ids).Delete(&model.SystemConfig{}).Error; err != nil {
+			c.Error(err)
+			return
+		}
+		c.Success(map[string]any{"deleted": len(ids)})
 	}
 }
 

@@ -197,15 +197,17 @@ func FileHeader() string {
 }
 
 func ModulePaths(moduleName string) map[string]string {
-	pascal := ToPascal(moduleName)
 	return map[string]string{
-		"module": filepath.ToSlash(filepath.Join("internal/modules", moduleName, "module.go")),
-		"types":  filepath.ToSlash(filepath.Join("internal/modules", moduleName, "types.go")),
-		"model":  filepath.ToSlash(filepath.Join("internal/modules", moduleName, "model.go")),
-		"meta":   filepath.ToSlash(filepath.Join("internal/modules", moduleName, "meta.go")),
-		"lock":   filepath.ToSlash(filepath.Join("internal/modules", moduleName, "codegen.lock.json")),
-		"api":    filepath.ToSlash(filepath.Join("vben-admin/apps/admin/src/api", moduleName+".ts")),
-		"view":   filepath.ToSlash(filepath.Join("vben-admin/apps/admin/src/views/system", pascal+"Page.vue")),
+		"module":       filepath.ToSlash(filepath.Join("internal/modules", moduleName, "module.go")),
+		"types":        filepath.ToSlash(filepath.Join("internal/modules", moduleName, "types.go")),
+		"model":        filepath.ToSlash(filepath.Join("internal/modules", moduleName, "model.go")),
+		"meta":         filepath.ToSlash(filepath.Join("internal/modules", moduleName, "meta.go")),
+		"lock":         filepath.ToSlash(filepath.Join("internal/modules", moduleName, "codegen.lock.json")),
+		"api":          filepath.ToSlash(filepath.Join("vben-admin/apps/backend/src/api", moduleName+".ts")),
+		"view_list":    filepath.ToSlash(filepath.Join("vben-admin/apps/backend/src/views", moduleName, "list.vue")),
+		"view_data":    filepath.ToSlash(filepath.Join("vben-admin/apps/backend/src/views", moduleName, "data.ts")),
+		"view_form":    filepath.ToSlash(filepath.Join("vben-admin/apps/backend/src/views", moduleName, "modules", "form-drawer.vue")),
+		"route_module": filepath.ToSlash(filepath.Join("vben-admin/apps/backend/src/router/routes/modules", "generated.ts")),
 	}
 }
 

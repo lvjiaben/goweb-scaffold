@@ -18,7 +18,8 @@ type saveRequest struct {
 	ID       int64   `json:"id"`
 	Username string  `json:"username" validate:"required"`
 	Password string  `json:"password"`
-	Nickname string  `json:"nickname" validate:"required"`
+	Nickname string  `json:"nickname"`
+	RealName string  `json:"realname"`
 	Status   int     `json:"status"`
 	IsSuper  bool    `json:"is_super"`
 	RoleIDs  []int64 `json:"role_ids"`
@@ -37,11 +38,24 @@ func (Module) Register(runtime *bootstrap.Runtime) error {
 func list(runtime *bootstrap.Runtime) httpx.HandlerFunc {
 	return func(c *httpx.Context) {
 		page, pageSize := bootstrap.Pagination(c)
-		keyword := bootstrap.LikeKeyword(c.Query("keyword"))
+		filters := bootstrap.ParseFilter(c)
+		keyword := bootstrap.LikeKeyword(bootstrap.SearchKeyword(c))
+		username := bootstrap.LikeKeyword(bootstrap.FilterString(filters, "username"))
+		nickname := bootstrap.LikeKeyword(bootstrap.FilterString(filters, "nickname", "realname"))
+		status, hasStatus := bootstrap.FilterInt64(filters, "status")
 
 		query := runtime.DB.Model(&model.AdminUser{}).Order("id DESC")
 		if keyword != "" {
 			query = query.Where("username ILIKE ? OR nickname ILIKE ?", keyword, keyword)
+		}
+		if username != "" {
+			query = query.Where("username ILIKE ?", username)
+		}
+		if nickname != "" {
+			query = query.Where("nickname ILIKE ?", nickname)
+		}
+		if hasStatus {
+			query = query.Where("status = ?", status)
 		}
 
 		var total int64
@@ -102,6 +116,7 @@ func list(runtime *bootstrap.Runtime) httpx.HandlerFunc {
 				"id":         user.ID,
 				"username":   user.Username,
 				"nickname":   user.Nickname,
+				"realname":   user.Nickname,
 				"status":     user.Status,
 				"is_super":   user.IsSuper,
 				"role_ids":   roleMap[user.ID],
@@ -111,12 +126,7 @@ func list(runtime *bootstrap.Runtime) httpx.HandlerFunc {
 			})
 		}
 
-		c.Success(map[string]any{
-			"list":      items,
-			"total":     total,
-			"page":      page,
-			"page_size": pageSize,
-		})
+		c.Success(bootstrap.PagedResult(items, total, page, pageSize))
 	}
 }
 
@@ -144,6 +154,7 @@ func detail(runtime *bootstrap.Runtime) httpx.HandlerFunc {
 			"id":         user.ID,
 			"username":   user.Username,
 			"nickname":   user.Nickname,
+			"realname":   user.Nickname,
 			"status":     user.Status,
 			"is_super":   user.IsSuper,
 			"role_ids":   roleIDs,
@@ -161,12 +172,16 @@ func save(runtime *bootstrap.Runtime) httpx.HandlerFunc {
 			return
 		}
 		req.Username = strings.TrimSpace(req.Username)
-		req.Nickname = strings.TrimSpace(req.Nickname)
-		if req.Status == 0 {
-			req.Status = 1
+		if strings.TrimSpace(req.Nickname) == "" {
+			req.Nickname = strings.TrimSpace(req.RealName)
 		}
+		req.Nickname = strings.TrimSpace(req.Nickname)
 		if err := runtime.Validator.Struct(req); err != nil {
 			c.BadRequest(err.Error())
+			return
+		}
+		if req.Nickname == "" {
+			c.BadRequest("nickname is required")
 			return
 		}
 		if req.ID == 0 && req.Password == "" {

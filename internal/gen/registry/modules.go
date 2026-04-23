@@ -13,6 +13,7 @@ type GeneratedModule struct {
 	ModuleName string
 	RoutePath  string
 	PageName   string
+	ViewFile   string
 	Title      string
 }
 
@@ -37,6 +38,7 @@ var (
 	moduleNameRegexp = regexp.MustCompile(`GeneratedModuleName\s*=\s*"([^"]+)"`)
 	routePathRegexp  = regexp.MustCompile(`GeneratedRoutePath\s*=\s*"([^"]+)"`)
 	pageNameRegexp   = regexp.MustCompile(`GeneratedPageName\s*=\s*"([^"]+)"`)
+	viewFileRegexp   = regexp.MustCompile(`GeneratedViewFile\s*=\s*"([^"]+)"`)
 	titleRegexp      = regexp.MustCompile(`GeneratedMenuTitle\s*=\s*"([^"]+)"`)
 )
 
@@ -68,8 +70,9 @@ func DiscoverGeneratedModules(repoRoot string) ([]GeneratedModule, error) {
 		moduleName := firstMatch(moduleNameRegexp, content)
 		routePath := firstMatch(routePathRegexp, content)
 		pageName := firstMatch(pageNameRegexp, content)
+		viewFile := firstMatch(viewFileRegexp, content)
 		title := firstMatch(titleRegexp, content)
-		if moduleName == "" || routePath == "" || pageName == "" {
+		if moduleName == "" || routePath == "" {
 			continue
 		}
 
@@ -77,10 +80,21 @@ func DiscoverGeneratedModules(repoRoot string) ([]GeneratedModule, error) {
 			continue
 		}
 
+		if pageName == "" {
+			pageName = generatedPageName(moduleName)
+		}
+		if viewFile == "" {
+			viewFile = generatedViewFile(moduleName)
+		}
+		if title == "" {
+			title = generatedTitle(moduleName)
+		}
+
 		items = append(items, GeneratedModule{
 			ModuleName: moduleName,
 			RoutePath:  routePath,
 			PageName:   pageName,
+			ViewFile:   viewFile,
 			Title:      title,
 		})
 	}
@@ -114,4 +128,46 @@ func ImportPathForModule(moduleName string) string {
 
 func ModuleAlias(moduleName string) string {
 	return strings.TrimSpace(moduleName)
+}
+
+func generatedPageName(moduleName string) string {
+	return toPascal(moduleName) + "List"
+}
+
+func generatedViewFile(moduleName string) string {
+	return filepath.ToSlash(filepath.Join("views", moduleName, "list.vue"))
+}
+
+func generatedTitle(moduleName string) string {
+	return humanizeModuleName(moduleName)
+}
+
+func toPascal(raw string) string {
+	parts := strings.FieldsFunc(strings.TrimSpace(raw), func(r rune) bool {
+		return r == '_' || r == '-' || r == ' '
+	})
+	builder := strings.Builder{}
+	for _, part := range parts {
+		if part == "" {
+			continue
+		}
+		builder.WriteString(strings.ToUpper(part[:1]))
+		if len(part) > 1 {
+			builder.WriteString(part[1:])
+		}
+	}
+	return builder.String()
+}
+
+func humanizeModuleName(raw string) string {
+	parts := strings.FieldsFunc(strings.TrimSpace(raw), func(r rune) bool {
+		return r == '_' || r == '-'
+	})
+	for index, part := range parts {
+		if part == "" {
+			continue
+		}
+		parts[index] = strings.ToUpper(part[:1]) + part[1:]
+	}
+	return strings.Join(parts, " ")
 }

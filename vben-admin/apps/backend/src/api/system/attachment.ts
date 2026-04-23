@@ -56,23 +56,67 @@ export namespace AttachmentApi {
   }
 }
 
+function toUnixTimestamp(value?: string | number | null) {
+  if (!value) {
+    return 0;
+  }
+  if (typeof value === 'number') {
+    return value > 1_000_000_000_000 ? Math.floor(value / 1000) : value;
+  }
+  const timestamp = Date.parse(value);
+  return Number.isNaN(timestamp) ? 0 : Math.floor(timestamp / 1000);
+}
+
+function normalizeAttachment(row: Record<string, any>): AttachmentApi.Attachment {
+  return {
+    admin_id: row.admin_id,
+    created_at: toUnixTimestamp(row.created_at),
+    extension: row.file_ext ?? row.extension ?? '',
+    filename: row.original_name ?? row.filename ?? '',
+    id: Number(row.id ?? 0),
+    mediatype: row.mime_type ?? row.mediatype ?? '',
+    parent: row.parent ?? String(row.file_path ?? '').split('/').slice(0, -1).join('/'),
+    path: row.file_path ?? row.path ?? '',
+    size: Number(row.file_size ?? row.size ?? 0),
+    type: row.type,
+    updated_at: toUnixTimestamp(row.updated_at),
+    url: row.file_url ?? row.url ?? '',
+    user_id: row.user_id,
+  };
+}
+
 /**
  * 获取目录列表
  */
 async function getDirectories() {
-  return requestClient.get<AttachmentApi.Directory[]>(
-    '/system/attachment/directories',
+  const response = await requestClient.get<{
+    list?: AttachmentApi.Directory[];
+  }>(
+    '/attachment/directories',
   );
+  return response?.list ?? [];
 }
 
 /**
  * 获取附件列表
  */
 async function getAttachmentList(params?: AttachmentApi.ListParams) {
-  return requestClient.get<AttachmentApi.ListResponse>(
-    '/system/attachment/list',
+  const response = await requestClient.get<{
+    limit?: number;
+    list?: Array<Record<string, any>>;
+    page?: number;
+    page_size?: number;
+    total?: number;
+  }>(
+    '/attachment/list',
     { params },
   );
+  return {
+    list: (response?.list ?? []).map(normalizeAttachment),
+    page: Number(response?.page ?? 1),
+    pageSize: Number(response?.limit ?? response?.page_size ?? params?.page_size ?? 10),
+    total: Number(response?.total ?? 0),
+  };
 }
 
 /**
@@ -85,7 +129,7 @@ async function uploadAttachment(file: File, parent?: string) {
     formData.append('parent', parent);
   }
   return requestClient.post<AttachmentApi.Attachment>(
-    '/system/attachment/upload',
+    '/attachment/upload',
     formData,
     {
       headers: {
@@ -99,8 +143,7 @@ async function uploadAttachment(file: File, parent?: string) {
  * 删除附件
  */
 async function deleteAttachment(ids: number[]) {
-  return requestClient.post('/system/attachment/delete', { ids });
+  return requestClient.post('/attachment/delete', { ids });
 }
 
 export { deleteAttachment, getAttachmentList, getDirectories, uploadAttachment };
-

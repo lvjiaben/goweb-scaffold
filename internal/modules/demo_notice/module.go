@@ -25,11 +25,18 @@ func (Module) Register(runtime *bootstrap.Runtime) error {
 func list(runtime *bootstrap.Runtime) httpx.HandlerFunc {
 	return func(c *httpx.Context) {
 		page, pageSize := bootstrap.Pagination(c)
+		filters := bootstrap.ParseFilter(c)
 		query := runtime.DB.Model(&Entity{}).Order("id DESC")
-		if keyword := strings.TrimSpace(c.Query("title")); keyword != "" {
-			query = query.Where("title ILIKE ?", "%"+keyword+"%")
+		if keyword := bootstrap.SearchKeyword(c); keyword != "" {
+			likeValue := bootstrap.LikeKeyword(keyword)
+			query = query.Where("title ILIKE ?",
+				likeValue,
+			)
 		}
-		if raw := c.Query("status"); raw != "" {
+		if value := bootstrap.FilterString(filters, "title"); value != "" {
+			query = query.Where("title ILIKE ?", bootstrap.LikeKeyword(value))
+		}
+		if raw := bootstrap.FilterString(filters, "status"); raw != "" {
 			value, err := strconv.Atoi(raw)
 			if err != nil {
 				c.BadRequest("status must be an integer value")
@@ -50,12 +57,7 @@ func list(runtime *bootstrap.Runtime) httpx.HandlerFunc {
 			return
 		}
 
-		c.Success(map[string]any{
-			"list":      rows,
-			"total":     total,
-			"page":      page,
-			"page_size": pageSize,
-		})
+		c.Success(bootstrap.PagedResult(rows, total, page, pageSize))
 	}
 }
 

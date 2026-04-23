@@ -1,78 +1,143 @@
 import { requestClient } from '#/api/request';
 
 export namespace AdminRoleApi {
-  /** 角色类型集合 */
-  export const RoleTypes = [
-    'normal', 
-    'super',
-  ] as const;
-
-  /** 系统角色 */
   export interface AdminRole {
     [key: string]: any;
-    /** 角色ID */
     id: number;
-    /** 父级ID */
-    pid: number;
-    /** 角色名称 */
     name: string;
-    /** 角色描述 */
-    description: string;
-    /** 是否超级管理员 */
-    is_super: number;
-    /** 状态 */
+    code: string;
     status: number;
-    /** 排序 */
-    sort: number;
-    /** 创建时间 */
     created_at: number;
-    /** 更新时间 */
     updated_at: number;
-    /** 菜单ID列表 */
     menu_ids?: number[];
   }
 
+  export interface ListParams {
+    page: number;
+    page_size: number;
+    search?: string;
+    filter?: string;
+    sort_by?: string;
+    sort_order?: 'asc' | 'desc';
+  }
+
+  export interface ListResponse {
+    list: AdminRole[];
+    total: number;
+    page: number;
+    limit: number;
+  }
 }
 
-/**
- * 获取角色数据列表
- */
-async function getRoleList() {
-  return requestClient.get<Array<AdminRoleApi.AdminRole>>('/admin/role/list');
+export interface RoleOption {
+  id: number;
+  name: string;
 }
 
-/**
- * 保存单个角色
- * @param data 角色数据
- */
+function toUnixTimestamp(value?: null | number | string) {
+  if (!value) {
+    return 0;
+  }
+  if (typeof value === 'number') {
+    return value > 1_000_000_000_000 ? Math.floor(value / 1000) : value;
+  }
+  const timestamp = Date.parse(value);
+  return Number.isNaN(timestamp) ? 0 : Math.floor(timestamp / 1000);
+}
+
+function normalizeRole(row: Record<string, any>): AdminRoleApi.AdminRole {
+  return {
+    code: row.code ?? row.description ?? '',
+    created_at: toUnixTimestamp(row.created_at),
+    id: Number(row.id ?? 0),
+    menu_ids: Array.isArray(row.menu_ids)
+      ? row.menu_ids.map((item: unknown) => Number(item))
+      : [],
+    name: row.name ?? '',
+    status: Number(row.status ?? 1),
+    updated_at: toUnixTimestamp(row.updated_at),
+  };
+}
+
+function normalizeMenuTree(row: Record<string, any>): Record<string, any> {
+  return {
+    children: Array.isArray(row.children)
+      ? row.children.map((item: Record<string, any>) => normalizeMenuTree(item))
+      : [],
+    icon: row.icon ?? '',
+    id: Number(row.id ?? row.value ?? 0),
+    name: row.title ?? row.label ?? row.name ?? '',
+    path: row.path ?? '',
+    permission: row.permission_code ?? row.permission ?? '',
+    type: row.menu_type ?? row.type ?? 'menu',
+  };
+}
+
+async function getRoleList(params: AdminRoleApi.ListParams) {
+  const response = await requestClient.get<{
+    limit?: number;
+    list?: Array<Record<string, any>>;
+    page?: number;
+    total?: number;
+  }>('/admin_role/list', { params });
+  return {
+    limit: Number(response?.limit ?? params.page_size ?? 10),
+    list: (response?.list ?? []).map(normalizeRole),
+    page: Number(response?.page ?? params.page ?? 1),
+    total: Number(response?.total ?? 0),
+  } satisfies AdminRoleApi.ListResponse;
+}
+
+async function getRoleDetail(id: number) {
+  const response = await requestClient.get<Record<string, any>>(
+    '/admin_role/detail',
+    { params: { id } },
+  );
+  return normalizeRole(response ?? {});
+}
+
+async function getRoleOptions() {
+  const response = await requestClient.get<{
+    list?: Array<Record<string, any>>;
+  }>('/admin_role/options');
+  return (response?.list ?? []).map((item) => ({
+    id: Number(item.value ?? item.id ?? 0),
+    name: item.label ?? item.name ?? '',
+  })) satisfies RoleOption[];
+}
+
+async function getMenuTree() {
+  const response = await requestClient.get<{
+    list?: Array<Record<string, any>>;
+  }>('/admin_menu/tree');
+  return (response?.list ?? []).map((item) => normalizeMenuTree(item));
+}
+
 async function saveRole(
   id: number,
-  data: Omit<AdminRoleApi.AdminRole, 'id' | 'created_at' | 'updated_at'>,
+  data: Omit<AdminRoleApi.AdminRole, 'created_at' | 'id' | 'updated_at'>,
 ) {
-  if(id > 0){
-    data.id = id;
+  const payload: Record<string, any> = {
+    code: data.code,
+    menu_ids: data.menu_ids ?? [],
+    name: data.name,
+    status: Number(data.status ?? 1),
+  };
+  if (id > 0) {
+    payload.id = id;
   }
-  return requestClient.post('/admin/role/save', data);
+  return requestClient.post('/admin_role/save', payload);
 }
 
-/**
- * 删除角色
- * @param id 角色 ID
- */
-async function deleteRole(id: number) {
-  return requestClient.delete(`/admin/role/delete/${id}`);
-}
-
-/**
- * 获取我的菜单权限
- */
-async function getMyMenus() {
-  return requestClient.get('/admin/role/my-menus');
+async function deleteRole(data: { ids: number[] }) {
+  return requestClient.post('/admin_role/delete', data);
 }
 
 export {
-  saveRole,
   deleteRole,
+  getMenuTree,
+  getRoleDetail,
   getRoleList,
-  getMyMenus,
+  getRoleOptions,
+  saveRole,
 };

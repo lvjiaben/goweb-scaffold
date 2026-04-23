@@ -1,25 +1,22 @@
 <script lang="ts" setup>
 import type { VxeTableGridOptions } from '#/adapter/vxe-table';
+import type { DemoNoticeApi } from '#/api/demo_notice';
 
 import { ref } from 'vue';
 
 import { Page, VbenButton, VbenButtonGroup, useVbenDrawer } from '@vben/common-ui';
 import { Check, Plus, Trash, X } from '@vben/icons';
-import { $t } from '@vben/locales';
-
 import { InputSearch, message, Popconfirm, Tag } from 'ant-design-vue';
 
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import {
-  deleteAdmin,
-  getAdminDetail,
-  getAdminList,
-} from '#/api/admin/admin';
-
-import type { AdminAdminApi } from '#/api/admin/admin';
+  deleteDemoNotice,
+  getDemoNoticeDetail,
+  getDemoNoticeList,
+} from '#/api/demo_notice';
 
 import {
-  getAdminStatusOptions,
+  getDemoNoticeStatusOptions,
   useColumns,
   useSearchFormSchema,
 } from './data';
@@ -27,17 +24,20 @@ import FormDrawerComponent from './modules/form-drawer.vue';
 
 const selectedCount = ref(0);
 const searchValue = ref('');
+const statusOptions = getDemoNoticeStatusOptions();
 
-const statusOptions = getAdminStatusOptions();
-
-const getSelectedRecords = (): AdminAdminApi.Admin[] => {
-  return (gridApi.grid?.getCheckboxRecords() as AdminAdminApi.Admin[]) || [];
+const getSelectedRecords = (): DemoNoticeApi.DemoNotice[] => {
+  return (gridApi.grid?.getCheckboxRecords() as DemoNoticeApi.DemoNotice[]) || [];
 };
 
 const updateSelectedCount = () => {
   requestAnimationFrame(() => {
     selectedCount.value = getSelectedRecords().length;
   });
+};
+
+const resolveOption = (options: Array<{ color?: string; label: string; value: any }>, value: any) => {
+  return options.find((item) => String(item.value) === String(value));
 };
 
 const onClearSearch = () => {
@@ -72,7 +72,7 @@ const [Grid, gridApi] = useVbenVxeGrid({
     proxyConfig: {
       ajax: {
         query: async ({ page, sort }, formValues) => {
-          return await getAdminList({
+          return await getDemoNoticeList({
             filter: JSON.stringify(formValues ?? {}),
             page: page.currentPage,
             page_size: page.pageSize,
@@ -110,34 +110,22 @@ const [Grid, gridApi] = useVbenVxeGrid({
   },
 });
 
-const getStatusOption = (value: number) => {
-  return statusOptions.find((item) => item.value === value);
-};
-
 const onRefresh = () => {
   gridApi.grid?.clearCheckboxRow();
   gridApi.query();
   selectedCount.value = 0;
 };
 
-const onEdit = async (row: AdminAdminApi.Admin) => {
-  const detail = await getAdminDetail(row.id);
+const onEdit = async (row: DemoNoticeApi.DemoNotice) => {
+  const detail = await getDemoNoticeDetail(row.id);
   formDrawerApi.setData(detail).open();
 };
 
 const onCreate = () => {
-  formDrawerApi
-    .setData({
-      password: '',
-      realname: '',
-      role_ids: [],
-      status: 1,
-      username: '',
-    })
-    .open();
+  formDrawerApi.setData({}).open();
 };
 
-const onDelete = (row?: AdminAdminApi.Admin) => {
+const onDelete = (row?: DemoNoticeApi.DemoNotice) => {
   let ids: number[] = [];
 
   if (row) {
@@ -145,21 +133,21 @@ const onDelete = (row?: AdminAdminApi.Admin) => {
   } else {
     const selectRecords = getSelectedRecords();
     if (selectRecords.length === 0) {
-      message.warning($t('common.tableSelectTip'));
+      message.warning('请选择要删除的数据');
       return;
     }
     ids = selectRecords.map((item) => item.id);
   }
 
   const hideLoading = message.loading({
-    content: $t('ui.actionMessage.deleting'),
+    content: '删除中...',
     duration: 0,
     key: 'action_process_msg',
   });
-  deleteAdmin({ ids })
+  deleteDemoNotice({ ids })
     .then(() => {
       message.success({
-        content: $t('ui.actionMessage.deleteSuccess'),
+        content: '删除成功',
         key: 'action_process_msg',
       });
       onRefresh();
@@ -175,27 +163,16 @@ const onDelete = (row?: AdminAdminApi.Admin) => {
     <FormDrawer @success="onRefresh" />
     <Grid>
       <template #status="{ row }">
-        <Tag :color="getStatusOption(row.status)?.color">
-          {{ getStatusOption(row.status)?.label ?? row.status }}
+        <Tag :color="resolveOption(statusOptions, row.status)?.color">
+          {{ resolveOption(statusOptions, row.status)?.label ?? row.status }}
         </Tag>
-      </template>
-      <template #is_super="{ row }">
-        <Tag :color="row.is_super ? 'gold' : 'default'">
-          {{ row.is_super ? '是' : '否' }}
-        </Tag>
-      </template>
-      <template #role_names="{ row }">
-        <span>{{ Array.isArray(row.role_names) ? row.role_names.join('、') : '-' }}</span>
       </template>
       <template #operation="{ row }">
         <VbenButtonGroup>
           <VbenButton size="small" @click="onEdit(row)">
             编辑
           </VbenButton>
-          <Popconfirm
-            :title="`确认删除管理员 ${row.username} 吗？`"
-            @confirm="onDelete(row)"
-          >
+          <Popconfirm title="确认删除这条数据吗？" @confirm="onDelete(row)">
             <VbenButton size="small" status="danger">
               删除
             </VbenButton>
@@ -206,9 +183,9 @@ const onDelete = (row?: AdminAdminApi.Admin) => {
         <div class="flex items-center gap-3">
           <VbenButton type="primary" @click="onCreate">
             <Plus class="size-5" />
-            {{ $t('ui.actionTitle.create', [$t('admin.admin.name')]) }}
+            新增演示公告
           </VbenButton>
-          <Popconfirm title="确认删除选中的管理员吗？" @confirm="onDelete()">
+          <Popconfirm title="确认删除选中的数据吗？" @confirm="onDelete()">
             <VbenButton :disabled="selectedCount === 0" status="danger">
               <Trash class="size-4" />
               删除选中
@@ -226,7 +203,7 @@ const onDelete = (row?: AdminAdminApi.Admin) => {
           </VbenButtonGroup>
           <InputSearch
             allow-clear
-            :placeholder="$t('common.fuzzySearch')"
+            placeholder="请输入关键词"
             @clear="onClearSearch"
             @search="onSearch"
           />

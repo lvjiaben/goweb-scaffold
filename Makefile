@@ -23,7 +23,7 @@ build:
 	go build ./...
 
 build-admin:
-	cd vben-admin/apps/admin && npm run build
+	cd vben-admin/apps/backend && npm run build
 
 build-user:
 	cd vben-admin/apps/user && npm run build

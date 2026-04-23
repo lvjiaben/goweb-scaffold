@@ -14,11 +14,12 @@ import (
 type Module struct{}
 
 type saveRequest struct {
-	ID      int64   `json:"id"`
-	Name    string  `json:"name" validate:"required"`
-	Code    string  `json:"code" validate:"required"`
-	Status  int     `json:"status"`
-	MenuIDs []int64 `json:"menu_ids"`
+	ID          int64   `json:"id"`
+	Name        string  `json:"name" validate:"required"`
+	Code        string  `json:"code"`
+	Description string  `json:"description"`
+	Status      int     `json:"status"`
+	MenuIDs     []int64 `json:"menu_ids"`
 }
 
 func (Module) Name() string { return "admin_role" }
@@ -55,11 +56,24 @@ func options(runtime *bootstrap.Runtime) httpx.HandlerFunc {
 func list(runtime *bootstrap.Runtime) httpx.HandlerFunc {
 	return func(c *httpx.Context) {
 		page, pageSize := bootstrap.Pagination(c)
-		keyword := bootstrap.LikeKeyword(c.Query("keyword"))
+		filters := bootstrap.ParseFilter(c)
+		keyword := bootstrap.LikeKeyword(bootstrap.SearchKeyword(c))
+		name := bootstrap.LikeKeyword(bootstrap.FilterString(filters, "name"))
+		code := bootstrap.LikeKeyword(bootstrap.FilterString(filters, "code", "description"))
+		status, hasStatus := bootstrap.FilterInt64(filters, "status")
 
 		query := runtime.DB.Model(&model.AdminRole{}).Order("id DESC")
 		if keyword != "" {
 			query = query.Where("name ILIKE ? OR code ILIKE ?", keyword, keyword)
+		}
+		if name != "" {
+			query = query.Where("name ILIKE ?", name)
+		}
+		if code != "" {
+			query = query.Where("code ILIKE ?", code)
+		}
+		if hasStatus {
+			query = query.Where("status = ?", status)
 		}
 
 		var total int64
@@ -80,18 +94,14 @@ func list(runtime *bootstrap.Runtime) httpx.HandlerFunc {
 				"id":         role.ID,
 				"name":       role.Name,
 				"code":       role.Code,
+				"description": role.Code,
 				"status":     role.Status,
 				"created_at": role.CreatedAt,
 				"updated_at": role.UpdatedAt,
 			})
 		}
 
-		c.Success(map[string]any{
-			"list":      items,
-			"total":     total,
-			"page":      page,
-			"page_size": pageSize,
-		})
+		c.Success(bootstrap.PagedResult(items, total, page, pageSize))
 	}
 }
 
@@ -119,6 +129,7 @@ func detail(runtime *bootstrap.Runtime) httpx.HandlerFunc {
 			"id":         role.ID,
 			"name":       role.Name,
 			"code":       role.Code,
+			"description": role.Code,
 			"status":     role.Status,
 			"menu_ids":   menuIDs,
 			"created_at": role.CreatedAt,
@@ -135,12 +146,16 @@ func save(runtime *bootstrap.Runtime) httpx.HandlerFunc {
 			return
 		}
 		req.Name = strings.TrimSpace(req.Name)
-		req.Code = strings.TrimSpace(req.Code)
-		if req.Status == 0 {
-			req.Status = 1
+		if strings.TrimSpace(req.Code) == "" {
+			req.Code = strings.TrimSpace(req.Description)
 		}
+		req.Code = strings.TrimSpace(req.Code)
 		if err := runtime.Validator.Struct(req); err != nil {
 			c.BadRequest(err.Error())
+			return
+		}
+		if req.Code == "" {
+			c.BadRequest("code is required")
 			return
 		}
 		if err := ensureRoleCodeUnique(runtime, req.ID, req.Code); err != nil {

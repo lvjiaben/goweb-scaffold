@@ -30,8 +30,8 @@ func BuildPreview(moduleName string, tableName string, rawPayload json.RawMessag
 		TableComment: tableComment,
 		Page: PageMeta{
 			RoutePath:    fmt.Sprintf("/system/%s", modulePath),
-			PageName:     ToPascal(moduleName) + "Page",
-			ViewFile:     fmt.Sprintf("views/system/%sPage.vue", ToPascal(moduleName)),
+			PageName:     ToPascal(moduleName) + "List",
+			ViewFile:     fmt.Sprintf("views/%s/list.vue", moduleCode),
 			MenuTitle:    title,
 			FeatureFlags: []string{"admin-crud", "codegen"},
 		},

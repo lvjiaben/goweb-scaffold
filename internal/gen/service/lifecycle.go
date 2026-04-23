@@ -162,7 +162,9 @@ func (s GeneratorService) removeGeneratedFiles(moduleName string, lock LockFile,
 			paths["module"],
 			paths["meta"],
 			paths["api"],
-			paths["view"],
+			paths["view_list"],
+			paths["view_data"],
+			paths["view_form"],
 		)
 	}
 	if input.RemoveLock {
@@ -225,16 +227,16 @@ func (s GeneratorService) rebuildRegistryExcluding(moduleName string) ([]string,
 		}
 	}
 
-	frontendContent, err := registry.RenderAdminRoutesFileWithOptions(s.RepoRoot, nil, []string{moduleName})
+	frontendContent, err := registry.RenderFrontendRouteModuleWithOptions(s.RepoRoot, nil, []string{moduleName})
 	if err != nil {
 		return nil, nil, err
 	}
-	if status, warning, err := fileWriter.Write("vben-admin/apps/admin/src/generated/routes.ts", frontendContent, true); err != nil {
+	if status, warning, err := fileWriter.Write("vben-admin/apps/backend/src/router/routes/modules/generated.ts", frontendContent, true); err != nil {
 		return nil, nil, err
 	} else {
-		files = append(files, "vben-admin/apps/admin/src/generated/routes.ts")
+		files = append(files, "vben-admin/apps/backend/src/router/routes/modules/generated.ts")
 		if status == "skipped" && warning == "" {
-			warnings = append(warnings, "vben-admin/apps/admin/src/generated/routes.ts already up to date")
+			warnings = append(warnings, "vben-admin/apps/backend/src/router/routes/modules/generated.ts already up to date")
 		}
 		if warning != "" {
 			warnings = append(warnings, warning)

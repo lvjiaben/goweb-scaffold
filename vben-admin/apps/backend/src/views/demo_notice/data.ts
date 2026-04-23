@@ -1,0 +1,132 @@
+import type { VbenFormProps } from '#/adapter/form';
+import type { VxeTableGridOptions } from '#/adapter/vxe-table';
+import type { DemoNoticeApi } from '#/api/demo_notice';
+
+function formatDateTime(cellValue?: null | number | string) {
+  if (!cellValue) {
+    return '-';
+  }
+  if (typeof cellValue === 'number') {
+    return new Date(cellValue * 1000).toLocaleString();
+  }
+  return new Date(cellValue).toLocaleString();
+}
+export function getDemoNoticeStatusOptions() {
+  return [
+    {
+      color: 'error',
+      label: "草稿",
+      value: 0,
+    },
+    {
+      color: 'success',
+      label: "启用",
+      value: 1,
+    },
+    {
+      color: 'default',
+      label: "禁用",
+      value: 2,
+    },
+  ];
+}
+
+export function useSearchFormSchema(): VbenFormProps['schema'] {
+  return [
+    {
+      component: 'Input',
+      fieldName: "title",
+      label: "公告标题",
+    },
+    {
+      component: 'Select',
+      componentProps: {
+        allowClear: true,
+        options: [
+          {
+            label: '全部',
+            value: '',
+          },
+          {
+            label: "草稿",
+            value: 0,
+          },
+          {
+            label: "启用",
+            value: 1,
+          },
+          {
+            label: "禁用",
+            value: 2,
+          },
+        ],
+      },
+      fieldName: "status",
+      label: "状态",
+    },
+  ];
+}
+
+export function useColumns(): VxeTableGridOptions<DemoNoticeApi.DemoNotice>['columns'] {
+  return [
+    {
+      type: 'checkbox',
+      width: 50,
+      align: 'center',
+      fixed: 'left',
+    },
+    {
+      align: "center",
+      field: "id",
+      title: "ID",
+      width: 80,
+      sortable: true,
+    },
+    {
+      align: "left",
+      field: "title",
+      title: "公告标题",
+      minWidth: 220,
+      sortable: true,
+    },
+    {
+      align: "center",
+      field: "status",
+      slots: { default: "status" },
+      title: "状态",
+      width: 120,
+      sortable: true,
+    },
+    {
+      align: "center",
+      field: "sort",
+      title: "排序值",
+      width: 100,
+      sortable: true,
+    },
+    {
+      align: "center",
+      field: "created_at",
+      formatter: ({ cellValue }) => formatDateTime(cellValue),
+      title: "创建时间",
+      width: 180,
+      sortable: true,
+    },
+    {
+      align: "center",
+      field: "updated_at",
+      formatter: ({ cellValue }) => formatDateTime(cellValue),
+      title: "更新时间",
+      width: 180,
+      sortable: true,
+    },
+    {
+      field: 'operation',
+      fixed: 'right',
+      headerAlign: 'center',
+      slots: { default: 'operation' },
+      title: '操作',
+      width: 180,
+    },
+  ];
+}

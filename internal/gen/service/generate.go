@@ -30,16 +30,22 @@ type templateField struct {
 	SearchTSType   string
 	TSType         string
 	Component      string
+	SearchComponent string
 	Display        string
 	SearchOperator string
 	StartQueryKey  string
 	EndQueryKey    string
+	Label          string
+	Width          string
+	Options        []FieldOption
 	Placeholder    string
 	IsPrimaryKey   bool
 	IsNullable     bool
 	IsListField    bool
 	IsSaveField    bool
 	IsSearchField  bool
+	Sortable       bool
+	Searchable     bool
 	IsBoolean      bool
 	IsInteger      bool
 	IsBigInteger   bool
@@ -74,6 +80,9 @@ type backendModuleTemplateData struct {
 	PermissionDelete string
 	SaveFields       []templateField
 	SearchFields     []templateField
+	LikeFields       []templateField
+	ExactFields      []templateField
+	RangeFields      []templateField
 	RequiredFields   []templateField
 	UsesStrings      bool
 	UsesStrconv      bool
@@ -90,19 +99,29 @@ type frontendAPITemplateData struct {
 	SearchFields []templateField
 }
 
-type frontendPageTemplateData struct {
-	ModuleName        string
-	PascalName        string
-	Title             string
-	PermissionSave    string
-	PermissionDelete  string
-	ListFields        []templateField
-	ListSchemaJSON    string
-	FormSchemaJSON    string
-	SearchSchemaJSON  string
-	ListColumnsJSON   string
-	DefaultFormJSON   string
-	SearchDefaultJSON string
+type frontendDataTemplateData struct {
+	ModuleName   string
+	PascalName   string
+	Title        string
+	FormFields   []templateField
+	ListFields   []templateField
+	SearchFields []templateField
+}
+
+type frontendListTemplateData struct {
+	ModuleName       string
+	PascalName       string
+	Title            string
+	ListFields       []templateField
+	PermissionSave   string
+	PermissionDelete string
+}
+
+type frontendFormTemplateData struct {
+	ModuleName string
+	PascalName string
+	Title      string
+	FormFields []templateField
 }
 
 type generatedArtifact struct {
@@ -258,6 +277,7 @@ func (s GeneratorService) prepareBundle(input GenerateInput) (generationBundle, 
 		RoutePath:  meta.RoutePath,
 		PageName:   meta.PageName,
 		Title:      meta.Title,
+		ViewFile:   meta.ViewFile,
 	}
 
 	basicGeneratedFiles := []string{
@@ -267,13 +287,12 @@ func (s GeneratorService) prepareBundle(input GenerateInput) (generationBundle, 
 		paths["meta"],
 		paths["lock"],
 		paths["api"],
-		paths["view"],
+		paths["view_data"],
+		paths["view_list"],
+		paths["view_form"],
 	}
 	if input.RegisterModule {
-		basicGeneratedFiles = append(basicGeneratedFiles,
-			"internal/gen/modules_gen.go",
-			"vben-admin/apps/admin/src/generated/routes.ts",
-		)
+		basicGeneratedFiles = append(basicGeneratedFiles, "internal/gen/modules_gen.go", paths["route_module"])
 	}
 	bundle.Generated = append([]string{}, basicGeneratedFiles...)
 
@@ -298,6 +317,9 @@ func (s GeneratorService) prepareBundle(input GenerateInput) (generationBundle, 
 		PermissionDelete: meta.PermissionCodes[2],
 		SaveFields:       selectFields(fields, func(item templateField) bool { return item.IsSaveField }),
 		SearchFields:     selectFields(fields, func(item templateField) bool { return item.IsSearchField }),
+		LikeFields:       selectFields(fields, func(item templateField) bool { return item.IsSearchField && item.SearchOperator == "like" }),
+		ExactFields:      selectFields(fields, func(item templateField) bool { return item.IsSearchField && item.SearchOperator == "eq" }),
+		RangeFields:      selectFields(fields, func(item templateField) bool { return item.IsSearchField && item.SearchOperator == "between" }),
 		RequiredFields: selectFields(fields, func(item templateField) bool {
 			return item.IsSaveField && item.Required && (item.RequestKind == "string" || item.RequestKind == "time" || item.RequestKind == "json")
 		}),
@@ -322,19 +344,27 @@ func (s GeneratorService) prepareBundle(input GenerateInput) (generationBundle, 
 		SaveFields:   selectFields(fields, func(item templateField) bool { return item.IsSaveField }),
 		SearchFields: selectFields(fields, func(item templateField) bool { return item.IsSearchField }),
 	}
-	pageData := frontendPageTemplateData{
-		ModuleName:        moduleName,
-		PascalName:        meta.PascalName,
-		Title:             meta.Title,
-		PermissionSave:    meta.PermissionCodes[1],
-		PermissionDelete:  meta.PermissionCodes[2],
-		ListFields:        selectFields(fields, func(item templateField) bool { return item.IsListField }),
-		ListSchemaJSON:    MarshalIndent(preview.ListSchema),
-		FormSchemaJSON:    MarshalIndent(preview.FormSchema),
-		SearchSchemaJSON:  MarshalIndent(preview.SearchSchema),
-		ListColumnsJSON:   MarshalIndent(buildListColumns(preview.ListSchema)),
-		DefaultFormJSON:   MarshalIndent(buildDefaultFormState(preview.FormSchema)),
-		SearchDefaultJSON: MarshalIndent(buildDefaultSearchState(preview.SearchSchema)),
+	dataData := frontendDataTemplateData{
+		ModuleName:   moduleName,
+		PascalName:   meta.PascalName,
+		Title:        meta.Title,
+		FormFields:   selectFields(fields, func(item templateField) bool { return item.IsSaveField }),
+		ListFields:   selectFields(fields, func(item templateField) bool { return item.IsListField }),
+		SearchFields: selectFields(fields, func(item templateField) bool { return item.IsSearchField }),
+	}
+	listData := frontendListTemplateData{
+		ModuleName:       moduleName,
+		PascalName:       meta.PascalName,
+		Title:            meta.Title,
+		ListFields:       selectFields(fields, func(item templateField) bool { return item.IsListField }),
+		PermissionSave:   meta.PermissionCodes[1],
+		PermissionDelete: meta.PermissionCodes[2],
+	}
+	formData := frontendFormTemplateData{
+		ModuleName: moduleName,
+		PascalName: meta.PascalName,
+		Title:      meta.Title,
+		FormFields: selectFields(fields, func(item templateField) bool { return item.IsSaveField }),
 	}
 
 	artifacts := []generatedArtifact{}
@@ -362,7 +392,13 @@ func (s GeneratorService) prepareBundle(input GenerateInput) (generationBundle, 
 	if err := appendTemplateArtifact(paths["api"], "admin_frontend/api.ts.tmpl", apiData); err != nil {
 		return bundle, err
 	}
-	if err := appendTemplateArtifact(paths["view"], "admin_frontend/page.vue.tmpl", pageData); err != nil {
+	if err := appendTemplateArtifact(paths["view_data"], "admin_frontend/data.ts.tmpl", dataData); err != nil {
+		return bundle, err
+	}
+	if err := appendTemplateArtifact(paths["view_list"], "admin_frontend/list.vue.tmpl", listData); err != nil {
+		return bundle, err
+	}
+	if err := appendTemplateArtifact(paths["view_form"], "admin_frontend/form-drawer.vue.tmpl", formData); err != nil {
 		return bundle, err
 	}
 
@@ -373,11 +409,11 @@ func (s GeneratorService) prepareBundle(input GenerateInput) (generationBundle, 
 		}
 		artifacts = append(artifacts, generatedArtifact{Path: "internal/gen/modules_gen.go", Content: content})
 
-		content, err = registry.RenderAdminRoutesFile(s.RepoRoot, bundle.RegistryRef)
+		routeContent, err := registry.RenderFrontendRouteModule(s.RepoRoot, bundle.RegistryRef)
 		if err != nil {
 			return bundle, err
 		}
-		artifacts = append(artifacts, generatedArtifact{Path: "vben-admin/apps/admin/src/generated/routes.ts", Content: content})
+		artifacts = append(artifacts, generatedArtifact{Path: paths["route_module"], Content: routeContent})
 	}
 
 	lockFile, lockContent, err := s.buildLockFile(paths["lock"], meta, preview, preview.Payload, basicGeneratedFiles, artifacts, input.GeneratedAt)
@@ -435,27 +471,70 @@ func buildTemplateFields(columns []ColumnInfo, preview Preview) []templateField 
 		}
 
 		if inferred, ok := inferredIndex[column.ColumnName]; ok {
+			item.Label = inferred.GuessedLabel
 			item.Component = inferred.GuessedFormComponent
 			item.Display = inferred.GuessedListDisplay
+			item.Searchable = inferred.GuessedSearchable
+			item.Sortable = inferred.GuessedSortable
 		}
 		if schema, ok := formIndex[column.ColumnName]; ok {
 			item.IsSaveField = true
+			if schema.Label != "" {
+				item.Label = schema.Label
+			}
 			item.Component = schema.Component
 			item.Required = schema.Required
 			item.Readonly = schema.Readonly
 			item.Hidden = schema.Hidden
+			if strings.TrimSpace(schema.Width) != "" {
+				item.Width = schema.Width
+			}
+			item.Options = append([]FieldOption{}, schema.Options...)
 			item.Placeholder = schema.Placeholder
 			item.DefaultValue = firstNonNil(schema.DefaultValue, item.DefaultValue)
 		}
 		if schema, ok := listIndex[column.ColumnName]; ok {
 			item.IsListField = true
+			if schema.Label != "" {
+				item.Label = schema.Label
+			}
 			if schema.Display != "" {
 				item.Display = schema.Display
+			}
+			item.Sortable = schema.Sortable
+			item.Searchable = schema.Searchable
+			if strings.TrimSpace(schema.Width) != "" {
+				item.Width = schema.Width
+			}
+			if len(schema.Options) > 0 {
+				item.Options = append([]FieldOption{}, schema.Options...)
 			}
 		}
 		if schema, ok := searchIndex[column.ColumnName]; ok {
 			item.IsSearchField = true
+			if schema.Label != "" {
+				item.Label = schema.Label
+			}
+			if schema.Component != "" {
+				item.SearchComponent = schema.Component
+			}
 			item.SearchOperator = schema.Operator
+			item.Searchable = schema.Searchable
+			if strings.TrimSpace(schema.Width) != "" {
+				item.Width = schema.Width
+			}
+			if len(schema.Options) > 0 {
+				item.Options = append([]FieldOption{}, schema.Options...)
+			}
+			if schema.Placeholder != "" {
+				item.Placeholder = schema.Placeholder
+			}
+		}
+		if item.Label == "" {
+			item.Label = preferredLabel(column)
+		}
+		if item.SearchComponent == "" {
+			item.SearchComponent = guessSearchComponent(column, item.Component, item.Options)
 		}
 		fields = append(fields, item)
 	}
@@ -510,10 +589,7 @@ func itemTSType(column ColumnInfo) string {
 	case isBooleanType(column.DataType):
 		return "boolean"
 	case isTimestampType(column.DataType):
-		if column.IsNullable {
-			return "string | null"
-		}
-		return "string"
+		return "number"
 	case strings.EqualFold(strings.TrimSpace(column.DataType), "jsonb"):
 		return "Record<string, any>"
 	default:
@@ -546,58 +622,6 @@ func searchTSType(column ColumnInfo) string {
 	default:
 		return "string"
 	}
-}
-
-func buildDefaultFormState(fields []SchemaField) map[string]any {
-	result := map[string]any{"id": 0}
-	for _, field := range fields {
-		result[field.Field] = firstNonNil(field.DefaultValue, "")
-	}
-	return result
-}
-
-func buildDefaultSearchState(fields []SchemaField) map[string]any {
-	result := make(map[string]any, len(fields)*2)
-	for _, field := range fields {
-		if field.Component == "datetime-range" {
-			result[field.Field+"_start"] = ""
-			result[field.Field+"_end"] = ""
-			continue
-		}
-		result[field.Field] = ""
-	}
-	return result
-}
-
-func buildListColumns(fields []SchemaField) []map[string]any {
-	result := make([]map[string]any, 0, len(fields)+1)
-	for _, field := range fields {
-		if field.Hidden {
-			continue
-		}
-		column := map[string]any{
-			"key":   field.Field,
-			"title": field.Label,
-		}
-		if strings.TrimSpace(field.Width) != "" {
-			column["width"] = field.Width
-		} else {
-			switch field.Field {
-			case "id":
-				column["width"] = "80px"
-			case "created_at", "updated_at":
-				column["width"] = "180px"
-			}
-		}
-		result = append(result, column)
-	}
-	result = append(result, map[string]any{
-		"key":   "actions",
-		"title": "操作",
-		"width": "220px",
-		"align": "right",
-	})
-	return result
 }
 
 func (s GeneratorService) buildLockFile(lockPath string, meta ModuleMeta, preview Preview, payload PayloadConfig, generatedFiles []string, artifacts []generatedArtifact, generatedAt time.Time) (LockFile, []byte, error) {
@@ -827,7 +851,7 @@ func (s GeneratorService) upsertMenus(meta ModuleMeta) (MenuUpsertResult, []stri
 			Name:      ToKebab(meta.ModuleName),
 			Title:     meta.Title,
 			Path:      meta.RoutePath,
-			Component: "system/" + ToKebab(meta.ModuleName) + "/index",
+			Component: meta.ModuleName + "/list",
 			MenuType:  model.MenuTypeMenu,
 			Icon:      "file",
 			Sort:      200,

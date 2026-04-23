@@ -6,7 +6,8 @@ const (
 	GeneratedModuleName = "demo_article"
 	GeneratedTableName  = "demo_article"
 	GeneratedRoutePath  = "/system/demo-article"
-	GeneratedPageName   = "DemoArticlePage"
+	GeneratedPageName   = "DemoArticleList"
+	GeneratedViewFile   = "views/demo_article/list.vue"
 	GeneratedMenuTitle  = "演示文章"
 )
 

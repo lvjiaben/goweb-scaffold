@@ -23,14 +23,22 @@ export namespace AuthApi {
  * 获取所有菜单（Vben动态路由使用）
  */
 export async function getAllMenusApi() {
-  return await requestClient.get<any>('/menu/all');
+  return [];
 }
 
 /**
  * 获取用户信息
  */
 export async function getUserInfoApi() {
-  return requestClient.get<any>('/user/info');
+  const result = await requestClient.get<any>('/user/profile');
+  return {
+    avatar: '',
+    homePath: '/',
+    realName: result?.nickname || result?.username || '',
+    roles: [],
+    userId: result?.id,
+    username: result?.username || '',
+  };
 }
 /**
  * 刷新accessToken

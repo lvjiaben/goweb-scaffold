@@ -2,7 +2,7 @@
   "generated_by": "goweb-scaffold",
   "module_name": "demo_article",
   "table_name": "demo_article",
-  "generated_at": "2026-04-20T16:50:01+08:00",
+  "generated_at": "2026-04-23T10:45:51+08:00",
   "template_version": "v7",
   "payload": {
     "list_fields": [
@@ -63,8 +63,8 @@
     "table_comment": "演示文章",
     "page": {
       "route_path": "/system/demo-article",
-      "page_name": "DemoArticlePage",
-      "view_file": "views/system/DemoArticlePage.vue",
+      "page_name": "DemoArticleList",
+      "view_file": "views/demo_article/list.vue",
       "menu_title": "演示文章",
       "feature_flags": [
         "admin-crud",
@@ -340,7 +340,7 @@
     ]
   },
   "snapshot": {
-    "preview_hash": "f8db1ccc036fba5c0a50d2b33bf9823872e2dc60d54ad37ba81eb3ced18ef27d",
+    "preview_hash": "4ed6df623a01aa84b10f78efcf3bdc873c4237a1a960206200114a4e77f9bf35",
     "schema_hashes": {
       "inferred_fields": "a9aa609cd9ba081493cfc6f655b7b6a3df1ed11364f6102407734952886e58fc",
       "form_schema": "4072576f8571cccbf1f3fd68d0ebde650868d949b6f0d21dcd0298e7a6f54eda",
@@ -355,8 +355,8 @@
       },
       {
         "path": "internal/modules/demo_article/meta.go",
-        "sha256": "d1b4fe8d7587b565317f7e56004453ec7f6f7424a195ab55fe4d1c0c0864c77e",
-        "bytes": 396
+        "sha256": "3be2a7181e09e19f0bfd40b2af585efe4f4ae680b2ffe988a317fe2101c8327e",
+        "bytes": 449
       },
       {
         "path": "internal/modules/demo_article/model.go",
@@ -365,8 +365,8 @@
       },
       {
         "path": "internal/modules/demo_article/module.go",
-        "sha256": "efc5a406c663c5795b2218ee1d8af776d3c4467b26da457b746d6e9fd1f73284",
-        "bytes": 3449
+        "sha256": "f7c024f10ae4886db7c5f13e1336690e51a627e0fe3db01b667ea6d1b1198414",
+        "bytes": 3634
       },
       {
         "path": "internal/modules/demo_article/types.go",
@@ -374,19 +374,29 @@
         "bytes": 305
       },
       {
-        "path": "vben-admin/apps/admin/src/api/demo_article.ts",
-        "sha256": "9fd40de8c51d215ed322b64138993fbc79a228fc2071e524176f82c19c248fb2",
-        "bytes": 1096
+        "path": "vben-admin/apps/backend/src/api/demo_article.ts",
+        "sha256": "875ce8e5621d98bdb6034aae26d56ca0a69761b46bf091abaab8667dbbb97a61",
+        "bytes": 2681
       },
       {
-        "path": "vben-admin/apps/admin/src/generated/routes.ts",
-        "sha256": "d4f206edee602446a715aac8ce3ef2f662364f095f7312709da7c8f232bd3012",
-        "bytes": 579
+        "path": "vben-admin/apps/backend/src/router/routes/modules/generated.ts",
+        "sha256": "0f1403abdee73c04953941cced06d71538d6ffcdaea304ddf832aa675f87dae5",
+        "bytes": 604
       },
       {
-        "path": "vben-admin/apps/admin/src/views/system/DemoArticlePage.vue",
-        "sha256": "306adb35c84cc6da536d557a535d3d55fca26e1427234d3af81d470b04ffaad3",
-        "bytes": 19741
+        "path": "vben-admin/apps/backend/src/views/demo_article/data.ts",
+        "sha256": "24c5a4e1bf20f65c7533480e8d7c7b82dae768e291d498582c583fd56022bcd7",
+        "bytes": 2778
+      },
+      {
+        "path": "vben-admin/apps/backend/src/views/demo_article/list.vue",
+        "sha256": "82710fc9d6be00feab65cfdac61292fdce19ecbfa3ee45b34303ecf851dae1b0",
+        "bytes": 5757
+      },
+      {
+        "path": "vben-admin/apps/backend/src/views/demo_article/modules/form-drawer.vue",
+        "sha256": "3bbf4fdf89a204816d0385b88002cc837e0443a251eceaa5074460220263f64e",
+        "bytes": 3224
       }
     ]
   },
@@ -402,9 +412,11 @@
     "internal/modules/demo_article/module.go",
     "internal/modules/demo_article/meta.go",
     "internal/modules/demo_article/codegen.lock.json",
-    "vben-admin/apps/admin/src/api/demo_article.ts",
-    "vben-admin/apps/admin/src/views/system/DemoArticlePage.vue",
+    "vben-admin/apps/backend/src/api/demo_article.ts",
+    "vben-admin/apps/backend/src/views/demo_article/data.ts",
+    "vben-admin/apps/backend/src/views/demo_article/list.vue",
+    "vben-admin/apps/backend/src/views/demo_article/modules/form-drawer.vue",
     "internal/gen/modules_gen.go",
-    "vben-admin/apps/admin/src/generated/routes.ts"
+    "vben-admin/apps/backend/src/router/routes/modules/generated.ts"
   ]
 }

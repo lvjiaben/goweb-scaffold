@@ -1,0 +1,120 @@
+import type { VbenFormProps } from '#/adapter/form';
+import type { VxeTableGridOptions } from '#/adapter/vxe-table';
+import type { {{.PascalName}}Api } from '#/api/{{.ModuleName}}';
+
+function formatDateTime(cellValue?: null | number | string) {
+  if (!cellValue) {
+    return '-';
+  }
+  if (typeof cellValue === 'number') {
+    return new Date(cellValue * 1000).toLocaleString();
+  }
+  return new Date(cellValue).toLocaleString();
+}
+
+{{- range .FormFields }}
+{{- if taggableField . }}
+export function {{ optionFuncName $.PascalName . }}() {
+  return [
+{{- range $index, $option := fieldOptions . }}
+    {
+      color: {{- if eq (js $option.Value) "1" }} 'success'
+      {{- else if eq (js $option.Value) "0" }} 'error'
+      {{- else if eq (js $option.Value) "true" }} 'success'
+      {{- else if eq (js $option.Value) "false" }} 'error'
+      {{- else }} 'default'
+      {{- end }},
+      label: {{ quote $option.Label }},
+      value: {{ js $option.Value }},
+    },
+{{- end }}
+  ];
+}
+
+{{- end }}
+{{- end }}
+
+export function useSearchFormSchema(): VbenFormProps['schema'] {
+  return [
+{{- range .SearchFields }}
+{{- if eq (searchComponent .) "RangePicker" }}
+    {
+      component: 'RangePicker',
+      componentProps: {
+        format: 'YYYY-MM-DD HH:mm:ss',
+        showTime: true,
+        timestampFormat: true,
+      },
+      fieldName: {{ quote .ColumnName }},
+      label: {{ quote .Label }},
+    },
+{{- else if eq (searchComponent .) "Select" }}
+    {
+      component: 'Select',
+      componentProps: {
+        allowClear: true,
+        options: [
+          {
+            label: '全部',
+            value: '',
+          },
+{{- range $option := fieldOptions . }}
+          {
+            label: {{ quote $option.Label }},
+            value: {{ js $option.Value }},
+          },
+{{- end }}
+        ],
+      },
+      fieldName: {{ quote .ColumnName }},
+      label: {{ quote .Label }},
+    },
+{{- else }}
+    {
+      component: 'Input',
+      fieldName: {{ quote .ColumnName }},
+      label: {{ quote .Label }},
+    },
+{{- end }}
+{{- end }}
+  ];
+}
+
+export function useColumns(): VxeTableGridOptions<{{.PascalName}}Api.{{.PascalName}}>['columns'] {
+  return [
+    {
+      type: 'checkbox',
+      width: 50,
+      align: 'center',
+      fixed: 'left',
+    },
+{{- range .ListFields }}
+    {
+      align: {{ quote (columnAlign .) }},
+      field: {{ quote .ColumnName }},
+{{- if taggableField . }}
+      slots: { default: {{ quote .ColumnName }} },
+{{- else if .IsTimestamp }}
+      formatter: ({ cellValue }) => formatDateTime(cellValue),
+{{- end }}
+      title: {{ quote .Label }},
+{{- if or .IsPrimaryKey .IsTimestamp (taggableField .) .IsInteger .IsBigInteger }}
+      width: {{ columnWidth . }},
+{{- else }}
+      minWidth: {{ columnMinWidth . }},
+{{- end }}
+{{- if .Sortable }}
+      sortable: true,
+{{- end }}
+    },
+{{- end }}
+    {
+      field: 'operation',
+      fixed: 'right',
+      headerAlign: 'center',
+      slots: { default: 'operation' },
+      title: '操作',
+      width: 180,
+    },
+  ];
+}

@@ -16,12 +16,15 @@ type Module struct{}
 type saveRequest struct {
 	ID             int64  `json:"id"`
 	ParentID       int64  `json:"parent_id"`
+	PID            int64  `json:"pid"`
 	Name           string `json:"name" validate:"required"`
 	Title          string `json:"title" validate:"required"`
 	Path           string `json:"path"`
 	Component      string `json:"component"`
-	MenuType       string `json:"menu_type" validate:"required"`
+	MenuType       string `json:"menu_type"`
+	Type           string `json:"type"`
 	PermissionCode string `json:"permission_code"`
+	Permission     string `json:"permission"`
 	Icon           string `json:"icon"`
 	Sort           int    `json:"sort"`
 	Visible        bool   `json:"visible"`
@@ -67,12 +70,38 @@ func (Module) Register(runtime *bootstrap.Runtime) error {
 
 func list(runtime *bootstrap.Runtime) httpx.HandlerFunc {
 	return func(c *httpx.Context) {
+		page, pageSize := bootstrap.Pagination(c)
+		filters := bootstrap.ParseFilter(c)
+		keyword := bootstrap.LikeKeyword(bootstrap.SearchKeyword(c))
+		title := bootstrap.LikeKeyword(bootstrap.FilterString(filters, "title", "name"))
+		pathValue := bootstrap.LikeKeyword(bootstrap.FilterString(filters, "path"))
+		menuType := strings.TrimSpace(bootstrap.FilterString(filters, "menu_type", "type"))
+		status, hasStatus := bootstrap.FilterInt64(filters, "status")
+
+		query := runtime.DB.Model(&model.AdminMenu{}).Order("sort ASC, id ASC")
+		if keyword != "" {
+			query = query.Where("title ILIKE ? OR name ILIKE ? OR path ILIKE ?", keyword, keyword, keyword)
+		}
+		if title != "" {
+			query = query.Where("title ILIKE ? OR name ILIKE ?", title, title)
+		}
+		if pathValue != "" {
+			query = query.Where("path ILIKE ?", pathValue)
+		}
+		if menuType != "" {
+			query = query.Where("menu_type = ?", menuType)
+		}
+		if hasStatus {
+			query = query.Where("status = ?", status)
+		}
+
 		var menus []model.AdminMenu
-		if err := runtime.DB.Order("sort ASC, id ASC").Find(&menus).Error; err != nil {
+		if err := query.Find(&menus).Error; err != nil {
 			c.Error(err)
 			return
 		}
-		c.Success(map[string]any{"list": buildTree(menus)})
+		treeItems := buildTree(menus)
+		c.Success(bootstrap.PagedResult(treeItems, int64(len(treeItems)), page, pageSize))
 	}
 }
 
@@ -93,12 +122,15 @@ func detail(runtime *bootstrap.Runtime) httpx.HandlerFunc {
 		c.Success(map[string]any{
 			"id":              menu.ID,
 			"parent_id":       menu.ParentID,
+			"pid":             menu.ParentID,
 			"name":            menu.Name,
 			"title":           menu.Title,
 			"path":            menu.Path,
 			"component":       menu.Component,
 			"menu_type":       menu.MenuType,
+			"type":            menu.MenuType,
 			"permission_code": menu.PermissionCode,
+			"permission":      menu.PermissionCode,
 			"icon":            menu.Icon,
 			"sort":            menu.Sort,
 			"visible":         menu.Visible,
@@ -109,12 +141,14 @@ func detail(runtime *bootstrap.Runtime) httpx.HandlerFunc {
 
 func tree(runtime *bootstrap.Runtime) httpx.HandlerFunc {
 	return func(c *httpx.Context) {
+		page, pageSize := bootstrap.Pagination(c)
 		var menus []model.AdminMenu
 		if err := runtime.DB.Order("sort ASC, id ASC").Find(&menus).Error; err != nil {
 			c.Error(err)
 			return
 		}
-		c.Success(map[string]any{"list": buildTree(menus)})
+		treeItems := buildTree(menus)
+		c.Success(bootstrap.PagedResult(treeItems, int64(len(treeItems)), page, pageSize))
 	}
 }
 
@@ -140,11 +174,17 @@ func save(runtime *bootstrap.Runtime) httpx.HandlerFunc {
 		req.Title = strings.TrimSpace(req.Title)
 		req.Path = strings.TrimSpace(req.Path)
 		req.Component = strings.TrimSpace(req.Component)
+		if req.ParentID == 0 && req.PID > 0 {
+			req.ParentID = req.PID
+		}
+		if req.MenuType == "" {
+			req.MenuType = strings.TrimSpace(req.Type)
+		}
+		if req.PermissionCode == "" {
+			req.PermissionCode = strings.TrimSpace(req.Permission)
+		}
 		req.PermissionCode = strings.TrimSpace(req.PermissionCode)
 		req.Icon = strings.TrimSpace(req.Icon)
-		if req.Status == 0 {
-			req.Status = 1
-		}
 		if err := runtime.Validator.Struct(req); err != nil {
 			c.BadRequest(err.Error())
 			return

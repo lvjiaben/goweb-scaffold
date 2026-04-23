@@ -2,16 +2,18 @@
 
 import type { RouteRecordRaw } from 'vue-router';
 
-export const generatedSystemRoutes: RouteRecordRaw[] = [
+const routes: RouteRecordRaw[] = [
 {{- range .Routes }}
   {
     path: {{ quote .RoutePath }},
-    name: {{ quote .ModuleName }},
-    component: () => import({{ quote .ViewImportPath }}),
+    name: {{ quote .PageName }},
+    component: () => import({{ quote (print "#/views/" .Component ".vue") }}),
     meta: {
       title: {{ quote .Title }},
-      requiresMenu: true,
+      authority: [{{ quote (print .ModuleName ".list") }}],
     },
   },
 {{- end }}
 ];
+
+export default routes;
