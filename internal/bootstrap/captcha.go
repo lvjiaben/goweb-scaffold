@@ -6,7 +6,6 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"errors"
-	"fmt"
 	"image"
 	"image/color"
 	"image/draw"
@@ -47,11 +46,11 @@ func NewCaptchaService(ttl time.Duration) *CaptchaService {
 func (s *CaptchaService) Generate() (string, string, error) {
 	code, err := randomDigits(4)
 	if err != nil {
-		return "", "", fmt.Errorf("captcha randomDigits: %w", err)
+		return "", "", err
 	}
 	id, err := randomHex(16)
 	if err != nil {
-		return "", "", fmt.Errorf("captcha randomHex: %w", err)
+		return "", "", err
 	}
 
 	now := time.Now()
@@ -65,7 +64,7 @@ func (s *CaptchaService) Generate() (string, string, error) {
 
 	rawPNG, err := renderCaptchaPNG(code)
 	if err != nil {
-		return "", "", fmt.Errorf("captcha renderCaptchaPNG: %w", err)
+		return "", "", err
 	}
 	return id, "data:image/png;base64," + base64.StdEncoding.EncodeToString(rawPNG), nil
 }
@@ -157,11 +156,11 @@ func renderCaptchaPNG(code string) ([]byte, error) {
 	for i := 0; i < 8; i++ {
 		x1, y1, err := randomPoint(width, height)
 		if err != nil {
-			return nil, fmt.Errorf("noise line start point: %w", err)
+			return nil, err
 		}
 		x2, y2, err := randomPoint(width, height)
 		if err != nil {
-			return nil, fmt.Errorf("noise line end point: %w", err)
+			return nil, err
 		}
 		drawLine(img, x1, y1, x2, y2, randomPastel())
 	}
@@ -169,7 +168,7 @@ func renderCaptchaPNG(code string) ([]byte, error) {
 	for i := 0; i < 48; i++ {
 		x, y, err := randomPoint(width, height)
 		if err != nil {
-			return nil, fmt.Errorf("noise pixel point: %w", err)
+			return nil, err
 		}
 		img.Set(x, y, randomDark())
 	}
@@ -178,18 +177,18 @@ func renderCaptchaPNG(code string) ([]byte, error) {
 		offsetX := left + index*cellWidth
 		jitterY, err := randomOffset(-2, 2)
 		if err != nil {
-			return nil, fmt.Errorf("digit y jitter: %w", err)
+			return nil, err
 		}
 		jitterX, err := randomOffset(-1, 2)
 		if err != nil {
-			return nil, fmt.Errorf("digit x jitter: %w", err)
+			return nil, err
 		}
 		drawDigit(img, offsetX+jitterX, top+jitterY, digitWidth, digitH, thickness, digit, randomDark())
 	}
 
 	buffer := bytes.NewBuffer(nil)
 	if err := png.Encode(buffer, img); err != nil {
-		return nil, fmt.Errorf("png encode: %w", err)
+		return nil, err
 	}
 	return buffer.Bytes(), nil
 }

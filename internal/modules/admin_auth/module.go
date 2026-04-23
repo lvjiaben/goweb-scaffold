@@ -45,11 +45,6 @@ func login(runtime *bootstrap.Runtime) httpx.HandlerFunc {
 			c.BadRequest(err.Error())
 			return
 		}
-		if runtime.CaptchaService == nil {
-			runtime.Logger.Error("captcha service is nil during admin login")
-			c.BadRequest("验证码服务未初始化")
-			return
-		}
 		if err := runtime.CaptchaService.Verify(req.Captcha.ID, req.Captcha.Code); err != nil {
 			recordLogin(runtime, 0, req.Username, c, false, err.Error())
 			c.BadRequest(err.Error())
