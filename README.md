@@ -27,7 +27,7 @@
 - `internal/gen/modules_gen.go`：模块注册入口
 - `internal/modules`：后台和用户端业务模块
 - `storage/uploads`：本地上传目录
-- `vben-admin`：`apps/admin` 和 `apps/user` 双应用
+- `vben-admin`：`apps/backend` 和 `apps/user` 双应用
 
 ## 已含模块
 
@@ -99,10 +99,10 @@ cp configs/config.example.yaml configs/config.yaml
 go run ./cmd/server -config configs/config.yaml
 ```
 
-admin 前端：
+backend 前端：
 
 ```bash
-cd vben-admin/apps/admin
+cd vben-admin/apps/backend
 npm install
 npm run dev
 ```
@@ -115,18 +115,17 @@ npm install
 npm run dev
 ```
 
-## 当前 admin 页面
+## 当前 backend 页面
 
-- `DashboardHomePage`：工作台概览
-- `AdminUserPage`：管理员列表、保存、删除、角色绑定
-- `AdminRolePage`：角色列表、保存、删除、菜单按钮授权
-- `AdminMenuPage`：菜单树、按钮节点、父级菜单维护
-- `SystemConfigPage`：系统配置列表与弹窗表单
-- `AttachmentPage`：上传、预览、复制 URL、删除
-- `CodegenPage`：业务表元数据、字段级配置、preview、diff、真实生成、regenerate、模块列表、lock 摘要、remove 生命周期面板、兼容性检查
-- `DemoArticlePage`：由 codegen 生成的样例 CRUD 页面
-- `DemoNoticePage`：由 batch codegen 生成的样例 CRUD 页面
-- `ForbiddenView`：无权限或不可访问路由兜底页
+- `views/admin/admin/list.vue`：管理员列表页；对应 `data.ts` 和 `modules/form-drawer.vue`
+- `views/admin/role/list.vue`：角色列表页；对应 `data.ts` 和 `modules/form-drawer.vue`
+- `views/admin/menu/list.vue`：菜单列表页；对应 `data.ts` 和 `modules/form-drawer.vue`
+- `views/system/config/index.vue`：系统配置页
+- `views/system/attachment/index.vue`：附件管理页
+- `views/system/gen/list.vue`：代码生成生命周期页
+- `views/demo_article/list.vue`：样例 CRUD 列表页
+- `views/demo_notice/list.vue`：batch 生成的样例 CRUD 列表页
+- 标准 CRUD 目录固定为：`apps/backend/src/views/<module>/list.vue`、`apps/backend/src/views/<module>/data.ts`、`apps/backend/src/views/<module>/modules/form-drawer.vue`
 
 ## 鉴权与路由行为
 
@@ -163,12 +162,14 @@ npm run dev
   `internal/modules/{module_name}/types.go`
   `internal/modules/{module_name}/model.go`
   `internal/modules/{module_name}/meta.go`
-- 真正写入 admin 前端文件：
-  `vben-admin/apps/admin/src/api/{module_name}.ts`
-  `vben-admin/apps/admin/src/views/system/{PascalModuleName}Page.vue`
+- 真正写入 backend 前端文件：
+  `vben-admin/apps/backend/src/api/{module_name}.ts`
+  `vben-admin/apps/backend/src/views/{module_name}/list.vue`
+  `vben-admin/apps/backend/src/views/{module_name}/data.ts`
+  `vben-admin/apps/backend/src/views/{module_name}/modules/form-drawer.vue`
 - 重建：
   `internal/gen/modules_gen.go`
-  `vben-admin/apps/admin/src/generated/routes.ts`
+  `vben-admin/apps/backend/src/router/routes/modules/generated.ts`
 - 可直接把菜单和按钮权限写入 `admin_menu` / `admin_role_menu`
 - 保存历史记录并可重新载入当前表单
 - 为每个生成模块写入 `internal/modules/{module_name}/codegen.lock.json`
@@ -269,7 +270,7 @@ go run ./cmd/codegen migrate-source -from internal/modules/demo_article/codegen.
     },
     "generated_files": [
       {
-        "path": "vben-admin/apps/admin/src/api/demo_article.ts",
+        "path": "vben-admin/apps/backend/src/api/demo_article.ts",
         "sha256": "sha256...",
         "bytes": 1204
       }
@@ -289,7 +290,7 @@ go run ./cmd/codegen migrate-source -from internal/modules/demo_article/codegen.
 - `overwrite`
   允许覆盖生成器自己生成过的文件；不会覆盖手写文件
 - `register_module`
-  生成后重建 `internal/gen/modules_gen.go` 和 `vben-admin/apps/admin/src/generated/routes.ts`
+  生成后重建 `internal/gen/modules_gen.go` 和 `vben-admin/apps/backend/src/router/routes/modules/generated.ts`
 - `upsert_menu`
   生成后直接 upsert 后台菜单和按钮权限，并给超级管理员角色补齐 `admin_role_menu`
 
@@ -599,7 +600,7 @@ go run ./cmd/codegen batch -config configs/config.yaml -plan examples/codegen/de
 1. 启动 PostgreSQL 并创建 `goweb_scaffold`
 2. `cp configs/config.example.yaml configs/config.yaml`
 3. 启动后端：`go run ./cmd/server -config configs/config.yaml`
-4. 启动 admin：`cd vben-admin/apps/admin && npm install && npm run dev`
+4. 启动 backend：`cd vben-admin/apps/backend && npm install && npm run dev`
 5. 登录 admin 后进入“代码生成”
 6. 选择业务表
 7. 在字段配置表里调整 list/form/search 选用和字段 overrides
@@ -714,7 +715,7 @@ go run ./cmd/codegen batch -config configs/config.yaml -plan examples/codegen/de
 - 非生成器文件会自动 skip，不会误删
 - 如果勾选 `unregister_module`，会重建：
   - `internal/gen/modules_gen.go`
-  - `vben-admin/apps/admin/src/generated/routes.ts`
+  - `vben-admin/apps/backend/src/router/routes/modules/generated.ts`
 - 如果勾选 `remove_menu`，会删除该模块对应的后台菜单、按钮权限和 `admin_role_menu` 关联
 - 如果勾选 `remove_history`，会删除 `codegen_history` 里当前模块的所有历史
 
@@ -753,7 +754,7 @@ UPDATE_SNAPSHOT=1 go test ./...
 UPDATE_GOLDEN=1 UPDATE_SNAPSHOT=1 go test ./...
 go test ./...
 go build ./...
-cd vben-admin/apps/admin && npm run build
+cd vben-admin/apps/backend && npm run build
 cd ../user && npm run build
 ```
 
@@ -788,8 +789,11 @@ make codegen-batch-remove PLAN=examples/codegen/demo.plan.json FORMAT=json
 
 - 数据表：`demo_article`
 - 后端模块：`internal/modules/demo_article/*`
-- admin API：`vben-admin/apps/admin/src/api/demo_article.ts`
-- admin 页面：`vben-admin/apps/admin/src/views/system/DemoArticlePage.vue`
+- backend API：`vben-admin/apps/backend/src/api/demo_article.ts`
+- backend 页面目录：
+  `vben-admin/apps/backend/src/views/demo_article/list.vue`
+  `vben-admin/apps/backend/src/views/demo_article/data.ts`
+  `vben-admin/apps/backend/src/views/demo_article/modules/form-drawer.vue`
 - lock 文件：`internal/modules/demo_article/codegen.lock.json`
 - 路由：`/system/demo-article`
 - 权限码：

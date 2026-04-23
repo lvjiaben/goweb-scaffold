@@ -199,6 +199,14 @@ func checkRepo(spec repoSpec) repoResult {
 	if spec.RequireCoreRef {
 		result.add(strings.Contains(readme, "goweb-core"), "readme-core-compatibility", "")
 	}
+	if spec.Name == "goweb-scaffold" {
+		result.add(strings.Contains(readme, "apps/backend"), "readme-frontend-structure:backend", "")
+		result.add(strings.Contains(readme, "apps/user"), "readme-frontend-structure:user", "")
+		result.add(strings.Contains(readme, "apps/backend/src/views"), "readme-codegen-path:views", "")
+		result.add(strings.Contains(readme, "modules/form-drawer.vue"), "readme-codegen-path:form-drawer", "")
+		result.add(!strings.Contains(readme, "`apps/admin` 和 `apps/user` 双应用"), "readme-no-legacy-admin-monorepo", "")
+		result.add(!strings.Contains(readme, "cd vben-admin/apps/admin"), "readme-no-legacy-admin-command", "")
+	}
 
 	return result
 }

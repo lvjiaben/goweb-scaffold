@@ -19,7 +19,7 @@
 
 - [ ] `go test ./...`
 - [ ] `go build ./...`
-- [ ] `npm run build` for `apps/admin`
+- [ ] `npm run build` for `apps/backend`
 - [ ] `npm run build` for `apps/user`
 - [ ] `make release-check`
 - [ ] `go run ./cmd/codegen version -format json`
