@@ -12,6 +12,7 @@ import (
 	app_user_auth "github.com/lvjiaben/goweb-scaffold/internal/modules/app_user_auth"
 	attachment "github.com/lvjiaben/goweb-scaffold/internal/modules/attachment"
 	codegen "github.com/lvjiaben/goweb-scaffold/internal/modules/codegen"
+	common "github.com/lvjiaben/goweb-scaffold/internal/modules/common"
 	demo_article "github.com/lvjiaben/goweb-scaffold/internal/modules/demo_article"
 	demo_notice "github.com/lvjiaben/goweb-scaffold/internal/modules/demo_notice"
 	system_config "github.com/lvjiaben/goweb-scaffold/internal/modules/system_config"
@@ -21,6 +22,7 @@ func RegisterModules(runtime *bootstrap.Runtime) error {
 	return bootstrap.RegisterAll(
 		runtime,
 		admin_auth.Module{},
+		common.Module{},
 		admin_user.Module{},
 		admin_role.Module{},
 		admin_menu.Module{},

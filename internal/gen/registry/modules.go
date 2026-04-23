@@ -24,6 +24,7 @@ type BaseModule struct {
 
 var baseModules = []BaseModule{
 	{ModuleName: "admin_auth", ImportPath: "github.com/lvjiaben/goweb-scaffold/internal/modules/admin_auth"},
+	{ModuleName: "common", ImportPath: "github.com/lvjiaben/goweb-scaffold/internal/modules/common"},
 	{ModuleName: "admin_user", ImportPath: "github.com/lvjiaben/goweb-scaffold/internal/modules/admin_user"},
 	{ModuleName: "admin_role", ImportPath: "github.com/lvjiaben/goweb-scaffold/internal/modules/admin_role"},
 	{ModuleName: "admin_menu", ImportPath: "github.com/lvjiaben/goweb-scaffold/internal/modules/admin_menu"},

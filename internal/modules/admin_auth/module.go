@@ -13,9 +13,15 @@ import (
 
 type Module struct{}
 
+type captchaRequest struct {
+	ID   string `json:"id"`
+	Code string `json:"code"`
+}
+
 type loginRequest struct {
-	Username string `json:"username" validate:"required"`
-	Password string `json:"password" validate:"required"`
+	Username string         `json:"username" validate:"required"`
+	Password string         `json:"password" validate:"required"`
+	Captcha  captchaRequest `json:"captcha"`
 }
 
 func (Module) Name() string { return "admin_auth" }
@@ -36,6 +42,11 @@ func login(runtime *bootstrap.Runtime) httpx.HandlerFunc {
 			return
 		}
 		if err := runtime.Validator.Struct(req); err != nil {
+			c.BadRequest(err.Error())
+			return
+		}
+		if err := runtime.CaptchaService.Verify(req.Captcha.ID, req.Captcha.Code); err != nil {
+			recordLogin(runtime, 0, req.Username, c, false, err.Error())
 			c.BadRequest(err.Error())
 			return
 		}

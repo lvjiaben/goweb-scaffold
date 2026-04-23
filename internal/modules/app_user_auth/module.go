@@ -18,9 +18,15 @@ type registerRequest struct {
 	Nickname string `json:"nickname" validate:"required"`
 }
 
+type captchaRequest struct {
+	ID   string `json:"id"`
+	Code string `json:"code"`
+}
+
 type loginRequest struct {
-	Username string `json:"username" validate:"required"`
-	Password string `json:"password" validate:"required"`
+	Username string         `json:"username" validate:"required"`
+	Password string         `json:"password" validate:"required"`
+	Captcha  captchaRequest `json:"captcha"`
 }
 
 func (Module) Name() string { return "app_user_auth" }
@@ -29,6 +35,8 @@ func (Module) Register(runtime *bootstrap.Runtime) error {
 	runtime.AppPublicGroup.POST("/login", login(runtime))
 	runtime.AppPublicGroup.POST("/register", register(runtime))
 	runtime.AppAuthGroup.POST("/logout", logout(runtime))
+	runtime.Engine.Group("/api/user").POST("/login", login(runtime))
+	runtime.AppUserGroup.POST("/logout", logout(runtime))
 	return nil
 }
 
@@ -80,6 +88,10 @@ func login(runtime *bootstrap.Runtime) httpx.HandlerFunc {
 			c.BadRequest(err.Error())
 			return
 		}
+		if err := runtime.CaptchaService.Verify(req.Captcha.ID, req.Captcha.Code); err != nil {
+			c.BadRequest(err.Error())
+			return
+		}
 
 		var user model.AppUser
 		if err := runtime.DB.Where("username = ? AND deleted_at IS NULL", req.Username).First(&user).Error; err != nil {
@@ -117,8 +129,9 @@ func login(runtime *bootstrap.Runtime) httpx.HandlerFunc {
 		}
 
 		c.Success(map[string]any{
-			"token":      token,
-			"expires_at": expireAt,
+			"token":       token,
+			"accessToken": token,
+			"expires_at":  expireAt,
 			"user": map[string]any{
 				"id":       user.ID,
 				"username": user.Username,
