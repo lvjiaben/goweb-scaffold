@@ -21,12 +21,6 @@ var handlerDBForbiddenTokens = []string{
 	".Begin(",
 }
 
-// Temporary legacy whitelist while hand-written modules are migrated incrementally.
-// Generated modules and admin/user are intentionally absent from this list.
-var handlerLayeringLegacyWhitelist = map[string]string{
-	"system/codegen/handler.go": "legacy codegen module is a large orchestration module; migrate in a dedicated pass without touching generator core logic",
-}
-
 func TestHandlersDoNotOwnGORM(t *testing.T) {
 	patterns := []string{
 		"app/*/handler.go",
@@ -41,9 +35,6 @@ func TestHandlersDoNotOwnGORM(t *testing.T) {
 		}
 		for _, file := range files {
 			file = filepath.ToSlash(file)
-			if _, ok := handlerLayeringLegacyWhitelist[file]; ok {
-				continue
-			}
 			content, err := os.ReadFile(file)
 			if err != nil {
 				t.Fatalf("read %s: %v", file, err)

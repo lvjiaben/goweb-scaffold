@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/lvjiaben/goweb-scaffold/internal/bootstrap"
+	sharedmodel "github.com/lvjiaben/goweb-scaffold/internal/shared/model"
 )
 
 type Service struct {
@@ -67,7 +68,7 @@ func (s *Service) SaveConfig(req SaveRequest) (SaveResult, error) {
 		item := SystemConfig{
 			ConfigKey:   req.ConfigKey,
 			ConfigName:  req.ConfigName,
-			ConfigValue: JSON(req.ConfigValue),
+			ConfigValue: sharedmodel.JSON(req.ConfigValue),
 			Remark:      req.Remark,
 		}
 		if err := s.repo.Create(&item); err != nil {
@@ -83,7 +84,7 @@ func (s *Service) SaveConfig(req SaveRequest) (SaveResult, error) {
 	if err := s.repo.Update(&item, map[string]any{
 		"config_key":   req.ConfigKey,
 		"config_name":  req.ConfigName,
-		"config_value": JSON(req.ConfigValue),
+		"config_value": sharedmodel.JSON(req.ConfigValue),
 		"remark":       req.Remark,
 		"updated_at":   time.Now(),
 	}); err != nil {

@@ -2,23 +2,19 @@
 
 package {{.PackageName}}
 
-{{- if or .UsesJSON .UsesTime .UsesDeletedAt }}
 import (
+	sharedmodel "github.com/lvjiaben/goweb-scaffold/internal/shared/model"
 {{- if .UsesJSON }}
 	"gorm.io/datatypes"
 {{- end }}
-{{- if .UsesTime }}
-	"time"
-{{- end }}
-{{- if .UsesDeletedAt }}
-	"gorm.io/gorm"
-{{- end }}
 )
-{{- end }}
 
 type Entity struct {
+	sharedmodel.BaseModel
 {{- range .Fields }}
+{{- if not (isBaseModelColumn .ColumnName) }}
 	{{ .GoFieldName }} {{ .GoType }} `gorm:"{{ .GormTag }}" json:"{{ .ColumnName }}"`
+{{- end }}
 {{- end }}
 }
 

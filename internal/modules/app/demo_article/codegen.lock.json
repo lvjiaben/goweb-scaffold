@@ -2,7 +2,7 @@
   "generated_by": "goweb-scaffold",
   "module_name": "demo_article",
   "table_name": "demo_article",
-  "generated_at": "2026-04-24T04:13:56+08:00",
+  "generated_at": "2026-04-24T05:31:00+08:00",
   "template_version": "v7",
   "payload": {
     "list_fields": [
@@ -370,8 +370,8 @@
       },
       {
         "path": "internal/modules/app/demo_article/model.go",
-        "sha256": "67aec7b2e28a130e5d95a3698cee5f351a005c62ccf199a0f4a3ef13f7a38446",
-        "bytes": 726
+        "sha256": "27eb4736d543c4b3faa4ca0f0e7ad447edeb1bb31fcb7c2d9cd461eb3c1cfede",
+        "bytes": 472
       },
       {
         "path": "internal/modules/app/demo_article/module.go",

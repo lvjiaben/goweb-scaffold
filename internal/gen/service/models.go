@@ -3,32 +3,19 @@ package service
 import (
 	"time"
 
+	sharedmodel "github.com/lvjiaben/goweb-scaffold/internal/shared/model"
 	"gorm.io/datatypes"
-	"gorm.io/gorm"
 )
 
-func JSON(value []byte) datatypes.JSON {
-	if len(value) == 0 {
-		return datatypes.JSON([]byte("{}"))
-	}
-	return datatypes.JSON(value)
-}
+var JSON = sharedmodel.JSON
 
 const (
 	MenuTypeMenu   = "menu"
 	MenuTypeButton = "button"
 )
 
-type BaseModel struct {
-	ID        int64          `gorm:"primaryKey"`
-	CreatedAt time.Time      `gorm:"column:created_at"`
-	UpdatedAt time.Time      `gorm:"column:updated_at"`
-	DeletedAt gorm.DeletedAt `gorm:"column:deleted_at;index"`
-	Ext       datatypes.JSON `gorm:"column:ext;type:jsonb"`
-}
-
 type AdminUser struct {
-	BaseModel
+	sharedmodel.BaseModel
 	Username     string     `gorm:"column:username"`
 	PasswordHash string     `gorm:"column:password_hash"`
 	Nickname     string     `gorm:"column:nickname"`
@@ -41,7 +28,7 @@ type AdminUser struct {
 func (AdminUser) TableName() string { return "admin_user" }
 
 type AdminRole struct {
-	BaseModel
+	sharedmodel.BaseModel
 	Name   string `gorm:"column:name"`
 	Code   string `gorm:"column:code"`
 	Status int    `gorm:"column:status"`
@@ -50,7 +37,7 @@ type AdminRole struct {
 func (AdminRole) TableName() string { return "admin_role" }
 
 type AdminMenu struct {
-	BaseModel
+	sharedmodel.BaseModel
 	ParentID       int64  `gorm:"column:parent_id"`
 	Name           string `gorm:"column:name"`
 	Title          string `gorm:"column:title"`
@@ -67,7 +54,7 @@ type AdminMenu struct {
 func (AdminMenu) TableName() string { return "admin_menu" }
 
 type AdminUserRole struct {
-	BaseModel
+	sharedmodel.BaseModel
 	UserID int64 `gorm:"column:user_id"`
 	RoleID int64 `gorm:"column:role_id"`
 }
@@ -75,7 +62,7 @@ type AdminUserRole struct {
 func (AdminUserRole) TableName() string { return "admin_user_role" }
 
 type AdminRoleMenu struct {
-	BaseModel
+	sharedmodel.BaseModel
 	RoleID int64 `gorm:"column:role_id"`
 	MenuID int64 `gorm:"column:menu_id"`
 }
@@ -83,7 +70,7 @@ type AdminRoleMenu struct {
 func (AdminRoleMenu) TableName() string { return "admin_role_menu" }
 
 type AdminLoginLog struct {
-	BaseModel
+	sharedmodel.BaseModel
 	AdminUserID int64  `gorm:"column:admin_user_id"`
 	Username    string `gorm:"column:username"`
 	IP          string `gorm:"column:ip"`
@@ -95,7 +82,7 @@ type AdminLoginLog struct {
 func (AdminLoginLog) TableName() string { return "admin_login_log" }
 
 type AdminSession struct {
-	BaseModel
+	sharedmodel.BaseModel
 	AdminUserID int64     `gorm:"column:admin_user_id"`
 	ExpiresAt   time.Time `gorm:"column:expires_at"`
 	LastSeenAt  time.Time `gorm:"column:last_seen_at"`
@@ -106,7 +93,7 @@ type AdminSession struct {
 func (AdminSession) TableName() string { return "admin_session" }
 
 type AppUser struct {
-	BaseModel
+	sharedmodel.BaseModel
 	Username     string `gorm:"column:username"`
 	PasswordHash string `gorm:"column:password_hash"`
 	Nickname     string `gorm:"column:nickname"`
@@ -118,7 +105,7 @@ type AppUser struct {
 func (AppUser) TableName() string { return "app_user" }
 
 type AppUserSession struct {
-	BaseModel
+	sharedmodel.BaseModel
 	AppUserID  int64     `gorm:"column:app_user_id"`
 	ExpiresAt  time.Time `gorm:"column:expires_at"`
 	LastSeenAt time.Time `gorm:"column:last_seen_at"`
@@ -129,7 +116,7 @@ type AppUserSession struct {
 func (AppUserSession) TableName() string { return "app_user_session" }
 
 type SystemConfig struct {
-	BaseModel
+	sharedmodel.BaseModel
 	ConfigKey   string         `gorm:"column:config_key"`
 	ConfigName  string         `gorm:"column:config_name"`
 	ConfigValue datatypes.JSON `gorm:"column:config_value;type:jsonb"`
@@ -139,7 +126,7 @@ type SystemConfig struct {
 func (SystemConfig) TableName() string { return "system_config" }
 
 type FileAttachment struct {
-	BaseModel
+	sharedmodel.BaseModel
 	OriginalName string `gorm:"column:original_name"`
 	SavedName    string `gorm:"column:saved_name"`
 	FilePath     string `gorm:"column:file_path"`
@@ -154,7 +141,7 @@ type FileAttachment struct {
 func (FileAttachment) TableName() string { return "file_attachment" }
 
 type CodegenHistory struct {
-	BaseModel
+	sharedmodel.BaseModel
 	ModuleName  string         `gorm:"column:module_name"`
 	SourceTable string         `gorm:"column:table_name"`
 	Status      string         `gorm:"column:status"`

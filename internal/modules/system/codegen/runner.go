@@ -8,6 +8,7 @@ import (
 
 	"github.com/lvjiaben/goweb-scaffold/internal/bootstrap"
 	"github.com/lvjiaben/goweb-scaffold/internal/gen/service"
+	sharedmodel "github.com/lvjiaben/goweb-scaffold/internal/shared/model"
 )
 
 type ActionInput struct {
@@ -103,6 +104,10 @@ func (r *Runner) generatorService() service.GeneratorService {
 		RepoRoot: r.Runtime.RepoRoot,
 		DB:       r.Runtime.DB,
 	}
+}
+
+func (r *Runner) repo() *Repo {
+	return NewRepo(r.Runtime)
 }
 
 func (r *Runner) Tables() ([]BusinessTable, error) {
@@ -212,13 +217,11 @@ func (r *Runner) Generate(input ActionInput) (service.GenerateResult, error) {
 		ModuleName:  strings.TrimSpace(input.ModuleName),
 		SourceTable: strings.TrimSpace(input.TableName),
 		Status:      "generated",
-		Payload:     JSON(rawPayload),
+		Payload:     sharedmodel.JSON(rawPayload),
 		Remark:      "generated admin CRUD files",
 	}
-	if r.Runtime.DB != nil {
-		if err := r.Runtime.DB.Create(&record).Error; err != nil {
-			return service.GenerateResult{}, err
-		}
+	if err := r.repo().CreateHistory(&record); err != nil {
+		return service.GenerateResult{}, err
 	}
 	return result, nil
 }
@@ -240,13 +243,10 @@ func (r *Runner) Regenerate(input RegenerateInput) (service.GenerateResult, erro
 		return service.GenerateResult{}, err
 	}
 
-	if r.Runtime.DB != nil {
-		var row CodegenHistory
-		if err := r.Runtime.DB.Where("module_name = ?", source.ModuleName).Order("id DESC").First(&row).Error; err == nil {
-			row.Status = "regenerated"
-			row.Remark = "regenerated admin CRUD files"
-			_ = r.Runtime.DB.Save(&row).Error
-		}
+	if row, err := r.repo().LatestHistoryByModule(source.ModuleName); err == nil {
+		row.Status = "regenerated"
+		row.Remark = "regenerated admin CRUD files"
+		_ = r.repo().SaveHistory(&row)
 	}
 	return result, nil
 }
@@ -455,12 +455,8 @@ func (r *Runner) resolveRegenerateSource(input RegenerateInput) (regenerateSourc
 	if !os.IsNotExist(err) {
 		return regenerateSource{}, err
 	}
-	if r.Runtime.DB == nil {
-		return regenerateSource{}, fmt.Errorf("codegen source for module %s not found", input.ModuleName)
-	}
-
-	var row CodegenHistory
-	if err := r.Runtime.DB.Where("module_name = ?", strings.TrimSpace(input.ModuleName)).Order("id DESC").First(&row).Error; err != nil {
+	row, err := r.repo().LatestHistoryByModule(input.ModuleName)
+	if err != nil {
 		return regenerateSource{}, fmt.Errorf("codegen source for module %s not found", input.ModuleName)
 	}
 	return regenerateSource{
@@ -471,11 +467,8 @@ func (r *Runner) resolveRegenerateSource(input RegenerateInput) (regenerateSourc
 }
 
 func (r *Runner) loadRegenerateSourceFromHistory(historyID int64) (regenerateSource, error) {
-	if r.Runtime.DB == nil {
-		return regenerateSource{}, fmt.Errorf("codegen history %d not found", historyID)
-	}
-	var row CodegenHistory
-	if err := r.Runtime.DB.First(&row, historyID).Error; err != nil {
+	row, err := r.repo().HistoryByID(historyID)
+	if err != nil {
 		return regenerateSource{}, fmt.Errorf("codegen history %d not found", historyID)
 	}
 	return regenerateSource{

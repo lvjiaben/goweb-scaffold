@@ -12,18 +12,19 @@ import (
 
 func renderTemplate(templatePath string, data any) ([]byte, error) {
 	content, err := gentemplates.Render(templatePath, data, template.FuncMap{
-		"quote":            Quote,
-		"json":             MarshalIndent,
-		"js":               toJSLiteral,
-		"optionFuncName":   optionFuncName,
-		"fieldOptions":     fieldOptions,
-		"formComponent":    formComponent,
-		"searchComponent":  searchComponent,
-		"columnAlign":      columnAlign,
-		"columnWidth":      columnWidth,
-		"columnMinWidth":   columnMinWidth,
-		"labelPlaceholder": labelPlaceholder,
-		"taggableField":    taggableField,
+		"quote":             Quote,
+		"json":              MarshalIndent,
+		"js":                toJSLiteral,
+		"optionFuncName":    optionFuncName,
+		"fieldOptions":      fieldOptions,
+		"formComponent":     formComponent,
+		"searchComponent":   searchComponent,
+		"columnAlign":       columnAlign,
+		"columnWidth":       columnWidth,
+		"columnMinWidth":    columnMinWidth,
+		"labelPlaceholder":  labelPlaceholder,
+		"taggableField":     taggableField,
+		"isBaseModelColumn": isBaseModelColumn,
 	})
 	if err != nil {
 		return nil, err
@@ -35,6 +36,15 @@ func renderTemplate(templatePath string, data any) ([]byte, error) {
 		}
 	}
 	return content, nil
+}
+
+func isBaseModelColumn(name string) bool {
+	switch strings.ToLower(strings.TrimSpace(name)) {
+	case "id", "created_at", "updated_at", "deleted_at":
+		return true
+	default:
+		return false
+	}
 }
 
 func toJSLiteral(value any) string {

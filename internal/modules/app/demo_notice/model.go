@@ -3,19 +3,15 @@
 package demo_notice
 
 import (
-	"gorm.io/gorm"
-	"time"
+	sharedmodel "github.com/lvjiaben/goweb-scaffold/internal/shared/model"
 )
 
 type Entity struct {
-	ID        int64          `gorm:"primaryKey;column:id" json:"id"`
-	Title     string         `gorm:"column:title" json:"title"`
-	Content   string         `gorm:"column:content" json:"content"`
-	Status    int            `gorm:"column:status" json:"status"`
-	Sort      int            `gorm:"column:sort" json:"sort"`
-	CreatedAt time.Time      `gorm:"column:created_at" json:"created_at"`
-	UpdatedAt time.Time      `gorm:"column:updated_at" json:"updated_at"`
-	DeletedAt gorm.DeletedAt `gorm:"column:deleted_at;index" json:"deleted_at"`
+	sharedmodel.BaseModel
+	Title   string `gorm:"column:title" json:"title"`
+	Content string `gorm:"column:content" json:"content"`
+	Status  int    `gorm:"column:status" json:"status"`
+	Sort    int    `gorm:"column:sort" json:"sort"`
 }
 
 func (Entity) TableName() string {

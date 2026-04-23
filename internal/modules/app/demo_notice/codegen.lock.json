@@ -2,7 +2,7 @@
   "generated_by": "goweb-scaffold",
   "module_name": "demo_notice",
   "table_name": "demo_notice",
-  "generated_at": "2026-04-24T04:13:56+08:00",
+  "generated_at": "2026-04-24T05:31:00+08:00",
   "template_version": "v7",
   "payload": {
     "list_fields": [
@@ -364,8 +364,8 @@
       },
       {
         "path": "internal/modules/app/demo_notice/model.go",
-        "sha256": "9f927e15d9616d3430f1db4603fab5a48392d399fe0c6eb942911b3e89e3358d",
-        "bytes": 724
+        "sha256": "374d6af241169e3877b788def22539be4dcf1da8dab2954c51ec999e32166418",
+        "bytes": 470
       },
       {
         "path": "internal/modules/app/demo_notice/module.go",
