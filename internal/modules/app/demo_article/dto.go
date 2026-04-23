@@ -2,12 +2,36 @@
 
 package demo_article
 
+type ListParams struct {
+	Page     int
+	PageSize int
+	Keyword  string
+	Filters  map[string]any
+}
+
 type SaveRequest struct {
 	ID      int64  `json:"id"`
 	Title   string `json:"title"`
 	Summary string `json:"summary"`
 	Status  int    `json:"status"`
 	Sort    int    `json:"sort"`
+}
+
+type DeleteRequest struct {
+	ID  int64   `json:"id"`
+	IDs []int64 `json:"ids"`
+}
+
+func (p DeleteRequest) Values() []int64 {
+	return normalizeIDs(append([]int64{p.ID}, p.IDs...)...)
+}
+
+type SaveResult struct {
+	ID int64 `json:"id"`
+}
+
+type DeleteResult struct {
+	Deleted int `json:"deleted"`
 }
 
 type ListItem = Entity

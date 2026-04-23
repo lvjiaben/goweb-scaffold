@@ -3,6 +3,8 @@
 package demo_article
 
 import (
+	"time"
+
 	"github.com/lvjiaben/goweb-scaffold/internal/bootstrap"
 	"gorm.io/gorm"
 )
@@ -13,4 +15,65 @@ type Repo struct {
 
 func NewRepo(runtime *bootstrap.Runtime) *Repo {
 	return &Repo{db: runtime.DB}
+}
+
+func (r *Repo) Count(filter ListFilter) (int64, error) {
+	var total int64
+	err := r.applyListFilter(r.db.Model(&Entity{}), filter).Count(&total).Error
+	return total, err
+}
+
+func (r *Repo) List(filter ListFilter, page int, pageSize int) ([]Entity, error) {
+	var rows []Entity
+	err := r.applyListFilter(r.db.Model(&Entity{}), filter).
+		Order("id DESC").
+		Offset((page - 1) * pageSize).
+		Limit(pageSize).
+		Find(&rows).Error
+	return rows, err
+}
+
+func (r *Repo) FindByID(id int64) (Entity, error) {
+	var row Entity
+	err := r.db.First(&row, id).Error
+	return row, err
+}
+
+func (r *Repo) Create(row *Entity) error {
+	return r.db.Create(row).Error
+}
+
+func (r *Repo) Save(row *Entity) error {
+	return r.db.Save(row).Error
+}
+
+func (r *Repo) DeleteByIDs(ids []int64) error {
+	return r.db.Where("id IN ?", ids).Delete(&Entity{}).Error
+}
+
+func (r *Repo) applyListFilter(query *gorm.DB, filter ListFilter) *gorm.DB {
+	if filter.Keyword != "" {
+		query = query.Where("title ILIKE ?",
+			filter.Keyword,
+		)
+	}
+	if value := filter.Like["title"]; value != "" {
+		query = query.Where("title ILIKE ?", value)
+	}
+	if value, ok := filter.Exact["status"]; ok {
+		query = query.Where("status = ?", value)
+	}
+	return query
+}
+
+type ListFilter struct {
+	Keyword string
+	Like    map[string]string
+	Exact   map[string]any
+	Range   map[string]timeRange
+}
+
+type timeRange struct {
+	Start *time.Time
+	End   *time.Time
 }

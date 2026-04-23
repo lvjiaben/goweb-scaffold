@@ -2,7 +2,7 @@
   "generated_by": "goweb-scaffold",
   "module_name": "demo_notice",
   "table_name": "demo_notice",
-  "generated_at": "2026-04-24T03:59:28+08:00",
+  "generated_at": "2026-04-24T04:13:56+08:00",
   "template_version": "v7",
   "payload": {
     "list_fields": [
@@ -349,13 +349,13 @@
       },
       {
         "path": "internal/modules/app/demo_notice/dto.go",
-        "sha256": "37802142f453546dc6ed74f40793925c7d48ec4b46a0387daab6ccba34f91385",
-        "bytes": 304
+        "sha256": "4c571843e7479dbd3bdbb273db3e5151baad29cb3f123e74c9c5ea2c59e2ae36",
+        "bytes": 696
       },
       {
         "path": "internal/modules/app/demo_notice/handler.go",
-        "sha256": "fe935670b01f1a849954f83985103dbfe28e19ffe65454474195335eb306b80a",
-        "bytes": 3009
+        "sha256": "80c3279bc375656a43570e21f7dee461b09949c879ff82d0783623d97e231cf3",
+        "bytes": 1815
       },
       {
         "path": "internal/modules/app/demo_notice/meta.go",
@@ -374,13 +374,13 @@
       },
       {
         "path": "internal/modules/app/demo_notice/repo.go",
-        "sha256": "6f08a0b05a82234f3f10179150acde93909759f337953ed83cd29acdd8b6cfa7",
-        "bytes": 273
+        "sha256": "dd96f29faf68b11536f8d2c38a012b0dd99fb3778f1bc431b779f5da69d27efc",
+        "bytes": 1675
       },
       {
         "path": "internal/modules/app/demo_notice/service.go",
-        "sha256": "7c6cfa2bd12a47c8232f007ab9af2b56a7ac0226e4e061553a7c5b1e1643e80b",
-        "bytes": 271
+        "sha256": "a400634520010d45588bdecde05a4b2c22c9384f07d754372d7177d8381ac00f",
+        "bytes": 3203
       },
       {
         "path": "vben-admin/apps/backend/src/api/demo_notice.ts",
