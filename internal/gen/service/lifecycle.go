@@ -13,7 +13,7 @@ import (
 )
 
 func (s GeneratorService) ListModules() ([]ManagedModule, error) {
-	pattern := filepath.Join(s.RepoRoot, "internal/modules/*/codegen.lock.json")
+	pattern := filepath.Join(s.RepoRoot, "internal/modules/app/*/codegen.lock.json")
 	files, err := filepath.Glob(pattern)
 	if err != nil {
 		return nil, err

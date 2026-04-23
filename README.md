@@ -24,8 +24,13 @@
 - `configs`：YAML 配置与示例配置
 - `migrations`：PostgreSQL 初始化和 seed SQL
 - `internal/bootstrap`：运行时装配、认证、RBAC、迁移执行
-- `internal/gen/modules_gen.go`：模块注册入口
-- `internal/modules`：后台和用户端业务模块
+- `internal/modules/manual_gen.go`：手写模块注册入口，只维护 `admin/*`、`system/*`、`app/auth`、`app/user`
+- `internal/gen/modules_gen.go`：codegen 生成模块注册入口，只维护 `internal/modules/app/*` 里的生成模块
+- `internal/modules/admin`：后台认证、管理员、角色、菜单等手写后台模块
+- `internal/modules/app`：用户端手写模块和所有 codegen 业务模块
+- `internal/modules/system`：系统配置、附件、codegen、公共能力等手写系统模块
+- `internal/platform`：队列、定时任务、缓存、事件等运行时基础设施预留目录
+- `internal/http/middleware`：项目级 HTTP 中间件预留目录
 - `storage/uploads`：本地上传目录
 - `vben-admin`：`apps/backend` 和 `apps/user` 双应用
 
@@ -130,10 +135,11 @@ npm run dev
 ## 鉴权与路由行为
 
 - 后端接口仅使用 `GET` 和 `POST`
-- 后台接口前缀为 `/admin-api`
+- 后台接口前缀为 `/backend`
 - 用户端接口前缀为 `/api`
 - 权限校验按 `permission_code` 执行
-- 模块注册通过 `internal/gen/modules_gen.go`
+- 手写模块注册通过 `internal/modules/manual_gen.go`
+- codegen 模块注册通过 `internal/gen/modules_gen.go`
 - 前端 `401` 会统一清理本地 session，并自动跳转 `/login`
 - 前端 `403` 会统一提示“当前账号无权执行该操作”
 - 用户手输无权访问的后台路由时，不会白屏，会进入 `ForbiddenView`
@@ -141,11 +147,11 @@ npm run dev
 
 ## 页面专用 options / tree 接口
 
-- `GET /admin-api/admin_role/options`
+- `GET /backend/admin/role/options`
   用于管理员表单中的角色选项，只对可编辑管理员的账号开放
-- `GET /admin-api/admin_menu/tree`
+- `GET /backend/admin/menu/tree`
   用于角色授权或菜单编辑场景，返回完整菜单树，包含按钮节点
-- `GET /admin-api/admin_menu/options`
+- `GET /backend/admin/menu/options`
   用于菜单父级选择器，只返回菜单节点，不返回按钮节点
 
 ## Codegen 当前能力
@@ -158,10 +164,13 @@ npm run dev
 - 输出 `page`、`api`、`inferred_fields`
 - 输出 `form_schema`、`list_schema`、`search_schema`
 - 真正写入后端模块文件：
-  `internal/modules/{module_name}/module.go`
-  `internal/modules/{module_name}/types.go`
-  `internal/modules/{module_name}/model.go`
-  `internal/modules/{module_name}/meta.go`
+  `internal/modules/app/{module_name}/module.go`
+  `internal/modules/app/{module_name}/handler.go`
+  `internal/modules/app/{module_name}/service.go`
+  `internal/modules/app/{module_name}/repo.go`
+  `internal/modules/app/{module_name}/dto.go`
+  `internal/modules/app/{module_name}/model.go`
+  `internal/modules/app/{module_name}/meta.go`
 - 真正写入 backend 前端文件：
   `vben-admin/apps/backend/src/api/{module_name}.ts`
   `vben-admin/apps/backend/src/views/{module_name}/list.vue`
@@ -172,7 +181,7 @@ npm run dev
   `vben-admin/apps/backend/src/router/routes/modules/generated.ts`
 - 可直接把菜单和按钮权限写入 `admin_menu` / `admin_role_menu`
 - 保存历史记录并可重新载入当前表单
-- 为每个生成模块写入 `internal/modules/{module_name}/codegen.lock.json`
+- 为每个生成模块写入 `internal/modules/app/{module_name}/codegen.lock.json`
 - 为每个 lock / export 写入稳定性 `snapshot`
 - 支持从 `codegen.lock.json` 或 `codegen_history` 重新生成
 - 支持生成前 diff 预览
@@ -231,8 +240,8 @@ go run ./cmd/codegen templates -format text
 也可以先把旧的 source 迁移成新的视图：
 
 ```bash
-go run ./cmd/codegen migrate-source -from internal/modules/demo_article/codegen.lock.json -format json
-go run ./cmd/codegen migrate-source -from internal/modules/demo_article/codegen.lock.json -write -output /tmp/demo_article.v7.lock.json
+go run ./cmd/codegen migrate-source -from internal/modules/app/demo_article/codegen.lock.json -format json
+go run ./cmd/codegen migrate-source -from internal/modules/app/demo_article/codegen.lock.json -write -output /tmp/demo_article.v7.lock.json
 ```
 
 ### 覆盖规则
@@ -296,21 +305,21 @@ go run ./cmd/codegen migrate-source -from internal/modules/demo_article/codegen.
 
 ## Codegen API
 
-- `POST /admin-api/codegen/preview`
+- `POST /backend/system/codegen/preview`
   返回当前模块的 page/api/schema 方案稿
-- `POST /admin-api/codegen/diff`
+- `POST /backend/system/codegen/diff`
   只计算本次生成会创建、覆盖、跳过哪些文件，不真正写盘
-- `POST /admin-api/codegen/check-breaking`
+- `POST /backend/system/codegen/check-breaking`
   比较当前 preview/render 结果与 lock 快照，返回 `same` / `non_breaking` / `breaking`
-- `POST /admin-api/codegen/generate`
+- `POST /backend/system/codegen/generate`
   真正生成文件、可重建注册文件、可 upsert 菜单权限
-- `POST /admin-api/codegen/regenerate`
+- `POST /backend/system/codegen/regenerate`
   支持按 `module_name` 或按 `history_id` 重新生成
-- `GET /admin-api/codegen/modules`
+- `GET /backend/system/codegen/modules`
   扫描所有 `codegen.lock.json`，返回当前已生成模块列表与 lock 摘要
-- `GET /admin-api/codegen/export`
+- `GET /backend/system/codegen/export`
   导出当前模块的 portable export JSON，供终端、Codex 或页面下载复用
-- `POST /admin-api/codegen/remove`
+- `POST /backend/system/codegen/remove`
   安全卸载生成模块，只删除生成器管理的文件，并可选择移除菜单权限、历史记录、lock 与注册项
 
 ## Codegen CLI
@@ -445,7 +454,7 @@ CLI 不走本地 HTTP，而是直接复用当前 codegen runner / generator serv
   "modules": [
     {
       "module_name": "demo_article",
-      "from": "internal/modules/demo_article/codegen.lock.json"
+      "from": "internal/modules/app/demo_article/codegen.lock.json"
     },
     {
       "module_name": "demo_notice",
@@ -541,7 +550,7 @@ go run ./cmd/codegen version -format json
 迁移旧 source：
 
 ```bash
-go run ./cmd/codegen migrate-source -from internal/modules/demo_article/codegen.lock.json -format json
+go run ./cmd/codegen migrate-source -from internal/modules/app/demo_article/codegen.lock.json -format json
 ```
 
 单模块兼容性检查：
@@ -696,7 +705,7 @@ go run ./cmd/codegen batch -config configs/config.yaml -plan examples/codegen/de
 
 ### 卸载 / 回滚模块
 
-`POST /admin-api/codegen/remove` 的典型请求体：
+`POST /backend/system/codegen/remove` 的典型请求体：
 
 ```json
 {
@@ -726,7 +735,7 @@ go run ./cmd/codegen batch -config configs/config.yaml -plan examples/codegen/de
 - `internal/gen/service/*_test.go`
 - `internal/gen/writer/*_test.go`
 - `internal/gen/registry/*_test.go`
-- `internal/modules/codegen/*_test.go`
+- `internal/modules/system/codegen/*_test.go`
 
 golden 与固定输入位于：
 
@@ -775,7 +784,7 @@ make codegen-generate MODULE=demo_article TABLE=demo_article PAYLOAD=/tmp/demo_a
 make codegen-regenerate MODULE=demo_article FORMAT=json
 make codegen-remove MODULE=demo_article FORMAT=json
 make codegen-templates FORMAT=text
-make codegen-migrate-source FROM=internal/modules/demo_article/codegen.lock.json FORMAT=json
+make codegen-migrate-source FROM=internal/modules/app/demo_article/codegen.lock.json FORMAT=json
 make codegen-check-breaking MODULE=demo_article FORMAT=json
 make codegen-batch-diff PLAN=examples/codegen/demo.plan.json FORMAT=json
 make codegen-batch-generate PLAN=examples/codegen/demo.plan.json FORMAT=json
@@ -788,13 +797,13 @@ make codegen-batch-remove PLAN=examples/codegen/demo.plan.json FORMAT=json
 仓库已经包含一次真实生成的样例模块：
 
 - 数据表：`demo_article`
-- 后端模块：`internal/modules/demo_article/*`
+- 后端模块：`internal/modules/app/demo_article/*`
 - backend API：`vben-admin/apps/backend/src/api/demo_article.ts`
 - backend 页面目录：
   `vben-admin/apps/backend/src/views/demo_article/list.vue`
   `vben-admin/apps/backend/src/views/demo_article/data.ts`
   `vben-admin/apps/backend/src/views/demo_article/modules/form-drawer.vue`
-- lock 文件：`internal/modules/demo_article/codegen.lock.json`
+- lock 文件：`internal/modules/app/demo_article/codegen.lock.json`
 - 路由：`/system/demo-article`
 - 权限码：
   `demo_article.list`
