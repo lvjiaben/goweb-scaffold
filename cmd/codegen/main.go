@@ -6,7 +6,7 @@ import (
 	"os"
 
 	"github.com/lvjiaben/goweb-scaffold/internal/bootstrap"
-	"github.com/lvjiaben/goweb-scaffold/internal/modules/codegen"
+	"github.com/lvjiaben/goweb-scaffold/internal/modules/system/codegen"
 )
 
 func main() {

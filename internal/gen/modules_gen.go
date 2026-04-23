@@ -4,33 +4,13 @@ package gen
 
 import (
 	"github.com/lvjiaben/goweb-scaffold/internal/bootstrap"
-	admin_auth "github.com/lvjiaben/goweb-scaffold/internal/modules/admin_auth"
-	admin_menu "github.com/lvjiaben/goweb-scaffold/internal/modules/admin_menu"
-	admin_role "github.com/lvjiaben/goweb-scaffold/internal/modules/admin_role"
-	admin_user "github.com/lvjiaben/goweb-scaffold/internal/modules/admin_user"
-	app_user "github.com/lvjiaben/goweb-scaffold/internal/modules/app_user"
-	app_user_auth "github.com/lvjiaben/goweb-scaffold/internal/modules/app_user_auth"
-	attachment "github.com/lvjiaben/goweb-scaffold/internal/modules/attachment"
-	codegen "github.com/lvjiaben/goweb-scaffold/internal/modules/codegen"
-	common "github.com/lvjiaben/goweb-scaffold/internal/modules/common"
-	demo_article "github.com/lvjiaben/goweb-scaffold/internal/modules/demo_article"
-	demo_notice "github.com/lvjiaben/goweb-scaffold/internal/modules/demo_notice"
-	system_config "github.com/lvjiaben/goweb-scaffold/internal/modules/system_config"
+	demo_article "github.com/lvjiaben/goweb-scaffold/internal/modules/app/demo_article"
+	demo_notice "github.com/lvjiaben/goweb-scaffold/internal/modules/app/demo_notice"
 )
 
-func RegisterModules(runtime *bootstrap.Runtime) error {
+func RegisterGeneratedModules(runtime *bootstrap.Runtime) error {
 	return bootstrap.RegisterAll(
 		runtime,
-		admin_auth.Module{},
-		common.Module{},
-		admin_user.Module{},
-		admin_role.Module{},
-		admin_menu.Module{},
-		system_config.Module{},
-		attachment.Module{},
-		app_user_auth.Module{},
-		app_user.Module{},
-		codegen.Module{},
 		demo_article.Module{},
 		demo_notice.Module{},
 	)

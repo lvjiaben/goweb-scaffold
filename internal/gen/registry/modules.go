@@ -17,24 +17,6 @@ type GeneratedModule struct {
 	Title      string
 }
 
-type BaseModule struct {
-	ModuleName string
-	ImportPath string
-}
-
-var baseModules = []BaseModule{
-	{ModuleName: "admin_auth", ImportPath: "github.com/lvjiaben/goweb-scaffold/internal/modules/admin_auth"},
-	{ModuleName: "common", ImportPath: "github.com/lvjiaben/goweb-scaffold/internal/modules/common"},
-	{ModuleName: "admin_user", ImportPath: "github.com/lvjiaben/goweb-scaffold/internal/modules/admin_user"},
-	{ModuleName: "admin_role", ImportPath: "github.com/lvjiaben/goweb-scaffold/internal/modules/admin_role"},
-	{ModuleName: "admin_menu", ImportPath: "github.com/lvjiaben/goweb-scaffold/internal/modules/admin_menu"},
-	{ModuleName: "system_config", ImportPath: "github.com/lvjiaben/goweb-scaffold/internal/modules/system_config"},
-	{ModuleName: "attachment", ImportPath: "github.com/lvjiaben/goweb-scaffold/internal/modules/attachment"},
-	{ModuleName: "app_user_auth", ImportPath: "github.com/lvjiaben/goweb-scaffold/internal/modules/app_user_auth"},
-	{ModuleName: "app_user", ImportPath: "github.com/lvjiaben/goweb-scaffold/internal/modules/app_user"},
-	{ModuleName: "codegen", ImportPath: "github.com/lvjiaben/goweb-scaffold/internal/modules/codegen"},
-}
-
 var (
 	moduleNameRegexp = regexp.MustCompile(`GeneratedModuleName\s*=\s*"([^"]+)"`)
 	routePathRegexp  = regexp.MustCompile(`GeneratedRoutePath\s*=\s*"([^"]+)"`)
@@ -43,14 +25,13 @@ var (
 	titleRegexp      = regexp.MustCompile(`GeneratedMenuTitle\s*=\s*"([^"]+)"`)
 )
 
-func BaseModules() []BaseModule {
-	return append([]BaseModule{}, baseModules...)
-}
-
 func DiscoverGeneratedModules(repoRoot string) ([]GeneratedModule, error) {
-	modulesDir := filepath.Join(repoRoot, "internal/modules")
+	modulesDir := filepath.Join(repoRoot, "internal/modules/app")
 	entries, err := os.ReadDir(modulesDir)
 	if err != nil {
+		if os.IsNotExist(err) {
+			return []GeneratedModule{}, nil
+		}
 		return nil, err
 	}
 
@@ -74,10 +55,6 @@ func DiscoverGeneratedModules(repoRoot string) ([]GeneratedModule, error) {
 		viewFile := firstMatch(viewFileRegexp, content)
 		title := firstMatch(titleRegexp, content)
 		if moduleName == "" || routePath == "" {
-			continue
-		}
-
-		if isBaseModule(moduleName) {
 			continue
 		}
 
@@ -114,17 +91,8 @@ func firstMatch(pattern *regexp.Regexp, content []byte) string {
 	return string(matched[1])
 }
 
-func isBaseModule(moduleName string) bool {
-	for _, item := range baseModules {
-		if item.ModuleName == moduleName {
-			return true
-		}
-	}
-	return false
-}
-
 func ImportPathForModule(moduleName string) string {
-	return fmt.Sprintf("github.com/lvjiaben/goweb-scaffold/internal/modules/%s", moduleName)
+	return fmt.Sprintf("github.com/lvjiaben/goweb-scaffold/internal/modules/app/%s", moduleName)
 }
 
 func ModuleAlias(moduleName string) string {

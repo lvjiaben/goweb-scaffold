@@ -31,11 +31,11 @@
   "permission_codes": ["demo_article.list", "demo_article.save", "demo_article.delete"],
   "route_path": "/system/demo-article",
   "generated_files": [
-    "internal/modules/demo_article/model.go",
-    "internal/modules/demo_article/types.go",
-    "internal/modules/demo_article/module.go",
-    "internal/modules/demo_article/meta.go",
-    "internal/modules/demo_article/codegen.lock.json",
+    "internal/modules/app/demo_article/go",
+    "internal/modules/app/demo_article/types.go",
+    "internal/modules/app/demo_article/module.go",
+    "internal/modules/app/demo_article/meta.go",
+    "internal/modules/app/demo_article/codegen.lock.json",
     "vben-admin/apps/admin/src/api/demo_article.ts",
     "vben-admin/apps/admin/src/views/system/DemoArticlePage.vue"
   ]

@@ -57,7 +57,7 @@ async function get{{.PascalName}}List(params: {{.PascalName}}Api.ListParams) {
     list?: Array<Record<string, any>>;
     page?: number;
     total?: number;
-  }>('/{{.ModuleCode}}/list', { params });
+  }>('/app/{{.ModuleCode}}/list', { params });
   return {
     limit: Number(response?.limit ?? params.page_size ?? 10),
     list: (response?.list ?? []).map(normalize{{.PascalName}}),
@@ -67,7 +67,7 @@ async function get{{.PascalName}}List(params: {{.PascalName}}Api.ListParams) {
 }
 
 async function get{{.PascalName}}Detail(id: number) {
-  const response = await requestClient.get<Record<string, any>>('/{{.ModuleCode}}/detail', {
+  const response = await requestClient.get<Record<string, any>>('/app/{{.ModuleCode}}/detail', {
     params: { id },
   });
   return normalize{{.PascalName}}(response ?? {});
@@ -85,11 +85,11 @@ async function save{{.PascalName}}(
   if (id > 0) {
     payload.id = id;
   }
-  return requestClient.post('/{{.ModuleCode}}/save', payload);
+  return requestClient.post('/app/{{.ModuleCode}}/save', payload);
 }
 
 async function delete{{.PascalName}}(data: { ids: number[] }) {
-  return requestClient.post('/{{.ModuleCode}}/delete', data);
+  return requestClient.post('/app/{{.ModuleCode}}/delete', data);
 }
 
 export { delete{{.PascalName}}, get{{.PascalName}}Detail, get{{.PascalName}}List, save{{.PascalName}} };

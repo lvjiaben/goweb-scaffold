@@ -19,10 +19,10 @@ func TestDiffCreatesFilesOnFirstRun(t *testing.T) {
 	if len(result.WouldCreateFiles) == 0 {
 		t.Fatalf("expected create files on first diff")
 	}
-	if !containsString(result.WouldCreateFiles, "internal/modules/demo_article/model.go") {
+	if !containsString(result.WouldCreateFiles, "internal/modules/app/demo_article/model.go") {
 		t.Fatalf("expected model.go in create files, got %v", result.WouldCreateFiles)
 	}
-	if !containsString(result.WouldCreateFiles, "internal/modules/demo_article/codegen.lock.json") {
+	if !containsString(result.WouldCreateFiles, "internal/modules/app/demo_article/codegen.lock.json") {
 		t.Fatalf("expected codegen.lock.json in create files, got %v", result.WouldCreateFiles)
 	}
 }
@@ -41,7 +41,7 @@ func TestDiffSkipsExistingGeneratedFilesWhenOverwriteDisabled(t *testing.T) {
 	if err != nil {
 		t.Fatalf("diff existing files: %v", err)
 	}
-	if !containsString(result.WouldSkipFiles, "internal/modules/demo_article/codegen.lock.json") {
+	if !containsString(result.WouldSkipFiles, "internal/modules/app/demo_article/codegen.lock.json") {
 		t.Fatalf("expected lock file in skipped files, got %v", result.WouldSkipFiles)
 	}
 }
@@ -64,7 +64,7 @@ func TestDiffMarksGeneratedFilesAsOverwriteWhenContentChanges(t *testing.T) {
 	if err != nil {
 		t.Fatalf("diff changed generated files: %v", err)
 	}
-	if !containsString(result.WouldOverwriteFiles, "internal/modules/demo_article/codegen.lock.json") {
+	if !containsString(result.WouldOverwriteFiles, "internal/modules/app/demo_article/codegen.lock.json") {
 		t.Fatalf("expected generated lock in overwrite files, got %v", result.WouldOverwriteFiles)
 	}
 }
@@ -101,7 +101,7 @@ func TestGenerateRegenerateKeepsLockStable(t *testing.T) {
 	if err != nil {
 		t.Fatalf("generate first: %v", err)
 	}
-	if !containsString(first.GeneratedFiles, "internal/modules/demo_article/codegen.lock.json") {
+	if !containsString(first.GeneratedFiles, "internal/modules/app/demo_article/codegen.lock.json") {
 		t.Fatalf("expected lock file on first generate, got %v", first.GeneratedFiles)
 	}
 
@@ -114,7 +114,7 @@ func TestGenerateRegenerateKeepsLockStable(t *testing.T) {
 	if err != nil {
 		t.Fatalf("generate second: %v", err)
 	}
-	if !containsString(second.SkippedFiles, "internal/modules/demo_article/codegen.lock.json") {
+	if !containsString(second.SkippedFiles, "internal/modules/app/demo_article/codegen.lock.json") {
 		t.Fatalf("expected lock file skipped on second generate, got %v", second.SkippedFiles)
 	}
 
@@ -148,10 +148,10 @@ func TestRemoveGeneratedModuleFilesAndRegistry(t *testing.T) {
 	if err != nil {
 		t.Fatalf("remove generated module: %v", err)
 	}
-	if !containsString(result.RemovedFiles, "internal/modules/demo_article/model.go") {
+	if !containsString(result.RemovedFiles, "internal/modules/app/demo_article/model.go") {
 		t.Fatalf("expected model.go removed, got %v", result.RemovedFiles)
 	}
-	if _, err := os.Stat(filepath.Join(repoRoot, "internal/modules/demo_article/model.go")); !os.IsNotExist(err) {
+	if _, err := os.Stat(filepath.Join(repoRoot, "internal/modules/app/demo_article/model.go")); !os.IsNotExist(err) {
 		t.Fatalf("expected model.go removed from disk, stat err=%v", err)
 	}
 

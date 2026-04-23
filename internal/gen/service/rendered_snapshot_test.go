@@ -45,11 +45,11 @@ func TestRenderedSnapshots(t *testing.T) {
 			snapshotPath: filepath.Join("testdata", "snapshots", "demo_notice.ts.golden"),
 		},
 		{
-			actualPath:   filepath.Join(repoRoot, "internal/modules/demo_article/meta.go"),
+			actualPath:   filepath.Join(repoRoot, "internal/modules/app/demo_article/meta.go"),
 			snapshotPath: filepath.Join("testdata", "snapshots", "demo_article.meta.go.golden"),
 		},
 		{
-			actualPath:   filepath.Join(repoRoot, "internal/modules/demo_notice/meta.go"),
+			actualPath:   filepath.Join(repoRoot, "internal/modules/app/demo_notice/meta.go"),
 			snapshotPath: filepath.Join("testdata", "snapshots", "demo_notice.meta.go.golden"),
 		},
 	}

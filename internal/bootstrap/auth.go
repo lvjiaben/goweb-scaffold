@@ -8,7 +8,6 @@ import (
 	coreauth "github.com/lvjiaben/goweb-core/auth"
 	"github.com/lvjiaben/goweb-core/httpx"
 	corerbac "github.com/lvjiaben/goweb-core/rbac"
-	"github.com/lvjiaben/goweb-scaffold/internal/modules/model"
 	"gorm.io/gorm"
 )
 
@@ -34,14 +33,14 @@ func (r *Runtime) AdminAuthMiddleware() httpx.Middleware {
 				return
 			}
 
-			var session model.AdminSession
+			var session AdminSession
 			if err := r.DB.Where("id = ? AND admin_user_id = ? AND expires_at > ?", claims.SessionID, claims.UserID, time.Now()).
 				First(&session).Error; err != nil {
 				c.Unauthorized("admin session expired")
 				return
 			}
 
-			var user model.AdminUser
+			var user AdminUser
 			if err := r.DB.Where("id = ? AND status = ?", claims.UserID, 1).First(&user).Error; err != nil {
 				if errors.Is(err, gorm.ErrRecordNotFound) {
 					c.Unauthorized("admin user not found")
@@ -52,7 +51,7 @@ func (r *Runtime) AdminAuthMiddleware() httpx.Middleware {
 			}
 
 			var roleIDs []int64
-			if err := r.DB.Model(&model.AdminUserRole{}).Where("user_id = ?", user.ID).Pluck("role_id", &roleIDs).Error; err != nil {
+			if err := r.DB.Model(&AdminUserRole{}).Where("user_id = ?", user.ID).Pluck("role_id", &roleIDs).Error; err != nil {
 				c.Error(err)
 				return
 			}
@@ -66,7 +65,7 @@ func (r *Runtime) AdminAuthMiddleware() httpx.Middleware {
 			c.Set(adminUserContextKey, &user)
 			c.Set(adminClaimContextKey, claims)
 
-			_ = r.DB.Model(&model.AdminSession{}).Where("id = ?", session.ID).Update("last_seen_at", time.Now()).Error
+			_ = r.DB.Model(&AdminSession{}).Where("id = ?", session.ID).Update("last_seen_at", time.Now()).Error
 			next(c)
 		}
 	}
@@ -87,14 +86,14 @@ func (r *Runtime) AppUserAuthMiddleware() httpx.Middleware {
 				return
 			}
 
-			var session model.AppUserSession
+			var session AppUserSession
 			if err := r.DB.Where("id = ? AND app_user_id = ? AND expires_at > ?", claims.SessionID, claims.UserID, time.Now()).
 				First(&session).Error; err != nil {
 				c.Unauthorized("app session expired")
 				return
 			}
 
-			var user model.AppUser
+			var user AppUser
 			if err := r.DB.Where("id = ? AND status = ?", claims.UserID, 1).First(&user).Error; err != nil {
 				if errors.Is(err, gorm.ErrRecordNotFound) {
 					c.Unauthorized("app user not found")
@@ -107,18 +106,18 @@ func (r *Runtime) AppUserAuthMiddleware() httpx.Middleware {
 			c.Set(appUserContextKey, &user)
 			c.Set(appClaimContextKey, claims)
 
-			_ = r.DB.Model(&model.AppUserSession{}).Where("id = ?", session.ID).Update("last_seen_at", time.Now()).Error
+			_ = r.DB.Model(&AppUserSession{}).Where("id = ?", session.ID).Update("last_seen_at", time.Now()).Error
 			next(c)
 		}
 	}
 }
 
-func CurrentAdminUser(c *httpx.Context) (*model.AdminUser, bool) {
+func CurrentAdminUser(c *httpx.Context) (*AdminUser, bool) {
 	value, ok := c.Get(adminUserContextKey)
 	if !ok {
 		return nil, false
 	}
-	user, ok := value.(*model.AdminUser)
+	user, ok := value.(*AdminUser)
 	return user, ok
 }
 
@@ -131,12 +130,12 @@ func CurrentAdminClaims(c *httpx.Context) (*coreauth.Claims, bool) {
 	return claims, ok
 }
 
-func CurrentAppUser(c *httpx.Context) (*model.AppUser, bool) {
+func CurrentAppUser(c *httpx.Context) (*AppUser, bool) {
 	value, ok := c.Get(appUserContextKey)
 	if !ok {
 		return nil, false
 	}
-	user, ok := value.(*model.AppUser)
+	user, ok := value.(*AppUser)
 	return user, ok
 }
 

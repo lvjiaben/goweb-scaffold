@@ -29,13 +29,13 @@ func TestRegisteredRouteMethods(t *testing.T) {
 	runtime.AppAuthedGroup = engine.Group("/api")
 	runtime.AppProtectedGroup = engine.Group("/api")
 
-	if err := RegisterModules(runtime); err != nil {
+	if err := RegisterGeneratedModules(runtime); err != nil {
 		t.Fatalf("register modules: %v", err)
 	}
 
-	assertRouteMethod(t, engine.Routes(), http.MethodPost, "/backend/common/captcha")
-	assertRouteMethod(t, engine.Routes(), http.MethodPost, "/backend/auth/login")
-	assertRouteMethod(t, engine.Routes(), http.MethodGet, "/backend/auth/me")
+	assertRouteMethod(t, engine.Routes(), http.MethodGet, "/backend/app/demo_article/list")
+	assertRouteMethod(t, engine.Routes(), http.MethodPost, "/backend/app/demo_article/save")
+	assertRouteMethod(t, engine.Routes(), http.MethodGet, "/backend/app/demo_notice/list")
 }
 
 func assertRouteMethod(t *testing.T, routes []*httpx.Route, method string, path string) {

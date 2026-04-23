@@ -10,7 +10,6 @@ import (
 
 	"github.com/lvjiaben/goweb-scaffold/internal/gen/registry"
 	"github.com/lvjiaben/goweb-scaffold/internal/gen/writer"
-	"github.com/lvjiaben/goweb-scaffold/internal/modules/model"
 )
 
 func (s GeneratorService) ListModules() ([]ManagedModule, error) {
@@ -157,9 +156,12 @@ func (s GeneratorService) removeGeneratedFiles(moduleName string, lock LockFile,
 	candidates := []string{}
 	if input.RemoveFiles {
 		candidates = append(candidates,
-			paths["model"],
-			paths["types"],
 			paths["module"],
+			paths["handler"],
+			paths["service"],
+			paths["repo"],
+			paths["dto"],
+			paths["model"],
 			paths["meta"],
 			paths["api"],
 			paths["view_list"],
@@ -270,7 +272,7 @@ func (s GeneratorService) removeMenus(moduleName string, lock LockFile) (removeM
 		}
 	}
 
-	query := s.DB.Model(&model.AdminMenu{})
+	query := s.DB.Model(&AdminMenu{})
 	if routePath != "" {
 		query = query.Where("path = ?", routePath)
 	}
@@ -278,7 +280,7 @@ func (s GeneratorService) removeMenus(moduleName string, lock LockFile) (removeM
 		query = query.Or("permission_code IN ?", permissionCodes)
 	}
 
-	var rows []model.AdminMenu
+	var rows []AdminMenu
 	if err := query.Order("id ASC").Find(&rows).Error; err != nil {
 		return result, nil, err
 	}
@@ -303,14 +305,14 @@ func (s GeneratorService) removeMenus(moduleName string, lock LockFile) (removeM
 	if tx.Error != nil {
 		return result, nil, tx.Error
 	}
-	roleMenuDelete := tx.Where("menu_id IN ?", menuIDs).Delete(&model.AdminRoleMenu{})
+	roleMenuDelete := tx.Where("menu_id IN ?", menuIDs).Delete(&AdminRoleMenu{})
 	if roleMenuDelete.Error != nil {
 		tx.Rollback()
 		return result, nil, roleMenuDelete.Error
 	}
 	result.roleMenuLinks = roleMenuDelete.RowsAffected
 
-	if err := tx.Where("id IN ?", menuIDs).Delete(&model.AdminMenu{}).Error; err != nil {
+	if err := tx.Where("id IN ?", menuIDs).Delete(&AdminMenu{}).Error; err != nil {
 		tx.Rollback()
 		return result, nil, err
 	}
@@ -324,7 +326,7 @@ func (s GeneratorService) removeHistory(moduleName string) ([]int64, []string, e
 	if s.DB == nil {
 		return nil, []string{"remove_history requested but database is not configured"}, nil
 	}
-	var rows []model.CodegenHistory
+	var rows []CodegenHistory
 	if err := s.DB.Where("module_name = ?", moduleName).Order("id ASC").Find(&rows).Error; err != nil {
 		return nil, nil, err
 	}
@@ -336,7 +338,7 @@ func (s GeneratorService) removeHistory(moduleName string) ([]int64, []string, e
 	for _, row := range rows {
 		ids = append(ids, row.ID)
 	}
-	if err := s.DB.Where("id IN ?", ids).Delete(&model.CodegenHistory{}).Error; err != nil {
+	if err := s.DB.Where("id IN ?", ids).Delete(&CodegenHistory{}).Error; err != nil {
 		return nil, nil, err
 	}
 	return ids, nil, nil

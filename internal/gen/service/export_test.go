@@ -34,7 +34,7 @@ func TestBuildExportFromLockRoundTrip(t *testing.T) {
 		},
 		PermissionCodes: []string{"demo_article.list", "demo_article.save", "demo_article.delete"},
 		RoutePath:       "/system/demo-article",
-		GeneratedFiles:  []string{"internal/modules/demo_article/module.go"},
+		GeneratedFiles:  []string{"internal/modules/app/demo_article/module.go"},
 	}
 
 	exportFile := BuildExportFromLock(lock)

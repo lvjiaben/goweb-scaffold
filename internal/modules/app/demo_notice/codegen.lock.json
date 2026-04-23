@@ -1,0 +1,434 @@
+{
+  "generated_by": "goweb-scaffold",
+  "module_name": "demo_notice",
+  "table_name": "demo_notice",
+  "generated_at": "2026-04-24T03:59:28+08:00",
+  "template_version": "v7",
+  "payload": {
+    "list_fields": [
+      "id",
+      "title",
+      "status",
+      "sort",
+      "created_at",
+      "updated_at"
+    ],
+    "form_fields": [
+      "title",
+      "content",
+      "status",
+      "sort"
+    ],
+    "search_fields": [
+      "title",
+      "status"
+    ],
+    "title": "演示公告",
+    "field_overrides": {
+      "content": {
+        "label": "公告内容",
+        "placeholder": "请输入公告正文",
+        "width": "360px"
+      },
+      "sort": {
+        "label": "排序值",
+        "width": "100px"
+      },
+      "status": {
+        "label": "状态",
+        "component": "select",
+        "width": "120px",
+        "options": [
+          {
+            "label": "草稿",
+            "value": 0
+          },
+          {
+            "label": "启用",
+            "value": 1
+          },
+          {
+            "label": "禁用",
+            "value": 2
+          }
+        ]
+      },
+      "title": {
+        "label": "公告标题",
+        "placeholder": "请输入公告标题",
+        "width": "220px"
+      }
+    }
+  },
+  "preview_summary": {
+    "table_comment": "演示公告",
+    "page": {
+      "route_path": "/system/demo-notice",
+      "page_name": "DemoNoticeList",
+      "view_file": "views/demo_notice/list.vue",
+      "menu_title": "演示公告",
+      "feature_flags": [
+        "admin-crud",
+        "codegen"
+      ]
+    },
+    "api": {
+      "module_code": "demo_notice",
+      "list": "/backend/app/demo_notice/list",
+      "detail": "/backend/app/demo_notice/detail",
+      "save": "/backend/app/demo_notice/save",
+      "delete": "/backend/app/demo_notice/delete"
+    },
+    "inferred_fields": [
+      {
+        "column_name": "id",
+        "data_type": "bigint",
+        "is_nullable": false,
+        "is_primary_key": true,
+        "guessed_label": "ID",
+        "guessed_form_component": "readonly-text",
+        "guessed_list_display": "id",
+        "guessed_searchable": false,
+        "guessed_sortable": true
+      },
+      {
+        "column_name": "title",
+        "data_type": "character varying",
+        "is_nullable": false,
+        "is_primary_key": false,
+        "column_comment": "公告标题",
+        "guessed_label": "公告标题",
+        "guessed_form_component": "text-input",
+        "guessed_list_display": "text",
+        "guessed_searchable": true,
+        "guessed_sortable": true
+      },
+      {
+        "column_name": "content",
+        "data_type": "text",
+        "is_nullable": false,
+        "is_primary_key": false,
+        "column_comment": "公告内容",
+        "guessed_label": "公告内容",
+        "guessed_form_component": "textarea",
+        "guessed_list_display": "text",
+        "guessed_searchable": true,
+        "guessed_sortable": false
+      },
+      {
+        "column_name": "status",
+        "data_type": "smallint",
+        "is_nullable": false,
+        "is_primary_key": false,
+        "column_comment": "状态",
+        "guessed_label": "状态",
+        "guessed_form_component": "select",
+        "guessed_list_display": "option-tag",
+        "guessed_searchable": true,
+        "guessed_sortable": true
+      },
+      {
+        "column_name": "sort",
+        "data_type": "integer",
+        "is_nullable": false,
+        "is_primary_key": false,
+        "column_comment": "排序值",
+        "guessed_label": "排序值",
+        "guessed_form_component": "number-input",
+        "guessed_list_display": "text",
+        "guessed_searchable": false,
+        "guessed_sortable": true
+      },
+      {
+        "column_name": "created_at",
+        "data_type": "timestamp with time zone",
+        "is_nullable": false,
+        "is_primary_key": false,
+        "column_comment": "创建时间",
+        "guessed_label": "创建时间",
+        "guessed_form_component": "readonly-datetime",
+        "guessed_list_display": "datetime",
+        "guessed_searchable": false,
+        "guessed_sortable": true
+      },
+      {
+        "column_name": "updated_at",
+        "data_type": "timestamp with time zone",
+        "is_nullable": false,
+        "is_primary_key": false,
+        "column_comment": "更新时间",
+        "guessed_label": "更新时间",
+        "guessed_form_component": "readonly-datetime",
+        "guessed_list_display": "datetime",
+        "guessed_searchable": false,
+        "guessed_sortable": true
+      },
+      {
+        "column_name": "deleted_at",
+        "data_type": "timestamp with time zone",
+        "is_nullable": true,
+        "is_primary_key": false,
+        "guessed_label": "删除时间",
+        "guessed_form_component": "hidden",
+        "guessed_list_display": "datetime",
+        "guessed_searchable": false,
+        "guessed_sortable": false
+      }
+    ],
+    "form_schema": [
+      {
+        "field": "title",
+        "label": "公告标题",
+        "component": "text-input",
+        "required": true,
+        "placeholder": "请输入公告标题",
+        "width": "220px",
+        "default_value": ""
+      },
+      {
+        "field": "content",
+        "label": "公告内容",
+        "component": "textarea",
+        "required": true,
+        "placeholder": "请输入公告正文",
+        "width": "360px",
+        "default_value": ""
+      },
+      {
+        "field": "status",
+        "label": "状态",
+        "component": "select",
+        "required": true,
+        "placeholder": "请选择状态",
+        "width": "120px",
+        "options": [
+          {
+            "label": "草稿",
+            "value": 0
+          },
+          {
+            "label": "启用",
+            "value": 1
+          },
+          {
+            "label": "禁用",
+            "value": 2
+          }
+        ],
+        "default_value": 1
+      },
+      {
+        "field": "sort",
+        "label": "排序值",
+        "component": "number-input",
+        "required": true,
+        "placeholder": "请输入数字",
+        "width": "100px",
+        "default_value": 0
+      }
+    ],
+    "list_schema": [
+      {
+        "field": "id",
+        "label": "ID",
+        "component": "readonly-text",
+        "display": "id",
+        "sortable": true,
+        "default_value": ""
+      },
+      {
+        "field": "title",
+        "label": "公告标题",
+        "component": "text-input",
+        "display": "text",
+        "searchable": true,
+        "sortable": true,
+        "width": "220px",
+        "default_value": ""
+      },
+      {
+        "field": "status",
+        "label": "状态",
+        "component": "select",
+        "display": "option-tag",
+        "searchable": true,
+        "sortable": true,
+        "width": "120px",
+        "options": [
+          {
+            "label": "草稿",
+            "value": 0
+          },
+          {
+            "label": "启用",
+            "value": 1
+          },
+          {
+            "label": "禁用",
+            "value": 2
+          }
+        ],
+        "default_value": 1
+      },
+      {
+        "field": "sort",
+        "label": "排序值",
+        "component": "number-input",
+        "display": "text",
+        "sortable": true,
+        "width": "100px",
+        "default_value": 0
+      },
+      {
+        "field": "created_at",
+        "label": "创建时间",
+        "component": "readonly-datetime",
+        "display": "datetime",
+        "sortable": true,
+        "default_value": ""
+      },
+      {
+        "field": "updated_at",
+        "label": "更新时间",
+        "component": "readonly-datetime",
+        "display": "datetime",
+        "sortable": true,
+        "default_value": ""
+      }
+    ],
+    "search_schema": [
+      {
+        "field": "title",
+        "label": "公告标题",
+        "component": "text-input",
+        "operator": "like",
+        "searchable": true,
+        "placeholder": "请输入公告标题",
+        "width": "220px",
+        "default_value": ""
+      },
+      {
+        "field": "status",
+        "label": "状态",
+        "component": "select",
+        "operator": "eq",
+        "searchable": true,
+        "placeholder": "请选择状态",
+        "width": "120px",
+        "options": [
+          {
+            "label": "草稿",
+            "value": 0
+          },
+          {
+            "label": "启用",
+            "value": 1
+          },
+          {
+            "label": "禁用",
+            "value": 2
+          }
+        ],
+        "default_value": 1
+      }
+    ]
+  },
+  "snapshot": {
+    "preview_hash": "d9500ccbb185361b093712c045c2ddecd13a79d506456ad66d19500768ff85d6",
+    "schema_hashes": {
+      "inferred_fields": "24249e219ad9e42c0294e10f311444416c772f0d417c614b17b996997d353daa",
+      "form_schema": "f0ec3445a3ae95743aec1fcbfb84810f1766b58af9021be3bc9a0fdee38beae7",
+      "list_schema": "62519355766e47ecfd480336b824e52ee93488c16c21faa785bfacd2dd272cfb",
+      "search_schema": "7754df6d4cf31d13e98b7d04ccff2a97474bf22c0ceb2f24c61fac59781eed71"
+    },
+    "generated_files": [
+      {
+        "path": "internal/gen/modules_gen.go",
+        "sha256": "389b738fd01bd6d6e3f8cec1f9b458f5e1e963c525a77f6684274b7da54b82ba",
+        "bytes": 463
+      },
+      {
+        "path": "internal/modules/app/demo_notice/dto.go",
+        "sha256": "37802142f453546dc6ed74f40793925c7d48ec4b46a0387daab6ccba34f91385",
+        "bytes": 304
+      },
+      {
+        "path": "internal/modules/app/demo_notice/handler.go",
+        "sha256": "fe935670b01f1a849954f83985103dbfe28e19ffe65454474195335eb306b80a",
+        "bytes": 3009
+      },
+      {
+        "path": "internal/modules/app/demo_notice/meta.go",
+        "sha256": "944de272d29a3bbc5f01574d5754bc817d8de35e8b040220e2ba01804f08af7b",
+        "bytes": 440
+      },
+      {
+        "path": "internal/modules/app/demo_notice/model.go",
+        "sha256": "9f927e15d9616d3430f1db4603fab5a48392d399fe0c6eb942911b3e89e3358d",
+        "bytes": 724
+      },
+      {
+        "path": "internal/modules/app/demo_notice/module.go",
+        "sha256": "0900f766c1ae5a498c27f8c46d15d3e1a9c02bb272abdcc2e77de5f722c716f9",
+        "bytes": 726
+      },
+      {
+        "path": "internal/modules/app/demo_notice/repo.go",
+        "sha256": "6f08a0b05a82234f3f10179150acde93909759f337953ed83cd29acdd8b6cfa7",
+        "bytes": 273
+      },
+      {
+        "path": "internal/modules/app/demo_notice/service.go",
+        "sha256": "7c6cfa2bd12a47c8232f007ab9af2b56a7ac0226e4e061553a7c5b1e1643e80b",
+        "bytes": 271
+      },
+      {
+        "path": "vben-admin/apps/backend/src/api/demo_notice.ts",
+        "sha256": "42c9838965989683e9ba544ab6fefcea5e491667bd3ff8424aee899cb01b9c73",
+        "bytes": 2673
+      },
+      {
+        "path": "vben-admin/apps/backend/src/router/routes/modules/generated.ts",
+        "sha256": "fd55dd998cb9d2e1f33ed5294b2db7e0dbae6ad9f0e85a8c69434b9979950061",
+        "bytes": 604
+      },
+      {
+        "path": "vben-admin/apps/backend/src/views/demo_notice/data.ts",
+        "sha256": "16e59b45de1ea30159cae747215c0c7d3df7ba33624e9432ca85d2015f34e5c0",
+        "bytes": 2716
+      },
+      {
+        "path": "vben-admin/apps/backend/src/views/demo_notice/list.vue",
+        "sha256": "b27ac2f4e7f96e89c70594360eeae8076747cbb181878216158a38e32cd339d4",
+        "bytes": 5796
+      },
+      {
+        "path": "vben-admin/apps/backend/src/views/demo_notice/modules/form-drawer.vue",
+        "sha256": "756aa054f4fac88d0d43b7c784474bed252d719e9a5b134e6522ac612897b9e6",
+        "bytes": 3246
+      }
+    ]
+  },
+  "permission_codes": [
+    "demo_notice.list",
+    "demo_notice.save",
+    "demo_notice.delete"
+  ],
+  "route_path": "/system/demo-notice",
+  "generated_files": [
+    "internal/modules/app/demo_notice/module.go",
+    "internal/modules/app/demo_notice/handler.go",
+    "internal/modules/app/demo_notice/service.go",
+    "internal/modules/app/demo_notice/repo.go",
+    "internal/modules/app/demo_notice/dto.go",
+    "internal/modules/app/demo_notice/model.go",
+    "internal/modules/app/demo_notice/meta.go",
+    "internal/modules/app/demo_notice/codegen.lock.json",
+    "vben-admin/apps/backend/src/api/demo_notice.ts",
+    "vben-admin/apps/backend/src/views/demo_notice/data.ts",
+    "vben-admin/apps/backend/src/views/demo_notice/list.vue",
+    "vben-admin/apps/backend/src/views/demo_notice/modules/form-drawer.vue",
+    "internal/gen/modules_gen.go",
+    "vben-admin/apps/backend/src/router/routes/modules/generated.ts"
+  ]
+}

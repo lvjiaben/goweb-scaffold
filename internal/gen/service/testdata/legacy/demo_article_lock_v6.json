@@ -34,7 +34,7 @@
   "permission_codes": ["demo_article.list", "demo_article.save", "demo_article.delete"],
   "route_path": "/system/demo-article",
   "generated_files": [
-    "internal/modules/demo_article/model.go",
-    "internal/modules/demo_article/module.go"
+    "internal/modules/app/demo_article/go",
+    "internal/modules/app/demo_article/module.go"
   ]
 }

@@ -1,0 +1,49 @@
+package modules
+
+import (
+	"io"
+	"log/slog"
+	"net/http"
+	"testing"
+
+	coreauth "github.com/lvjiaben/goweb-core/auth"
+	"github.com/lvjiaben/goweb-core/httpx"
+	"github.com/lvjiaben/goweb-core/validate"
+	"github.com/lvjiaben/goweb-scaffold/internal/bootstrap"
+)
+
+func TestManualRouteMethods(t *testing.T) {
+	engine := httpx.NewEngine(slog.New(slog.NewTextHandler(io.Discard, nil)))
+	runtime := &bootstrap.Runtime{
+		Engine:         engine,
+		Logger:         slog.New(slog.NewTextHandler(io.Discard, nil)),
+		Validator:      validate.New(),
+		AdminJWT:       coreauth.NewManager(coreauth.JWTConfig{Secret: "test-admin-secret"}),
+		AppJWT:         coreauth.NewManager(coreauth.JWTConfig{Secret: "test-app-secret"}),
+		CaptchaService: bootstrap.NewCaptchaService(0),
+	}
+	runtime.BackendPublicGroup = engine.Group("/backend")
+	runtime.BackendAuthedGroup = engine.Group("/backend")
+	runtime.BackendProtectedGroup = engine.Group("/backend")
+	runtime.AppPublicGroup = engine.Group("/api")
+	runtime.AppAuthedGroup = engine.Group("/api")
+	runtime.AppProtectedGroup = engine.Group("/api")
+
+	if err := RegisterManualModules(runtime); err != nil {
+		t.Fatalf("register manual modules: %v", err)
+	}
+
+	assertRouteMethod(t, engine.Routes(), http.MethodPost, "/backend/common/captcha")
+	assertRouteMethod(t, engine.Routes(), http.MethodPost, "/backend/auth/login")
+	assertRouteMethod(t, engine.Routes(), http.MethodGet, "/backend/auth/me")
+}
+
+func assertRouteMethod(t *testing.T, routes []*httpx.Route, method string, path string) {
+	t.Helper()
+	for _, route := range routes {
+		if route.Method == method && route.Path == path {
+			return
+		}
+	}
+	t.Fatalf("route %s %s not registered", method, path)
+}

@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	corerbac "github.com/lvjiaben/goweb-core/rbac"
-	"github.com/lvjiaben/goweb-scaffold/internal/modules/model"
 	"gorm.io/gorm"
 )
 
@@ -35,7 +34,7 @@ func (s *PermissionService) HasPermission(ctx context.Context, identity *corerba
 
 	var count int64
 	err := s.db.WithContext(ctx).
-		Model(&model.AdminMenu{}).
+		Model(&AdminMenu{}).
 		Joins("JOIN admin_role_menu arm ON arm.menu_id = admin_menu.id AND arm.deleted_at IS NULL").
 		Where("arm.role_id IN ?", identity.RoleIDs).
 		Where("admin_menu.permission_code IN ? AND admin_menu.status = ?", codes, 1).
@@ -68,7 +67,7 @@ func (s *PermissionService) GetAccessCodes(ctx context.Context, identity *corerb
 		return []string{}, nil
 	}
 
-	query := s.db.WithContext(ctx).Model(&model.AdminMenu{}).Where("permission_code <> '' AND status = ?", 1)
+	query := s.db.WithContext(ctx).Model(&AdminMenu{}).Where("permission_code <> '' AND status = ?", 1)
 	if !identity.IsSuper {
 		if len(identity.RoleIDs) == 0 {
 			return []string{}, nil
@@ -90,8 +89,8 @@ func (s *PermissionService) GetMenus(ctx context.Context, identity *corerbac.Ide
 	}
 
 	query := s.db.WithContext(ctx).
-		Model(&model.AdminMenu{}).
-		Where("menu_type = ? AND status = ?", model.MenuTypeMenu, 1).
+		Model(&AdminMenu{}).
+		Where("menu_type = ? AND status = ?", MenuTypeMenu, 1).
 		Order("sort ASC, id ASC")
 
 	if !identity.IsSuper {
@@ -103,7 +102,7 @@ func (s *PermissionService) GetMenus(ctx context.Context, identity *corerbac.Ide
 			Distinct("admin_menu.id", "admin_menu.parent_id", "admin_menu.name", "admin_menu.title", "admin_menu.path", "admin_menu.component", "admin_menu.menu_type", "admin_menu.icon", "admin_menu.sort", "admin_menu.permission_code")
 	}
 
-	var rows []model.AdminMenu
+	var rows []AdminMenu
 	if err := query.Find(&rows).Error; err != nil {
 		return nil, err
 	}
@@ -118,7 +117,7 @@ func (s *PermissionService) GetMenus(ctx context.Context, identity *corerbac.Ide
 			Path:           item.Path,
 			Component:      item.Component,
 			MenuType:       item.MenuType,
-			Icon:           model.NormalizeMenuIcon(item.Icon),
+			Icon:           NormalizeMenuIcon(item.Icon),
 			Sort:           item.Sort,
 			PermissionCode: item.PermissionCode,
 		})

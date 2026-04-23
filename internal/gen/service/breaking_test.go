@@ -61,7 +61,7 @@ func TestCheckBreakingClassifiesRouteChangeAsBreaking(t *testing.T) {
 		t.Fatalf("generate baseline: %v", err)
 	}
 
-	lock, err := svc.readLockFile(filepath.Join("internal/modules", "demo_article", "codegen.lock.json"))
+	lock, err := svc.readLockFile(filepath.Join("internal/modules/app", "demo_article", "codegen.lock.json"))
 	if err != nil {
 		t.Fatalf("read lock: %v", err)
 	}

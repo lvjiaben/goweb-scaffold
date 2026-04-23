@@ -40,16 +40,8 @@ func RenderBackendModulesFileWithOptions(repoRoot string, upsertModules []Genera
 	items = mergeGeneratedModules(items, upsertModules...)
 	items = excludeGeneratedModules(items, excludeModules)
 
-	imports := make([]importItem, 0, len(baseModules)+len(items))
-	modules := make([]moduleItem, 0, len(baseModules)+len(items))
-
-	for _, item := range BaseModules() {
-		imports = append(imports, importItem{
-			Alias:      ModuleAlias(item.ModuleName),
-			ImportPath: item.ImportPath,
-		})
-		modules = append(modules, moduleItem{Alias: ModuleAlias(item.ModuleName)})
-	}
+	imports := make([]importItem, 0, len(items))
+	modules := make([]moduleItem, 0, len(items))
 
 	for _, item := range items {
 		imports = append(imports, importItem{

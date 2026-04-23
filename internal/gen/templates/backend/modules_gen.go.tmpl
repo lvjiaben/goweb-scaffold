@@ -9,7 +9,7 @@ import (
 {{- end }}
 )
 
-func RegisterModules(runtime *bootstrap.Runtime) error {
+func RegisterGeneratedModules(runtime *bootstrap.Runtime) error {
 	return bootstrap.RegisterAll(
 		runtime,
 {{- range .Modules }}

@@ -15,7 +15,6 @@ import (
 
 	"github.com/lvjiaben/goweb-scaffold/internal/gen/registry"
 	"github.com/lvjiaben/goweb-scaffold/internal/gen/writer"
-	"github.com/lvjiaben/goweb-scaffold/internal/modules/model"
 	"gorm.io/gorm"
 )
 
@@ -281,9 +280,12 @@ func (s GeneratorService) prepareBundle(input GenerateInput) (generationBundle, 
 	}
 
 	basicGeneratedFiles := []string{
-		paths["model"],
-		paths["types"],
 		paths["module"],
+		paths["handler"],
+		paths["service"],
+		paths["repo"],
+		paths["dto"],
+		paths["model"],
 		paths["meta"],
 		paths["lock"],
 		paths["api"],
@@ -377,13 +379,22 @@ func (s GeneratorService) prepareBundle(input GenerateInput) (generationBundle, 
 		return nil
 	}
 
-	if err := appendTemplateArtifact(paths["model"], "backend/model.go.tmpl", modelData); err != nil {
-		return bundle, err
-	}
-	if err := appendTemplateArtifact(paths["types"], "backend/types.go.tmpl", typesData); err != nil {
-		return bundle, err
-	}
 	if err := appendTemplateArtifact(paths["module"], "backend/module.go.tmpl", moduleData); err != nil {
+		return bundle, err
+	}
+	if err := appendTemplateArtifact(paths["handler"], "backend/handler.go.tmpl", moduleData); err != nil {
+		return bundle, err
+	}
+	if err := appendTemplateArtifact(paths["service"], "backend/service.go.tmpl", moduleData); err != nil {
+		return bundle, err
+	}
+	if err := appendTemplateArtifact(paths["repo"], "backend/repo.go.tmpl", moduleData); err != nil {
+		return bundle, err
+	}
+	if err := appendTemplateArtifact(paths["dto"], "backend/dto.go.tmpl", typesData); err != nil {
+		return bundle, err
+	}
+	if err := appendTemplateArtifact(paths["model"], "backend/model.go.tmpl", modelData); err != nil {
 		return bundle, err
 	}
 	if err := appendTemplateArtifact(paths["meta"], "backend/meta.go.tmpl", meta); err != nil {
@@ -846,13 +857,13 @@ func (s GeneratorService) upsertMenus(meta ModuleMeta) (MenuUpsertResult, []stri
 			return err
 		}
 
-		menuRecord, err := upsertAdminMenuRecord(tx, model.AdminMenu{
+		menuRecord, err := upsertAdminMenuRecord(tx, AdminMenu{
 			ParentID:  parentID,
 			Name:      ToKebab(meta.ModuleName),
 			Title:     meta.Title,
 			Path:      meta.RoutePath,
 			Component: meta.ModuleName + "/list",
-			MenuType:  model.MenuTypeMenu,
+			MenuType:  MenuTypeMenu,
 			Icon:      "lucide:file-text",
 			Sort:      200,
 			Visible:   true,
@@ -864,12 +875,12 @@ func (s GeneratorService) upsertMenus(meta ModuleMeta) (MenuUpsertResult, []stri
 		result.Records = append(result.Records, menuRecord)
 
 		menuID, _ := menuRecord["id"].(int64)
-		buttons := []model.AdminMenu{
+		buttons := []AdminMenu{
 			{
 				ParentID:       menuID,
 				Name:           ToKebab(meta.ModuleName) + "-list",
 				Title:          meta.Title + "列表",
-				MenuType:       model.MenuTypeButton,
+				MenuType:       MenuTypeButton,
 				PermissionCode: meta.PermissionCodes[0],
 				Sort:           201,
 				Visible:        true,
@@ -879,7 +890,7 @@ func (s GeneratorService) upsertMenus(meta ModuleMeta) (MenuUpsertResult, []stri
 				ParentID:       menuID,
 				Name:           ToKebab(meta.ModuleName) + "-save",
 				Title:          meta.Title + "保存",
-				MenuType:       model.MenuTypeButton,
+				MenuType:       MenuTypeButton,
 				PermissionCode: meta.PermissionCodes[1],
 				Sort:           202,
 				Visible:        true,
@@ -889,7 +900,7 @@ func (s GeneratorService) upsertMenus(meta ModuleMeta) (MenuUpsertResult, []stri
 				ParentID:       menuID,
 				Name:           ToKebab(meta.ModuleName) + "-delete",
 				Title:          meta.Title + "删除",
-				MenuType:       model.MenuTypeButton,
+				MenuType:       MenuTypeButton,
 				PermissionCode: meta.PermissionCodes[2],
 				Sort:           203,
 				Visible:        true,
@@ -910,7 +921,7 @@ func (s GeneratorService) upsertMenus(meta ModuleMeta) (MenuUpsertResult, []stri
 		}
 
 		for _, currentMenuID := range menuIDs {
-			link := model.AdminRoleMenu{RoleID: 1, MenuID: currentMenuID}
+			link := AdminRoleMenu{RoleID: 1, MenuID: currentMenuID}
 			if err := tx.Where("role_id = ? AND menu_id = ?", 1, currentMenuID).FirstOrCreate(&link).Error; err != nil {
 				return err
 			}
@@ -923,8 +934,8 @@ func (s GeneratorService) upsertMenus(meta ModuleMeta) (MenuUpsertResult, []stri
 }
 
 func ensureSystemParentMenu(tx *gorm.DB) (int64, error) {
-	var systemMenu model.AdminMenu
-	err := tx.Where("path = ? AND menu_type = ?", "/system", model.MenuTypeMenu).First(&systemMenu).Error
+	var systemMenu AdminMenu
+	err := tx.Where("path = ? AND menu_type = ?", "/system", MenuTypeMenu).First(&systemMenu).Error
 	if err == nil {
 		return systemMenu.ID, nil
 	}
@@ -932,13 +943,13 @@ func ensureSystemParentMenu(tx *gorm.DB) (int64, error) {
 		return 0, err
 	}
 
-	systemMenu = model.AdminMenu{
+	systemMenu = AdminMenu{
 		ParentID:  0,
 		Name:      "system",
 		Title:     "系统管理",
 		Path:      "/system",
 		Component: "layout",
-		MenuType:  model.MenuTypeMenu,
+		MenuType:  MenuTypeMenu,
 		Icon:      "lucide:settings",
 		Sort:      10,
 		Visible:   true,
@@ -959,8 +970,8 @@ func syncPrimarySequence(tx *gorm.DB, tableName string) error {
 	return tx.Exec(statement).Error
 }
 
-func upsertAdminMenuRecord(tx *gorm.DB, payload model.AdminMenu, lookupField string, lookupValue any) (map[string]any, error) {
-	var row model.AdminMenu
+func upsertAdminMenuRecord(tx *gorm.DB, payload AdminMenu, lookupField string, lookupValue any) (map[string]any, error) {
+	var row AdminMenu
 	err := tx.Where(lookupField+" = ?", lookupValue).First(&row).Error
 	switch {
 	case err == nil:

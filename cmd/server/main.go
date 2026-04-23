@@ -14,6 +14,7 @@ import (
 	"github.com/lvjiaben/goweb-core/app"
 	"github.com/lvjiaben/goweb-scaffold/internal/bootstrap"
 	"github.com/lvjiaben/goweb-scaffold/internal/gen"
+	"github.com/lvjiaben/goweb-scaffold/internal/modules"
 )
 
 func main() {
@@ -29,8 +30,11 @@ func main() {
 		log.Fatalf("apply migrations: %v", err)
 	}
 
-	if err := gen.RegisterModules(runtime); err != nil {
-		log.Fatalf("register modules: %v", err)
+	if err := modules.RegisterManualModules(runtime); err != nil {
+		log.Fatalf("register manual modules: %v", err)
+	}
+	if err := gen.RegisterGeneratedModules(runtime); err != nil {
+		log.Fatalf("register generated modules: %v", err)
 	}
 	bootstrap.LogRoutes(runtime.Logger, runtime.Engine.Routes())
 
