@@ -29,7 +29,7 @@ func newModuleTestRuntime(t *testing.T) *bootstrap.Runtime {
 	for _, dir := range []string{
 		"internal/modules",
 		"internal/gen",
-		"vben-admin/apps/admin/src/generated",
+		"vben-admin/apps/backend/src/router/routes/modules",
 	} {
 		if err := os.MkdirAll(filepath.Join(repoRoot, dir), 0o755); err != nil {
 			t.Fatalf("mkdir %s: %v", dir, err)

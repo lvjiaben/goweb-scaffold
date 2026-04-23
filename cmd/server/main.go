@@ -32,6 +32,7 @@ func main() {
 	if err := gen.RegisterModules(runtime); err != nil {
 		log.Fatalf("register modules: %v", err)
 	}
+	bootstrap.LogRoutes(runtime.Logger, runtime.Engine.Routes())
 
 	application := app.New(runtime.Config.App.Name, runtime.Config.App.Addr, runtime.Handler(), runtime.Logger)
 

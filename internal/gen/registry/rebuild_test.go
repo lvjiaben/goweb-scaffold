@@ -52,11 +52,11 @@ func TestRenderRegistryFilesStableAndSorted(t *testing.T) {
 		t.Fatalf("expected backend registry output to be sorted, got:\n%s", string(firstBackend))
 	}
 
-	firstRoutes, err := RenderAdminRoutesFile(root)
+	firstRoutes, err := RenderFrontendRouteModule(root)
 	if err != nil {
 		t.Fatalf("render admin routes first: %v", err)
 	}
-	secondRoutes, err := RenderAdminRoutesFile(root)
+	secondRoutes, err := RenderFrontendRouteModule(root)
 	if err != nil {
 		t.Fatalf("render admin routes second: %v", err)
 	}
@@ -84,7 +84,7 @@ func TestRenderRegistryFilesCanExcludeModule(t *testing.T) {
 		t.Fatalf("expected backend registry to exclude demo_article, got:\n%s", string(backend))
 	}
 
-	routes, err := RenderAdminRoutesFileWithOptions(root, nil, []string{"demo_article"})
+	routes, err := RenderFrontendRouteModuleWithOptions(root, nil, []string{"demo_article"})
 	if err != nil {
 		t.Fatalf("render routes with exclude: %v", err)
 	}

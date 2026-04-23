@@ -6,7 +6,8 @@ const (
 	GeneratedModuleName = "demo_notice"
 	GeneratedTableName  = "demo_notice"
 	GeneratedRoutePath  = "/system/demo-notice"
-	GeneratedPageName   = "DemoNoticePage"
+	GeneratedPageName   = "DemoNoticeList"
+	GeneratedViewFile   = "views/demo_notice/list.vue"
 	GeneratedMenuTitle  = "演示公告"
 )
 

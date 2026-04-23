@@ -64,14 +64,17 @@ func TestDiffMarksGeneratedFilesAsOverwriteWhenContentChanges(t *testing.T) {
 	if err != nil {
 		t.Fatalf("diff changed generated files: %v", err)
 	}
-	if !containsString(result.WouldOverwriteFiles, "vben-admin/apps/admin/src/views/system/DemoArticlePage.vue") {
-		t.Fatalf("expected generated view in overwrite files, got %v", result.WouldOverwriteFiles)
+	if !containsString(result.WouldOverwriteFiles, "internal/modules/demo_article/codegen.lock.json") {
+		t.Fatalf("expected generated lock in overwrite files, got %v", result.WouldOverwriteFiles)
 	}
 }
 
 func TestDiffSkipsHandwrittenFiles(t *testing.T) {
 	repoRoot := newTempRepo(t)
-	viewPath := filepath.Join(repoRoot, "vben-admin/apps/admin/src/views/system/DemoArticlePage.vue")
+	viewPath := filepath.Join(repoRoot, "vben-admin/apps/backend/src/views/demo_article/list.vue")
+	if err := os.MkdirAll(filepath.Dir(viewPath), 0o755); err != nil {
+		t.Fatalf("mkdir handwritten view dir: %v", err)
+	}
 	if err := os.WriteFile(viewPath, []byte("<template>handwritten</template>\n"), 0o644); err != nil {
 		t.Fatalf("write handwritten view: %v", err)
 	}
@@ -81,7 +84,7 @@ func TestDiffSkipsHandwrittenFiles(t *testing.T) {
 	if err != nil {
 		t.Fatalf("diff handwritten file: %v", err)
 	}
-	if !containsString(result.WouldSkipFiles, "vben-admin/apps/admin/src/views/system/DemoArticlePage.vue") {
+	if !containsString(result.WouldSkipFiles, "vben-admin/apps/backend/src/views/demo_article/list.vue") {
 		t.Fatalf("expected handwritten view in skipped files, got %v", result.WouldSkipFiles)
 	}
 	if len(result.Warnings) == 0 || !strings.Contains(strings.Join(result.Warnings, "\n"), "not generator-managed") {
@@ -156,7 +159,7 @@ func TestRemoveGeneratedModuleFilesAndRegistry(t *testing.T) {
 	if strings.Contains(modulesGen, "demo_article") {
 		t.Fatalf("expected modules_gen.go to exclude demo_article, got:\n%s", modulesGen)
 	}
-	routes := string(mustReadFile(t, filepath.Join(repoRoot, "vben-admin/apps/admin/src/generated/routes.ts")))
+	routes := string(mustReadFile(t, filepath.Join(repoRoot, "vben-admin/apps/backend/src/router/routes/modules/generated.ts")))
 	if strings.Contains(routes, "demo_article") {
 		t.Fatalf("expected generated routes to exclude demo_article, got:\n%s", routes)
 	}

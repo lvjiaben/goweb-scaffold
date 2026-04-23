@@ -97,9 +97,9 @@ func newTempRepo(t *testing.T) string {
 	dirs := []string{
 		"internal/modules",
 		"internal/gen",
-		"vben-admin/apps/admin/src/api",
-		"vben-admin/apps/admin/src/views/system",
-		"vben-admin/apps/admin/src/generated",
+		"vben-admin/apps/backend/src/api",
+		"vben-admin/apps/backend/src/views",
+		"vben-admin/apps/backend/src/router/routes/modules",
 	}
 	for _, dir := range dirs {
 		if err := os.MkdirAll(filepath.Join(root, dir), 0o755); err != nil {

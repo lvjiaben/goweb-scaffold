@@ -13,19 +13,35 @@ func TestRenderedSnapshots(t *testing.T) {
 		snapshotPath string
 	}{
 		{
-			actualPath:   filepath.Join(repoRoot, "vben-admin/apps/admin/src/views/system/DemoArticlePage.vue"),
-			snapshotPath: filepath.Join("testdata", "snapshots", "DemoArticlePage.vue.golden"),
+			actualPath:   filepath.Join(repoRoot, "vben-admin/apps/backend/src/views/demo_article/list.vue"),
+			snapshotPath: filepath.Join("testdata", "snapshots", "demo_article.list.vue.golden"),
 		},
 		{
-			actualPath:   filepath.Join(repoRoot, "vben-admin/apps/admin/src/views/system/DemoNoticePage.vue"),
-			snapshotPath: filepath.Join("testdata", "snapshots", "DemoNoticePage.vue.golden"),
+			actualPath:   filepath.Join(repoRoot, "vben-admin/apps/backend/src/views/demo_article/data.ts"),
+			snapshotPath: filepath.Join("testdata", "snapshots", "demo_article.data.ts.golden"),
 		},
 		{
-			actualPath:   filepath.Join(repoRoot, "vben-admin/apps/admin/src/api/demo_article.ts"),
+			actualPath:   filepath.Join(repoRoot, "vben-admin/apps/backend/src/views/demo_article/modules/form-drawer.vue"),
+			snapshotPath: filepath.Join("testdata", "snapshots", "demo_article.form-drawer.vue.golden"),
+		},
+		{
+			actualPath:   filepath.Join(repoRoot, "vben-admin/apps/backend/src/views/demo_notice/list.vue"),
+			snapshotPath: filepath.Join("testdata", "snapshots", "demo_notice.list.vue.golden"),
+		},
+		{
+			actualPath:   filepath.Join(repoRoot, "vben-admin/apps/backend/src/views/demo_notice/data.ts"),
+			snapshotPath: filepath.Join("testdata", "snapshots", "demo_notice.data.ts.golden"),
+		},
+		{
+			actualPath:   filepath.Join(repoRoot, "vben-admin/apps/backend/src/views/demo_notice/modules/form-drawer.vue"),
+			snapshotPath: filepath.Join("testdata", "snapshots", "demo_notice.form-drawer.vue.golden"),
+		},
+		{
+			actualPath:   filepath.Join(repoRoot, "vben-admin/apps/backend/src/api/demo_article.ts"),
 			snapshotPath: filepath.Join("testdata", "snapshots", "demo_article.ts.golden"),
 		},
 		{
-			actualPath:   filepath.Join(repoRoot, "vben-admin/apps/admin/src/api/demo_notice.ts"),
+			actualPath:   filepath.Join(repoRoot, "vben-admin/apps/backend/src/api/demo_notice.ts"),
 			snapshotPath: filepath.Join("testdata", "snapshots", "demo_notice.ts.golden"),
 		},
 		{

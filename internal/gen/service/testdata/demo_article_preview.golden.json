@@ -4,8 +4,8 @@
   "table_comment": "演示文章",
   "page": {
     "route_path": "/system/demo-article",
-    "page_name": "DemoArticlePage",
-    "view_file": "views/system/DemoArticlePage.vue",
+    "page_name": "DemoArticleList",
+    "view_file": "views/demo_article/list.vue",
     "menu_title": "演示文章",
     "feature_flags": [
       "admin-crud",

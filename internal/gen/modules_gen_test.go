@@ -1,0 +1,51 @@
+package gen
+
+import (
+	"io"
+	"log/slog"
+	"net/http"
+	"testing"
+
+	coreauth "github.com/lvjiaben/goweb-core/auth"
+	"github.com/lvjiaben/goweb-core/httpx"
+	"github.com/lvjiaben/goweb-core/validate"
+	"github.com/lvjiaben/goweb-scaffold/internal/bootstrap"
+)
+
+func TestRegisteredRouteMethods(t *testing.T) {
+	engine := httpx.NewEngine(slog.New(slog.NewTextHandler(io.Discard, nil)))
+	runtime := &bootstrap.Runtime{
+		Engine:         engine,
+		Logger:         slog.New(slog.NewTextHandler(io.Discard, nil)),
+		Validator:      validate.New(),
+		AdminJWT:       coreauth.NewManager(coreauth.JWTConfig{Secret: "test-admin-secret"}),
+		AppJWT:         coreauth.NewManager(coreauth.JWTConfig{Secret: "test-app-secret"}),
+		CaptchaService: bootstrap.NewCaptchaService(0),
+	}
+	runtime.AdminPublicGroup = engine.Group("/admin-api/auth")
+	runtime.AdminCommonGroup = engine.Group("/admin-api/common")
+	runtime.AdminAuthGroup = engine.Group("/admin-api/auth")
+	runtime.AdminProtectedGroup = engine.Group("/admin-api")
+	runtime.AppPublicGroup = engine.Group("/api/auth")
+	runtime.AppCommonGroup = engine.Group("/api/common")
+	runtime.AppAuthGroup = engine.Group("/api/auth")
+	runtime.AppUserGroup = engine.Group("/api/user")
+
+	if err := RegisterModules(runtime); err != nil {
+		t.Fatalf("register modules: %v", err)
+	}
+
+	assertRouteMethod(t, engine.Routes(), http.MethodPost, "/admin-api/common/captcha")
+	assertRouteMethod(t, engine.Routes(), http.MethodPost, "/admin-api/auth/login")
+	assertRouteMethod(t, engine.Routes(), http.MethodGet, "/admin-api/auth/me")
+}
+
+func assertRouteMethod(t *testing.T, routes []*httpx.Route, method string, path string) {
+	t.Helper()
+	for _, route := range routes {
+		if route.Method == method && route.Path == path {
+			return
+		}
+	}
+	t.Fatalf("route %s %s not registered", method, path)
+}
