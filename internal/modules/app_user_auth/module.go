@@ -88,6 +88,11 @@ func login(runtime *bootstrap.Runtime) httpx.HandlerFunc {
 			c.BadRequest(err.Error())
 			return
 		}
+		if runtime.CaptchaService == nil {
+			runtime.Logger.Error("captcha service is nil during app user login")
+			c.BadRequest("验证码服务未初始化")
+			return
+		}
 		if err := runtime.CaptchaService.Verify(req.Captcha.ID, req.Captcha.Code); err != nil {
 			c.BadRequest(err.Error())
 			return
