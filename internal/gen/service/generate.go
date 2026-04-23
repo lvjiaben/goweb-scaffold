@@ -20,41 +20,41 @@ import (
 )
 
 type templateField struct {
-	ColumnName     string
-	GoFieldName    string
-	GoType         string
-	GormTag        string
-	RequestType    string
-	RequestKind    string
-	FormTSType     string
-	SearchTSType   string
-	TSType         string
-	Component      string
+	ColumnName      string
+	GoFieldName     string
+	GoType          string
+	GormTag         string
+	RequestType     string
+	RequestKind     string
+	FormTSType      string
+	SearchTSType    string
+	TSType          string
+	Component       string
 	SearchComponent string
-	Display        string
-	SearchOperator string
-	StartQueryKey  string
-	EndQueryKey    string
-	Label          string
-	Width          string
-	Options        []FieldOption
-	Placeholder    string
-	IsPrimaryKey   bool
-	IsNullable     bool
-	IsListField    bool
-	IsSaveField    bool
-	IsSearchField  bool
-	Sortable       bool
-	Searchable     bool
-	IsBoolean      bool
-	IsInteger      bool
-	IsBigInteger   bool
-	IsTimestamp    bool
-	IsJSON         bool
-	Required       bool
-	Readonly       bool
-	Hidden         bool
-	DefaultValue   any
+	Display         string
+	SearchOperator  string
+	StartQueryKey   string
+	EndQueryKey     string
+	Label           string
+	Width           string
+	Options         []FieldOption
+	Placeholder     string
+	IsPrimaryKey    bool
+	IsNullable      bool
+	IsListField     bool
+	IsSaveField     bool
+	IsSearchField   bool
+	Sortable        bool
+	Searchable      bool
+	IsBoolean       bool
+	IsInteger       bool
+	IsBigInteger    bool
+	IsTimestamp     bool
+	IsJSON          bool
+	Required        bool
+	Readonly        bool
+	Hidden          bool
+	DefaultValue    any
 }
 
 type backendModelTemplateData struct {
@@ -853,7 +853,7 @@ func (s GeneratorService) upsertMenus(meta ModuleMeta) (MenuUpsertResult, []stri
 			Path:      meta.RoutePath,
 			Component: meta.ModuleName + "/list",
 			MenuType:  model.MenuTypeMenu,
-			Icon:      "file",
+			Icon:      "lucide:file-text",
 			Sort:      200,
 			Visible:   true,
 			Status:    1,
@@ -939,7 +939,7 @@ func ensureSystemParentMenu(tx *gorm.DB) (int64, error) {
 		Path:      "/system",
 		Component: "layout",
 		MenuType:  model.MenuTypeMenu,
-		Icon:      "setting",
+		Icon:      "lucide:settings",
 		Sort:      10,
 		Visible:   true,
 		Status:    1,

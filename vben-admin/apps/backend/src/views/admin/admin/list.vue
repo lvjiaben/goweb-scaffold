@@ -4,7 +4,7 @@ import type { VxeTableGridOptions } from '#/adapter/vxe-table';
 import { ref } from 'vue';
 
 import { Page, VbenButton, VbenButtonGroup, useVbenDrawer } from '@vben/common-ui';
-import { Check, Plus, Trash, X } from '@vben/icons';
+import { Check, Eraser, Plus, X } from '@vben/icons';
 import { $t } from '@vben/locales';
 
 import { InputSearch, message, Popconfirm, Tag } from 'ant-design-vue';
@@ -210,7 +210,7 @@ const onDelete = (row?: AdminAdminApi.Admin) => {
           </VbenButton>
           <Popconfirm title="确认删除选中的管理员吗？" @confirm="onDelete()">
             <VbenButton :disabled="selectedCount === 0" status="danger">
-              <Trash class="size-4" />
+              <Eraser class="size-4" />
               删除选中
             </VbenButton>
           </Popconfirm>

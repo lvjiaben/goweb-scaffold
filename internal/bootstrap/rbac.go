@@ -118,7 +118,7 @@ func (s *PermissionService) GetMenus(ctx context.Context, identity *corerbac.Ide
 			Path:           item.Path,
 			Component:      item.Component,
 			MenuType:       item.MenuType,
-			Icon:           item.Icon,
+			Icon:           model.NormalizeMenuIcon(item.Icon),
 			Sort:           item.Sort,
 			PermissionCode: item.PermissionCode,
 		})

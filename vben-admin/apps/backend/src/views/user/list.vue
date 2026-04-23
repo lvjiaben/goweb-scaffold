@@ -6,7 +6,7 @@ import { onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 import { VbenButton, VbenButtonGroup ,Page, useVbenDrawer } from '@vben/common-ui';
-import { Plus,Trash,Check,X,IconifyIcon } from '@vben/icons';
+import { Check, Eraser, IconifyIcon, Plus, X } from '@vben/icons';
 import { $t } from '@vben/locales';
 
 import { message, Popconfirm,Tag,Image, InputSearch } from 'ant-design-vue';
@@ -333,7 +333,7 @@ onMounted(() => {
             @confirm="onDelete()"
           >
             <VbenButton variant="outline">
-              <Trash class="size-3" />
+              <Eraser class="size-3" />
               {{ $t('common.delete') }}
             </VbenButton>
           </Popconfirm>

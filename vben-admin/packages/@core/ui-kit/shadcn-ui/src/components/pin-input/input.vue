@@ -60,14 +60,11 @@ async function handleSend(e: Event) {
   try {
     e?.preventDefault();
     await handleSendCode();
-    // 发送成功后才开始倒计时
     countdown.value = maxTime;
     startCountdown();
   } catch (error) {
-    // 发送失败，重置倒计时
-    countdown.value = 0;
-    clearTimeout(timer.value);
     console.error('Failed to send code:', error);
+    // Consider emitting an error event or showing a notification
     emit('sendError', error);
   }
 }
@@ -87,6 +84,8 @@ onBeforeUnmount(() => {
 });
 
 const id = useId();
+
+const pinType = 'text' as const;
 </script>
 
 <template>
@@ -97,7 +96,7 @@ const id = useId();
     class="flex w-full justify-between"
     otp
     placeholder="○"
-    type="number"
+    :type="pinType"
     @complete="handleComplete"
   >
     <div class="relative flex w-full">
@@ -111,7 +110,7 @@ const id = useId();
       <VbenButton
         :disabled="disabled"
         :loading="btnLoading"
-        class="flex-grow"
+        class="grow"
         size="lg"
         variant="outline"
         @click="handleSend"

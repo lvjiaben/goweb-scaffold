@@ -8,7 +8,8 @@
     "alreadyExists": "{0} `{1}` already exists",
     "startWith": "{0} must start with `{1}`",
     "invalidURL": "Please input a valid URL",
-    "invalidFormat": "Please enter a valid {0}"
+    "sizeLimit": "The file size cannot exceed {0}MB",
+    "previewWarning": "Unable to open the file, there is no available URL or preview address"
   },
   "actionTitle": {
     "edit": "Modify {0}",
@@ -18,8 +19,6 @@
   },
   "actionMessage": {
     "deleteConfirm": "Are you sure to delete {0}?",
-    "confirmDelete": "Confirm Delete",
-    "confirmAction": "Confirm Action",
     "deleting": "Deleting {0} ...",
     "deleteSuccess": "{0} deleted successfully",
     "operationSuccess": "Operation succeeded",
@@ -27,7 +26,8 @@
   },
   "placeholder": {
     "input": "Please enter",
-    "select": "Please select"
+    "select": "Please select",
+    "upload": "Click to upload"
   },
   "captcha": {
     "title": "Please complete the security verification",
@@ -53,6 +53,49 @@
   "jsonViewer": {
     "copy": "Copy",
     "copied": "Copied"
+  },
+  "crop": {
+    "title": "Image Cropping",
+    "titleTip": "Cropping Ratio {0}",
+    "confirm": "Crop",
+    "cancel": "Cancel cropping",
+    "errorTip": "Cropping error"
+  },
+  "tiptap": {
+    "placeholder": "Please enter content...",
+    "prompts": {
+      "image": "Enter image URL",
+      "link": "Enter link URL"
+    },
+    "toolbar": {
+      "bold": "Bold",
+      "italic": "Italic",
+      "underline": "Underline",
+      "strike": "Strike",
+      "code": "Code",
+      "codeBlock": "Code Block",
+      "heading": "Heading",
+      "paragraph": "Paragraph",
+      "heading1": "H1",
+      "heading2": "H2",
+      "heading3": "H3",
+      "heading4": "H4",
+      "bulletList": "Bullets",
+      "orderedList": "Numbering",
+      "blockquote": "Quote",
+      "link": "Link",
+      "unlink": "Unlink",
+      "image": "Image",
+      "textColor": "Text Color",
+      "highlightColor": "Highlight Color",
+      "alignLeft": "Left",
+      "alignCenter": "Center",
+      "alignRight": "Right",
+      "preview": "Preview",
+      "undo": "Undo",
+      "redo": "Redo",
+      "clear": "Clear"
+    }
   },
   "fallback": {
     "pageNotFound": "Oops! Page Not Found",
@@ -105,6 +148,10 @@
       "errorPasswordTip": "Password error, please re-enter",
       "backToLogin": "Back to login",
       "entry": "Enter the system"
+    },
+    "timezone": {
+      "setTimezone": "Set Timezone",
+      "setSuccess": "Timezone set successfully"
     }
   }
 }

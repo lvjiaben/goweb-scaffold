@@ -22,7 +22,7 @@ yarn.lock
 package-lock.json
 .VSCodeCounter
 **/backend-mock/data
-
+.omx
 # local env files
 .env.local
 .env.*.local
@@ -42,8 +42,7 @@ vite.config.ts.*
 
 # Editor directories and files
 .idea
-.vscode
-.github
+# .vscode
 *.suo
 *.ntvs*
 *.njsproj
@@ -51,3 +50,10 @@ vite.config.ts.*
 *.sw?
 .history
 .cursor
+
+# AI
+.agent
+.agents
+.claude
+.codex
+skills-lock.json

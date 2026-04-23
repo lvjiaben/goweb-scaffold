@@ -5,7 +5,7 @@ import type { DemoNoticeApi } from '#/api/demo_notice';
 import { ref } from 'vue';
 
 import { Page, VbenButton, VbenButtonGroup, useVbenDrawer } from '@vben/common-ui';
-import { Check, Plus, Trash, X } from '@vben/icons';
+import { Check, Eraser, Plus, X } from '@vben/icons';
 import { InputSearch, message, Popconfirm, Tag } from 'ant-design-vue';
 
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
@@ -187,7 +187,7 @@ const onDelete = (row?: DemoNoticeApi.DemoNotice) => {
           </VbenButton>
           <Popconfirm title="确认删除选中的数据吗？" @confirm="onDelete()">
             <VbenButton :disabled="selectedCount === 0" status="danger">
-              <Trash class="size-4" />
+              <Eraser class="size-4" />
               删除选中
             </VbenButton>
           </Popconfirm>
