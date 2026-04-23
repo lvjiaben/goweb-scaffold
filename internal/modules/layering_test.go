@@ -24,14 +24,7 @@ var handlerDBForbiddenTokens = []string{
 // Temporary legacy whitelist while hand-written modules are migrated incrementally.
 // Generated modules and admin/user are intentionally absent from this list.
 var handlerLayeringLegacyWhitelist = map[string]string{
-	"app/auth/handler.go":          "legacy app auth module still owns DB login/session flow",
-	"app/user/handler.go":          "legacy app profile module still owns DB update flow",
-	"admin/auth/handler.go":        "legacy admin auth module still owns DB login/session flow",
-	"admin/menu/handler.go":        "legacy menu module migration is pending",
-	"admin/role/handler.go":        "legacy role module migration is pending",
-	"system/attachment/handler.go": "legacy attachment module migration is pending",
-	"system/codegen/handler.go":    "legacy codegen module migration is pending",
-	"system/config/handler.go":     "legacy config module migration is pending",
+	"system/codegen/handler.go": "legacy codegen module is a large orchestration module; migrate in a dedicated pass without touching generator core logic",
 }
 
 func TestHandlersDoNotOwnGORM(t *testing.T) {
