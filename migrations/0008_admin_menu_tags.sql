@@ -1,0 +1,3 @@
+ALTER TABLE admin_menu
+  ADD COLUMN IF NOT EXISTS fixed_tag smallint NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS show_tag smallint NOT NULL DEFAULT 0;

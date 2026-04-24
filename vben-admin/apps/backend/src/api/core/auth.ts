@@ -35,6 +35,15 @@ type BackendMenu = {
   title: string;
 };
 
+type BackendVbenRoute = {
+  children?: BackendVbenRoute[];
+  component?: string;
+  meta?: Record<string, any>;
+  name: string;
+  path: string;
+  redirect?: string;
+};
+
 type BackendMe = {
   access_codes?: string[];
   id: number;
@@ -149,6 +158,46 @@ function normalizeMenu(item: BackendMenu): any | null {
   };
 }
 
+function isVbenRoute(item: BackendMenu | BackendVbenRoute): item is BackendVbenRoute {
+  return !!item && typeof item === 'object' && !!(item as BackendVbenRoute).meta;
+}
+
+function normalizeVbenRoute(item: BackendVbenRoute): any {
+  const children = (item.children ?? []).map((child) => normalizeVbenRoute(child));
+  let component = item.component;
+  if (
+    component &&
+    !['BasicLayout', 'IFrameView'].includes(component) &&
+    !hasView(component)
+  ) {
+    component =
+      resolveViewPath({
+        component,
+        name: item.name,
+        path: item.path,
+        title: item.meta?.title ?? item.name,
+      } as BackendMenu) ?? component;
+  }
+  if (component === 'BasicLayout' && children.length === 0) {
+    component =
+      resolveViewPath({
+        component,
+        name: item.name,
+        path: item.path,
+        title: item.meta?.title ?? item.name,
+      } as BackendMenu) ?? component;
+  }
+  const route: Record<string, any> = {
+    ...item,
+    children,
+    component,
+  };
+  if (children.length === 0) {
+    delete route.children;
+  }
+  return route;
+}
+
 /**
  * 登录
  */
@@ -163,9 +212,9 @@ export async function loginApi(data: AuthApi.LoginParams) {
  * 获取所有菜单（Vben动态路由使用）
  */
 export async function getAllMenusApi() {
-  const result = await requestClient.get<{ list?: BackendMenu[] }>('/auth/menus');
+  const result = await requestClient.get<{ list?: Array<BackendMenu | BackendVbenRoute> }>('/auth/menus');
   return (result?.list ?? [])
-    .map((item) => normalizeMenu(item))
+    .map((item) => (isVbenRoute(item) ? normalizeVbenRoute(item) : normalizeMenu(item)))
     .filter(Boolean);
 }
 

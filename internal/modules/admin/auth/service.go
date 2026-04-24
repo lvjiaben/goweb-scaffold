@@ -104,18 +104,6 @@ func (s *Service) Me(ctx context.Context, user CurrentAdmin, identity *corerbac.
 	}, nil
 }
 
-func (s *Service) Menus(_ context.Context, identity *corerbac.Identity, acceptLanguage string) (map[string]any, error) {
-	if identity == nil {
-		return map[string]any{"list": []map[string]any{}}, nil
-	}
-	menuItems, err := s.repo.MenuItems(identity.RoleIDs, identity.IsSuper)
-	if err != nil {
-		return nil, err
-	}
-	useEnglish := strings.Contains(strings.ToLower(acceptLanguage), "en")
-	return map[string]any{"list": buildVbenMenus(menuItems, useEnglish)}, nil
-}
-
 func (s *Service) UpdateProfile(userID int64, req ProfileRequest) (map[string]any, error) {
 	nickname := strings.TrimSpace(req.Nickname)
 	if nickname == "" {
@@ -181,64 +169,6 @@ func (s *Service) Logs(userID int64, params LogParams) (map[string]any, error) {
 		})
 	}
 	return bootstrap.PagedResult(items, total, params.Page, params.PageSize), nil
-}
-
-func buildVbenMenus(items []AdminMenu, useEnglish bool) []map[string]any {
-	itemMap := make(map[int64]map[string]any, len(items))
-	children := make(map[int64][]int64)
-	rootIDs := make([]int64, 0)
-	for _, item := range items {
-		title := item.Title
-		if useEnglish && strings.TrimSpace(item.EnName) != "" {
-			title = item.EnName
-		}
-		name := item.Name
-		if useEnglish && strings.TrimSpace(item.EnName) != "" {
-			name = item.EnName
-		}
-		node := map[string]any{
-			"id":              item.ID,
-			"parent_id":       item.ParentID,
-			"name":            name,
-			"enname":          item.EnName,
-			"title":           title,
-			"path":            item.Path,
-			"component":       item.Component,
-			"menu_type":       item.MenuType,
-			"permission_code": item.PermissionCode,
-			"icon":            bootstrap.NormalizeMenuIcon(item.Icon),
-			"sort":            item.Sort,
-			"visible":         item.Visible,
-			"status":          item.Status,
-			"keepAlive":       true,
-			"iframeSrc":       item.Iframe,
-			"link":            item.External,
-			"children":        []map[string]any{},
-		}
-		itemMap[item.ID] = node
-		if item.ParentID <= 0 {
-			rootIDs = append(rootIDs, item.ID)
-			continue
-		}
-		children[item.ParentID] = append(children[item.ParentID], item.ID)
-	}
-	result := make([]map[string]any, 0, len(rootIDs))
-	for _, id := range rootIDs {
-		result = append(result, buildVbenMenuNode(id, itemMap, children))
-	}
-	return result
-}
-
-func buildVbenMenuNode(id int64, itemMap map[int64]map[string]any, children map[int64][]int64) map[string]any {
-	node := itemMap[id]
-	nodes := make([]map[string]any, 0, len(children[id]))
-	for _, childID := range children[id] {
-		if _, ok := itemMap[childID]; ok {
-			nodes = append(nodes, buildVbenMenuNode(childID, itemMap, children))
-		}
-	}
-	node["children"] = nodes
-	return node
 }
 
 func (s *Service) recordLogin(adminUserID int64, username string, meta RequestMeta, success bool, remark string) {

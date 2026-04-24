@@ -6,6 +6,7 @@ import (
 	"github.com/lvjiaben/goweb-core/httpx"
 	corerbac "github.com/lvjiaben/goweb-core/rbac"
 	"github.com/lvjiaben/goweb-scaffold/internal/bootstrap"
+	admin_menu "github.com/lvjiaben/goweb-scaffold/internal/modules/admin/menu"
 )
 
 func login(runtime *bootstrap.Runtime) httpx.HandlerFunc {
@@ -69,15 +70,15 @@ func me(runtime *bootstrap.Runtime) httpx.HandlerFunc {
 }
 
 func menus(runtime *bootstrap.Runtime) httpx.HandlerFunc {
-	service := NewService(runtime)
+	menuService := admin_menu.NewService(runtime)
 	return func(c *httpx.Context) {
 		identity, _ := corerbac.GetIdentity(c)
-		result, err := service.Menus(c.Request.Context(), identity, c.Request.Header.Get("Accept-Language"))
+		routes, err := menuService.GetVbenRoutes(c.Request.Context(), identity, c.Request.Header.Get("Accept-Language"))
 		if err != nil {
 			c.Error(err)
 			return
 		}
-		c.Success(result)
+		c.Success(map[string]any{"list": routes})
 	}
 }
 

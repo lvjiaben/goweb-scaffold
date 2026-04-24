@@ -78,20 +78,3 @@ func (r *Repo) LoginLogs(userID int64, page int, pageSize int) ([]AdminLoginLog,
 	err := query.Order("id DESC").Offset((page - 1) * pageSize).Limit(pageSize).Find(&logs).Error
 	return logs, total, err
 }
-
-func (r *Repo) MenuItems(identityRoleIDs []int64, isSuper bool) ([]AdminMenu, error) {
-	var menus []AdminMenu
-	query := r.db.Model(&AdminMenu{}).
-		Where("menu_type <> ? AND status = ?", "button", 1).
-		Order("sort DESC, id DESC")
-	if !isSuper {
-		if len(identityRoleIDs) == 0 {
-			return menus, nil
-		}
-		query = query.Joins("JOIN admin_role_menu ON admin_role_menu.menu_id = admin_menu.id").
-			Where("admin_role_menu.role_id IN ?", identityRoleIDs).
-			Distinct("admin_menu.*")
-	}
-	err := query.Find(&menus).Error
-	return menus, err
-}

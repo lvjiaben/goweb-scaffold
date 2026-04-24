@@ -40,6 +40,23 @@ func (r *Repo) MenuNodes() ([]AdminMenu, error) {
 	return menus, err
 }
 
+func (r *Repo) VbenRouteMenus(roleIDs []int64, isSuper bool) ([]AdminMenu, error) {
+	var menus []AdminMenu
+	query := r.db.Model(&AdminMenu{}).
+		Where("menu_type <> ? AND status = ?", MenuTypeButton, 1).
+		Order("sort DESC, id DESC")
+	if !isSuper {
+		if len(roleIDs) == 0 {
+			return menus, nil
+		}
+		query = query.Joins("JOIN admin_role_menu arm ON arm.menu_id = admin_menu.id AND arm.deleted_at IS NULL").
+			Where("arm.role_id IN ?", roleIDs).
+			Distinct("admin_menu.*")
+	}
+	err := query.Find(&menus).Error
+	return menus, err
+}
+
 func (r *Repo) FindByID(id int64) (AdminMenu, error) {
 	var menu AdminMenu
 	err := r.db.First(&menu, id).Error

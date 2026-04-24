@@ -25,6 +25,8 @@ type AdminMenu struct {
 	Sort           int    `gorm:"column:sort"`
 	Visible        bool   `gorm:"column:visible"`
 	Status         int    `gorm:"column:status"`
+	FixedTag       int    `gorm:"column:fixed_tag"`
+	ShowTag        int    `gorm:"column:show_tag"`
 }
 
 func (AdminMenu) TableName() string { return "admin_menu" }
