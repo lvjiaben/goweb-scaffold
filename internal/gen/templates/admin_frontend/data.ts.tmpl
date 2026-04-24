@@ -50,6 +50,15 @@ export function useSearchFormSchema(): VbenFormProps['schema'] {
       fieldName: {{ quote .ColumnName }},
       label: {{ quote .Label }},
     },
+{{- else if eq (searchComponent .) "InputNumber" }}
+    {
+      component: 'InputNumber',
+      componentProps: {
+        class: 'w-full',
+      },
+      fieldName: {{ quote .ColumnName }},
+      label: {{ quote .Label }},
+    },
 {{- else if eq (searchComponent .) "Select" }}
     {
       component: 'Select',
@@ -67,6 +76,64 @@ export function useSearchFormSchema(): VbenFormProps['schema'] {
           },
 {{- end }}
         ],
+      },
+      fieldName: {{ quote .ColumnName }},
+      label: {{ quote .Label }},
+    },
+{{- else if eq (searchComponent .) "RadioGroup" }}
+    {
+      component: 'RadioGroup',
+      componentProps: {
+        buttonStyle: 'solid',
+        options: [
+          {
+            label: '全部',
+            value: '',
+          },
+{{- range $option := fieldOptions . }}
+          {
+            label: {{ quote $option.Label }},
+            value: {{ js $option.Value }},
+          },
+{{- end }}
+        ],
+        optionType: 'button',
+      },
+      fieldName: {{ quote .ColumnName }},
+      label: {{ quote .Label }},
+    },
+{{- else if eq (searchComponent .) "Switch" }}
+    {
+      component: 'Switch',
+      componentProps: {
+        checkedChildren: '是',
+        unCheckedChildren: '否',
+      },
+      fieldName: {{ quote .ColumnName }},
+      label: {{ quote .Label }},
+    },
+{{- else if eq (searchComponent .) "TableSelect" }}
+    {
+      component: 'TableSelect',
+      componentProps: {
+        config: {
+          labelField: 'name',
+          valueField: 'id',
+        },
+      },
+      fieldName: {{ quote .ColumnName }},
+      label: {{ quote .Label }},
+    },
+{{- else if eq (searchComponent .) "TableSelectMultiple" }}
+    {
+      component: 'TableSelectMultiple',
+      componentProps: {
+        config: {
+          labelField: 'name',
+          multiple: true,
+          valueField: 'id',
+        },
+        multiple: true,
       },
       fieldName: {{ quote .ColumnName }},
       label: {{ quote .Label }},

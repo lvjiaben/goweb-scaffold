@@ -6,7 +6,7 @@ import { onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 import { VbenButton, VbenButtonGroup ,Page, useVbenDrawer } from '@vben/common-ui';
-import { Check, Eraser, IconifyIcon, Plus, X } from '@vben/icons';
+import { IconifyIcon, Plus, X } from '@vben/icons';
 import { $t } from '@vben/locales';
 
 import { message, Popconfirm,Tag,Image, InputSearch } from 'ant-design-vue';
@@ -333,30 +333,8 @@ onMounted(() => {
             @confirm="onDelete()"
           >
             <VbenButton variant="outline">
-              <Eraser class="size-3" />
-              {{ $t('common.delete') }}
-            </VbenButton>
-          </Popconfirm>
-          <Popconfirm
-            :title="$t('common.confirmEnableSelected', [selectedCount])"
-            :ok-text="$t('common.confirm')"
-            :cancel-text="$t('common.cancel')"
-            @confirm="operateApi(1, undefined, 'status')"
-          >
-            <VbenButton variant="outline">
-              <Check class="size-3" />
-              {{ $t('common.enable') }}
-            </VbenButton>
-          </Popconfirm>
-          <Popconfirm
-            :title="$t('common.confirmDisableSelected', [selectedCount])"
-            :ok-text="$t('common.confirm')"
-            :cancel-text="$t('common.cancel')"
-            @confirm="operateApi(0, undefined, 'status')"
-          >
-            <VbenButton variant="outline">
               <X class="size-3" />
-              {{ $t('common.disable') }}
+              {{ $t('common.delete') }}
             </VbenButton>
           </Popconfirm>
         </VbenButtonGroup>

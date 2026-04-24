@@ -5,7 +5,7 @@ import { onMounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
 
 import { Page, VbenButton, VbenButtonGroup, useVbenDrawer } from '@vben/common-ui';
-import { Check, Eraser, Plus, X } from '@vben/icons';
+import { Plus, X } from '@vben/icons';
 import { $t } from '@vben/locales';
 
 import { InputSearch, message, Popconfirm, Tag } from 'ant-design-vue';
@@ -213,16 +213,11 @@ onMounted(() => {
         </VbenButton>
         <VbenButtonGroup v-show="selectedCount > 0" border>
           <Popconfirm title="确认删除选中的角色吗？" @confirm="onDelete()">
-            <VbenButton variant="icon" status="danger">
-              <Eraser class="size-4" />
+            <VbenButton variant="outline">
+              <X class="size-3" />
+              删除
             </VbenButton>
           </Popconfirm>
-          <VbenButton variant="icon" @click="gridApi.grid?.setAllCheckboxRow(true)">
-            <Check class="size-4" />
-          </VbenButton>
-          <VbenButton variant="icon" @click="gridApi.grid?.clearCheckboxRow()">
-            <X class="size-4" />
-          </VbenButton>
         </VbenButtonGroup>
       </template>
       <template #toolbar-tools>

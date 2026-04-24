@@ -64,6 +64,12 @@ func parsePayload(rawPayload json.RawMessage, columns []ColumnInfo) PayloadConfi
 	if payload.FieldOverrides == nil {
 		payload.FieldOverrides = map[string]FieldOverride{}
 	}
+	for key, override := range payload.FieldOverrides {
+		if strings.TrimSpace(override.Component) != "" {
+			override.Component = normalizeFormComponentValue(override.Component)
+			payload.FieldOverrides[key] = override
+		}
+	}
 
 	defaultList := make([]string, 0, len(columns))
 	defaultForm := make([]string, 0, len(columns))
@@ -131,7 +137,7 @@ func buildFormSchema(fields []string, inferred map[string]InferredField, columns
 		}
 		column := columns[field]
 		override := overrides[field]
-		component := firstNonEmpty(override.Component, inferredField.GuessedFormComponent)
+		component := normalizeFormComponentValue(firstNonEmpty(override.Component, inferredField.GuessedFormComponent))
 		options := buildOptions(column, component, override)
 		required := pickBool(override.Required, !column.IsNullable && !isReadonlyField(field, column.IsPrimaryKey))
 		readonly := pickBool(override.Readonly, isReadonlyField(field, column.IsPrimaryKey))
@@ -161,9 +167,9 @@ func buildListSchema(fields []string, inferred map[string]InferredField, columns
 		}
 		column := columns[field]
 		override := overrides[field]
-		component := firstNonEmpty(override.Component, inferredField.GuessedFormComponent)
+		component := normalizeFormComponentValue(firstNonEmpty(override.Component, inferredField.GuessedFormComponent))
 		options := buildOptions(column, component, override)
-		display := guessedListDisplay(column, component, options)
+		display := normalizeListDisplayValue(guessedListDisplay(column, component, options), column)
 		result = append(result, SchemaField{
 			Field:        field,
 			Label:        firstNonEmpty(override.Label, inferredField.GuessedLabel),
@@ -189,9 +195,9 @@ func buildSearchSchema(fields []string, inferred map[string]InferredField, colum
 		}
 		column := columns[field]
 		override := overrides[field]
-		formComponent := firstNonEmpty(override.Component, inferredField.GuessedFormComponent)
+		formComponent := normalizeFormComponentValue(firstNonEmpty(override.Component, inferredField.GuessedFormComponent))
 		options := buildOptions(column, formComponent, override)
-		component := guessSearchComponent(column, formComponent, options)
+		component := normalizeSearchComponentValue(guessSearchComponent(column, formComponent, options))
 		searchable := pickBool(override.Searchable, inferredField.GuessedSearchable)
 		result = append(result, SchemaField{
 			Field:        field,
@@ -242,33 +248,105 @@ func guessFormComponent(column ColumnInfo) string {
 	name := strings.ToLower(strings.TrimSpace(column.ColumnName))
 	switch {
 	case column.IsPrimaryKey:
-		return "readonly-text"
+		return "Input"
 	case isSoftDeleteField(name):
-		return "hidden"
+		return "Input"
 	case name == "created_at" || name == "updated_at":
-		return "readonly-datetime"
+		return "DatePicker"
 	case isBooleanType(column.DataType):
-		return "switch"
+		return "Switch"
 	case strings.HasPrefix(name, "is_") || strings.HasPrefix(name, "has_"):
-		return "switch"
+		return "Switch"
 	case name == "status" || name == "state":
-		return "select"
+		return "RadioGroup"
 	case name == "sort" || name == "weight" || name == "weigh":
-		return "number-input"
+		return "InputNumber"
 	case strings.HasSuffix(name, "_ids"):
-		return "table-select-multiple"
+		return "TableSelectMultiple"
 	case strings.HasSuffix(name, "_id"):
-		return "table-select"
+		return "TableSelect"
 	case strings.HasSuffix(name, "_at") || isTimestampType(column.DataType):
-		return "datetime-picker"
+		return "DatePicker"
 	case strings.EqualFold(strings.TrimSpace(column.DataType), "jsonb") || strings.EqualFold(strings.TrimSpace(column.DataType), "json"):
-		return "json-editor"
+		return "JsonTextarea"
 	case isLongTextField(name, column.DataType):
-		return "textarea"
+		return "Textarea"
 	case isBigIntegerType(column.DataType) || isIntegerType(column.DataType):
-		return "number-input"
+		return "InputNumber"
 	default:
-		return "text-input"
+		return "Input"
+	}
+}
+
+func normalizeFormComponentValue(raw string) string {
+	switch strings.TrimSpace(raw) {
+	case "Input", "Textarea", "InputNumber", "Select", "RadioGroup", "Switch", "DatePicker", "RangePicker", "TimePicker", "TableSelect", "TableSelectMultiple", "Upload", "IconPicker", "JsonTextarea":
+		return strings.TrimSpace(raw)
+	case "select":
+		return "Select"
+	case "radio":
+		return "RadioGroup"
+	case "switch":
+		return "Switch"
+	case "number-input":
+		return "InputNumber"
+	case "textarea":
+		return "Textarea"
+	case "datetime-picker", "readonly-datetime":
+		return "DatePicker"
+	case "json-editor":
+		return "JsonTextarea"
+	case "table-select":
+		return "TableSelect"
+	case "table-select-multiple":
+		return "TableSelectMultiple"
+	case "hidden", "readonly-text", "text-input", "":
+		return "Input"
+	default:
+		return "Input"
+	}
+}
+
+func normalizeSearchComponentValue(raw string) string {
+	switch strings.TrimSpace(raw) {
+	case "Input", "InputNumber", "Select", "RadioGroup", "Switch", "DatePicker", "RangePicker", "TableSelect", "TableSelectMultiple":
+		return strings.TrimSpace(raw)
+	case "select", "radio", "switch":
+		return "Select"
+	case "number-input":
+		return "InputNumber"
+	case "datetime-picker", "readonly-datetime":
+		return "DatePicker"
+	case "datetime-range":
+		return "RangePicker"
+	case "table-select":
+		return "TableSelect"
+	case "table-select-multiple":
+		return "TableSelectMultiple"
+	case "hidden", "":
+		return ""
+	default:
+		return "Input"
+	}
+}
+
+func normalizeListDisplayValue(raw string, column ColumnInfo) string {
+	switch strings.TrimSpace(raw) {
+	case "text", "tag", "datetime", "image", "link", "links", "bool", "number":
+		return strings.TrimSpace(raw)
+	case "boolean-tag":
+		return "bool"
+	case "option-tag":
+		return "tag"
+	case "id":
+		return "number"
+	case "json-preview", "editable", "":
+		return "text"
+	default:
+		if isBigIntegerType(column.DataType) || isIntegerType(column.DataType) {
+			return "number"
+		}
+		return "text"
 	}
 }
 
@@ -278,16 +356,18 @@ func guessListDisplay(column ColumnInfo) string {
 
 func guessedListDisplay(column ColumnInfo, component string, options []FieldOption) string {
 	switch {
-	case component == "switch" || isBooleanType(column.DataType):
-		return "boolean-tag"
-	case len(options) > 0 && (component == "select" || component == "radio"):
-		return "option-tag"
+	case component == "Switch" || isBooleanType(column.DataType):
+		return "bool"
+	case len(options) > 0 && (component == "Select" || component == "RadioGroup" || component == "Switch"):
+		return "tag"
 	case strings.HasSuffix(strings.ToLower(strings.TrimSpace(column.ColumnName)), "_at") || isTimestampType(column.DataType):
 		return "datetime"
 	case strings.EqualFold(strings.TrimSpace(column.DataType), "jsonb"):
-		return "json-preview"
+		return "text"
 	case column.IsPrimaryKey:
-		return "id"
+		return "number"
+	case isBigIntegerType(column.DataType) || isIntegerType(column.DataType):
+		return "number"
 	default:
 		return "text"
 	}
@@ -345,24 +425,26 @@ func shouldDefaultList(column ColumnInfo) bool {
 
 func guessSearchComponent(column ColumnInfo, formComponent string, options []FieldOption) string {
 	switch {
-	case len(options) > 0 && (formComponent == "select" || formComponent == "radio" || formComponent == "switch"):
-		return "select"
-	case formComponent == "switch":
-		return "select"
-	case formComponent == "datetime-picker" || formComponent == "readonly-datetime" || strings.HasSuffix(strings.ToLower(strings.TrimSpace(column.ColumnName)), "_at"):
-		return "datetime-range"
-	case formComponent == "number-input":
-		return "number-input"
+	case len(options) > 0 && (formComponent == "Select" || formComponent == "RadioGroup" || formComponent == "Switch"):
+		return "Select"
+	case formComponent == "Switch":
+		return "Select"
+	case formComponent == "DatePicker" || strings.HasSuffix(strings.ToLower(strings.TrimSpace(column.ColumnName)), "_at"):
+		return "RangePicker"
+	case formComponent == "InputNumber":
+		return "InputNumber"
+	case formComponent == "TableSelect", formComponent == "TableSelectMultiple":
+		return formComponent
 	default:
-		return "text-input"
+		return "Input"
 	}
 }
 
 func guessSearchOperator(component string) string {
 	switch component {
-	case "datetime-range":
+	case "RangePicker":
 		return "between"
-	case "select", "number-input":
+	case "Select", "RadioGroup", "Switch", "InputNumber", "TableSelect", "TableSelectMultiple":
 		return "eq"
 	default:
 		return "like"
@@ -404,17 +486,17 @@ func isReadonlyField(name string, isPrimaryKey bool) bool {
 
 func buildPlaceholder(label string, component string) string {
 	switch component {
-	case "number-input":
+	case "InputNumber":
 		return "请输入数字"
-	case "switch":
+	case "Switch":
 		return "请选择开关状态"
-	case "select", "radio":
+	case "Select", "RadioGroup", "TableSelect", "TableSelectMultiple":
 		return "请选择" + label
-	case "datetime-picker":
+	case "DatePicker", "RangePicker", "TimePicker":
 		return "请选择时间"
-	case "json-editor":
+	case "JsonTextarea":
 		return "请输入 JSON 内容"
-	case "textarea":
+	case "Textarea":
 		return "请输入详细内容"
 	default:
 		return "请输入" + label
@@ -423,11 +505,11 @@ func buildPlaceholder(label string, component string) string {
 
 func buildSearchPlaceholder(label string, component string) string {
 	switch component {
-	case "select":
+	case "Select", "RadioGroup", "Switch", "TableSelect", "TableSelectMultiple":
 		return "请选择" + label
-	case "datetime-range":
+	case "RangePicker":
 		return "请选择" + label + "范围"
-	case "number-input":
+	case "InputNumber":
 		return "请输入" + label
 	default:
 		return "搜索" + label
@@ -470,12 +552,12 @@ func buildOptions(column ColumnInfo, component string, override FieldOverride) [
 
 	name := strings.ToLower(strings.TrimSpace(column.ColumnName))
 	switch {
-	case component == "switch" || isBooleanType(column.DataType) || strings.HasPrefix(name, "is_") || strings.HasPrefix(name, "has_"):
+	case component == "Switch" || isBooleanType(column.DataType) || strings.HasPrefix(name, "is_") || strings.HasPrefix(name, "has_"):
 		return []FieldOption{
 			{Label: "否", Value: false},
 			{Label: "是", Value: true},
 		}
-	case component == "select" || component == "radio":
+	case component == "Select" || component == "RadioGroup":
 		if name == "status" {
 			return []FieldOption{
 				{Label: "禁用", Value: 0},
@@ -507,17 +589,17 @@ func normalizeOptions(items []FieldOption) []FieldOption {
 func guessDefaultValue(column ColumnInfo, component string) any {
 	name := strings.ToLower(strings.TrimSpace(column.ColumnName))
 	switch {
-	case component == "switch" || isBooleanType(column.DataType):
+	case component == "Switch" || isBooleanType(column.DataType):
 		return parseBoolDefault(column.ColumnDefault)
-	case component == "select" || component == "radio":
+	case component == "Select" || component == "RadioGroup":
 		if name == "status" || name == "state" {
 			return parseIntDefault(column.ColumnDefault, 1)
 		}
-	case component == "number-input":
+	case component == "InputNumber":
 		return parseIntDefault(column.ColumnDefault, defaultIntegerHint(name))
-	case component == "json-editor":
+	case component == "JsonTextarea":
 		return "{}"
-	case component == "datetime-picker", component == "readonly-datetime":
+	case component == "DatePicker" || component == "RangePicker" || component == "TimePicker":
 		return ""
 	}
 	return ""

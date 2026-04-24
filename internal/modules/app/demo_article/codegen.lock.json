@@ -2,7 +2,7 @@
   "generated_by": "goweb-scaffold",
   "module_name": "demo_article",
   "table_name": "demo_article",
-  "generated_at": "2026-04-24T22:10:05+08:00",
+  "generated_at": "2026-04-24T23:02:53+08:00",
   "template_version": "v7",
   "payload": {
     "list_fields": [
@@ -31,7 +31,7 @@
       },
       "status": {
         "label": "状态",
-        "component": "select",
+        "component": "Select",
         "width": "120px",
         "options": [
           {
@@ -85,8 +85,8 @@
         "is_nullable": false,
         "is_primary_key": true,
         "guessed_label": "ID",
-        "guessed_form_component": "readonly-text",
-        "guessed_list_display": "id",
+        "guessed_form_component": "Input",
+        "guessed_list_display": "number",
         "guessed_searchable": false,
         "guessed_sortable": true
       },
@@ -97,7 +97,7 @@
         "is_primary_key": false,
         "column_comment": "文章标题",
         "guessed_label": "文章标题",
-        "guessed_form_component": "text-input",
+        "guessed_form_component": "Input",
         "guessed_list_display": "text",
         "guessed_searchable": true,
         "guessed_sortable": true
@@ -109,7 +109,7 @@
         "is_primary_key": false,
         "column_comment": "文章摘要",
         "guessed_label": "文章摘要",
-        "guessed_form_component": "textarea",
+        "guessed_form_component": "Textarea",
         "guessed_list_display": "text",
         "guessed_searchable": true,
         "guessed_sortable": false
@@ -121,8 +121,8 @@
         "is_primary_key": false,
         "column_comment": "状态",
         "guessed_label": "状态",
-        "guessed_form_component": "select",
-        "guessed_list_display": "option-tag",
+        "guessed_form_component": "RadioGroup",
+        "guessed_list_display": "tag",
         "guessed_searchable": true,
         "guessed_sortable": true
       },
@@ -133,8 +133,8 @@
         "is_primary_key": false,
         "column_comment": "排序值",
         "guessed_label": "排序值",
-        "guessed_form_component": "number-input",
-        "guessed_list_display": "text",
+        "guessed_form_component": "InputNumber",
+        "guessed_list_display": "number",
         "guessed_searchable": false,
         "guessed_sortable": true
       },
@@ -145,7 +145,7 @@
         "is_primary_key": false,
         "column_comment": "创建时间",
         "guessed_label": "创建时间",
-        "guessed_form_component": "readonly-datetime",
+        "guessed_form_component": "DatePicker",
         "guessed_list_display": "datetime",
         "guessed_searchable": true,
         "guessed_sortable": true
@@ -157,7 +157,7 @@
         "is_primary_key": false,
         "column_comment": "更新时间",
         "guessed_label": "更新时间",
-        "guessed_form_component": "readonly-datetime",
+        "guessed_form_component": "DatePicker",
         "guessed_list_display": "datetime",
         "guessed_searchable": true,
         "guessed_sortable": true
@@ -168,7 +168,7 @@
         "is_nullable": true,
         "is_primary_key": false,
         "guessed_label": "删除时间",
-        "guessed_form_component": "hidden",
+        "guessed_form_component": "Input",
         "guessed_list_display": "datetime",
         "guessed_searchable": false,
         "guessed_sortable": false
@@ -178,7 +178,7 @@
       {
         "field": "title",
         "label": "文章标题",
-        "component": "text-input",
+        "component": "Input",
         "required": true,
         "placeholder": "请输入文章标题",
         "width": "220px",
@@ -187,7 +187,7 @@
       {
         "field": "summary",
         "label": "文章摘要",
-        "component": "textarea",
+        "component": "Textarea",
         "required": true,
         "placeholder": "请输入文章摘要，用于列表简介",
         "default_value": ""
@@ -195,7 +195,7 @@
       {
         "field": "status",
         "label": "状态",
-        "component": "select",
+        "component": "Select",
         "required": true,
         "placeholder": "请选择状态",
         "width": "120px",
@@ -218,7 +218,7 @@
       {
         "field": "sort",
         "label": "排序值",
-        "component": "number-input",
+        "component": "InputNumber",
         "required": true,
         "placeholder": "请输入数字",
         "width": "100px",
@@ -229,15 +229,15 @@
       {
         "field": "id",
         "label": "ID",
-        "component": "readonly-text",
-        "display": "id",
+        "component": "Input",
+        "display": "number",
         "sortable": true,
         "default_value": ""
       },
       {
         "field": "title",
         "label": "文章标题",
-        "component": "text-input",
+        "component": "Input",
         "display": "text",
         "searchable": true,
         "sortable": true,
@@ -247,7 +247,7 @@
       {
         "field": "summary",
         "label": "文章摘要",
-        "component": "textarea",
+        "component": "Textarea",
         "display": "text",
         "searchable": true,
         "default_value": ""
@@ -255,8 +255,8 @@
       {
         "field": "status",
         "label": "状态",
-        "component": "select",
-        "display": "option-tag",
+        "component": "Select",
+        "display": "tag",
         "searchable": true,
         "sortable": true,
         "width": "120px",
@@ -279,8 +279,8 @@
       {
         "field": "sort",
         "label": "排序值",
-        "component": "number-input",
-        "display": "text",
+        "component": "InputNumber",
+        "display": "number",
         "sortable": true,
         "width": "100px",
         "default_value": 0
@@ -288,7 +288,7 @@
       {
         "field": "created_at",
         "label": "创建时间",
-        "component": "readonly-datetime",
+        "component": "DatePicker",
         "display": "datetime",
         "searchable": true,
         "sortable": true,
@@ -297,7 +297,7 @@
       {
         "field": "updated_at",
         "label": "更新时间",
-        "component": "readonly-datetime",
+        "component": "DatePicker",
         "display": "datetime",
         "searchable": true,
         "sortable": true,
@@ -308,7 +308,7 @@
       {
         "field": "title",
         "label": "文章标题",
-        "component": "text-input",
+        "component": "Input",
         "operator": "like",
         "searchable": true,
         "placeholder": "请输入文章标题",
@@ -318,7 +318,7 @@
       {
         "field": "status",
         "label": "状态",
-        "component": "select",
+        "component": "Select",
         "operator": "eq",
         "searchable": true,
         "placeholder": "请选择状态",
@@ -342,12 +342,12 @@
     ]
   },
   "snapshot": {
-    "preview_hash": "ff671f0243031740449085d59a4bc53e2974639e005bd7dbaea7fb073f030010",
+    "preview_hash": "6e50f5c34a1bbcbf365691d8cabeaedf3d2b32419482c1c116f991502bc71b19",
     "schema_hashes": {
-      "inferred_fields": "ef97ee7b0c579cd9006ffc4cd8d939a6d57f8554c3fc48fddb3e75c7e9020f76",
-      "form_schema": "4072576f8571cccbf1f3fd68d0ebde650868d949b6f0d21dcd0298e7a6f54eda",
-      "list_schema": "97aaa09b1d36490b7772d1114c46d87626f3b41663af919d151369a2cd595186",
-      "search_schema": "ec9c95c1ef964daee1c824b2164645daf74e12688fa87723c3136cf94882f91f"
+      "inferred_fields": "be31859d08ba09870bc2822c379692c9a05e156383c0e0f405c8d7e79c95d6a1",
+      "form_schema": "f568d7752dcc7e8e7bf712a107b12ca191f2f75e731f8e1aef0a4a98942a75e0",
+      "list_schema": "ca0ad625b15fff611d72e5d7e703aa695accd17df046fcae9e10f6864937062d",
+      "search_schema": "73626712e8a2fc8464e15394a130bd2f41545629422524b8b09d3ae4b5882916"
     },
     "generated_files": [
       {
@@ -407,13 +407,13 @@
       },
       {
         "path": "vben-admin/apps/backend/src/views/demo_article/list.vue",
-        "sha256": "eefc34ba280c2998fe2b3cd783c8caa377596d4ad9317664aaf5a3fc4860eb81",
-        "bytes": 6182
+        "sha256": "9f21ca09b67029478fcf5e31eba04f4c1c6e1617a14a58158650d1e75951c5f9",
+        "bytes": 5887
       },
       {
         "path": "vben-admin/apps/backend/src/views/demo_article/modules/form-drawer.vue",
-        "sha256": "abc08b2dd624ee299de1874bffb89fc77647a13575eb4e380c8535d775cebe5e",
-        "bytes": 3248
+        "sha256": "9c858c4a6d340b667e2b291e4037866727f78287b207c1fc76fad878d3800a5e",
+        "bytes": 3275
       }
     ]
   },

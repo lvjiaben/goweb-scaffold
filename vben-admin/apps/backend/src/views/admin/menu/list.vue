@@ -5,7 +5,7 @@ import { onMounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
 
 import { Page, VbenButton, VbenButtonGroup, useVbenDrawer } from '@vben/common-ui';
-import { Check, Eraser, Plus, X } from '@vben/icons';
+import { Plus, X } from '@vben/icons';
 import { $t } from '@vben/locales';
 
 import { InputSearch, message, Popconfirm, Tag } from 'ant-design-vue';
@@ -73,20 +73,22 @@ const [Grid, gridApi] = useVbenVxeGrid({
   },
   gridOptions: {
     columns: useColumns(),
+    height: 'auto',
     keepSource: true,
     pagerConfig: {
-      enabled: true,
+      enabled: false,
     },
     proxyConfig: {
       ajax: {
-        query: async ({ page, sort }, formValues) => {
+        query: async (params, formValues) => {
+          const sort = params?.sort as { field?: string; order?: string } | undefined;
           return await getMenuList({
             filter: JSON.stringify(formValues ?? {}),
-            page: page.currentPage,
-            page_size: page.pageSize,
+            page: 1,
+            page_size: 0,
             search: searchValue.value || undefined,
-            sort_by: sort.field ? String(sort.field) : 'sort',
-            sort_order: sort.order === 'asc' ? 'asc' : 'desc',
+            sort_by: sort?.field ? String(sort.field) : 'sort',
+            sort_order: sort?.order === 'asc' ? 'asc' : 'desc',
           });
         },
       },
@@ -101,6 +103,13 @@ const [Grid, gridApi] = useVbenVxeGrid({
       trigger: 'cell',
     },
     stripe: false,
+    treeConfig: {
+      childrenField: 'children',
+      expandAll: false,
+      parentField: 'parent_id',
+      rowField: 'id',
+      transform: false,
+    },
     toolbarConfig: {
       custom: true,
       refresh: true,
@@ -230,7 +239,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <Page>
+  <Page auto-content-height>
     <FormDrawer @success="onRefresh" />
     <Grid>
       <template #title="{ row }">
@@ -279,16 +288,11 @@ onMounted(() => {
         </VbenButton>
         <VbenButtonGroup v-show="selectedCount > 0" border>
           <Popconfirm title="确认删除选中的菜单吗？" @confirm="onDelete()">
-            <VbenButton variant="icon" status="danger">
-              <Eraser class="size-4" />
+            <VbenButton variant="outline">
+              <X class="size-3" />
+              删除
             </VbenButton>
           </Popconfirm>
-          <VbenButton variant="icon" @click="gridApi.grid?.setAllCheckboxRow(true)">
-            <Check class="size-4" />
-          </VbenButton>
-          <VbenButton variant="icon" @click="gridApi.grid?.clearCheckboxRow()">
-            <X class="size-4" />
-          </VbenButton>
         </VbenButtonGroup>
       </template>
       <template #toolbar-tools>

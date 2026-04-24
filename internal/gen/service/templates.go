@@ -74,19 +74,39 @@ func fieldOptions(field templateField) []FieldOption {
 
 func formComponent(field templateField) string {
 	switch field.Component {
+	case "Select":
+		return "Select"
 	case "select":
 		if len(fieldOptions(field)) > 0 && isStatusLike(field.ColumnName) {
 			return "RadioGroup"
 		}
 		return "Select"
+	case "RadioGroup":
+		return "RadioGroup"
 	case "radio":
 		return "RadioGroup"
+	case "Switch":
+		return "Switch"
 	case "switch":
 		return "Switch"
+	case "InputNumber":
+		return "InputNumber"
 	case "number-input":
 		return "InputNumber"
+	case "Textarea":
+		return "Textarea"
 	case "textarea":
 		return "Textarea"
+	case "DatePicker", "RangePicker", "TimePicker", "TableSelect", "TableSelectMultiple", "Upload", "IconPicker", "JsonTextarea":
+		return field.Component
+	case "datetime-picker", "readonly-datetime":
+		return "DatePicker"
+	case "json-editor":
+		return "JsonTextarea"
+	case "table-select":
+		return "TableSelect"
+	case "table-select-multiple":
+		return "TableSelectMultiple"
 	default:
 		return "Input"
 	}
@@ -94,10 +114,18 @@ func formComponent(field templateField) string {
 
 func searchComponent(field templateField) string {
 	switch field.SearchComponent {
-	case "select":
+	case "Select", "RadioGroup", "Switch", "TableSelect", "TableSelectMultiple":
+		return field.SearchComponent
+	case "select", "radio", "switch":
 		return "Select"
+	case "RangePicker":
+		return "RangePicker"
 	case "datetime-range":
 		return "RangePicker"
+	case "InputNumber":
+		return "InputNumber"
+	case "number-input":
+		return "InputNumber"
 	default:
 		if field.IsTimestamp {
 			return "RangePicker"

@@ -43,11 +43,12 @@ const schema: VbenFormSchema[] = [
       rules: z.string().min(1, "文章摘要不能为空"),
     },
     {
-      component: "RadioGroup",
+      component: "Select",
       componentProps: {
-        buttonStyle: 'solid',
+        allowClear: true,
+        class: 'w-full',
         options: statusOptions,
-        optionType: 'button',
+        placeholder: "请选择状态",
       },
       defaultValue: 1,
       fieldName: "status",

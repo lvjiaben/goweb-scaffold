@@ -31,6 +31,7 @@ export namespace GenApi {
     show_in_form: boolean;
     form_component: string;
     form_component_props: Record<string, any>;
+    options?: Array<Record<string, any>>;
     search_form_type: string;
     is_operate_field: boolean;
     is_sort_field: boolean;
@@ -111,12 +112,157 @@ function toPretty(value: any) {
   return JSON.stringify(value ?? {}, null, 2);
 }
 
+const supportedFormComponents = new Set([
+  'Input',
+  'Textarea',
+  'InputNumber',
+  'Select',
+  'RadioGroup',
+  'Switch',
+  'DatePicker',
+  'RangePicker',
+  'TimePicker',
+  'TableSelect',
+  'TableSelectMultiple',
+  'Upload',
+  'IconPicker',
+  'JsonTextarea',
+]);
+
+const supportedSearchComponents = new Set([
+  'Input',
+  'InputNumber',
+  'Select',
+  'RadioGroup',
+  'Switch',
+  'DatePicker',
+  'RangePicker',
+  'TableSelect',
+  'TableSelectMultiple',
+]);
+
+const supportedTableDisplayTypes = new Set([
+  'text',
+  'tag',
+  'datetime',
+  'image',
+  'link',
+  'links',
+  'bool',
+  'number',
+]);
+
+function normalizeFormComponent(value?: string) {
+  const raw = String(value || '').trim();
+  const aliasMap: Record<string, string> = {
+    hidden: 'Input',
+    radio: 'RadioGroup',
+    select: 'Select',
+    switch: 'Switch',
+    textarea: 'Textarea',
+    'datetime-picker': 'DatePicker',
+    'json-editor': 'JsonTextarea',
+    'number-input': 'InputNumber',
+    'readonly-datetime': 'DatePicker',
+    'readonly-text': 'Input',
+    'table-select': 'TableSelect',
+    'table-select-multiple': 'TableSelectMultiple',
+    'text-input': 'Input',
+    upload: 'Upload',
+  };
+  const normalized = aliasMap[raw] || raw;
+  return supportedFormComponents.has(normalized) ? normalized : 'Input';
+}
+
+function normalizeSearchComponent(value?: string) {
+  const raw = String(value || '').trim();
+  if (!raw || raw === 'hidden') {
+    return '';
+  }
+  const aliasMap: Record<string, string> = {
+    radio: 'RadioGroup',
+    select: 'Select',
+    switch: 'Switch',
+    'datetime-picker': 'DatePicker',
+    'datetime-range': 'RangePicker',
+    'number-input': 'InputNumber',
+    'readonly-datetime': 'DatePicker',
+    'table-select': 'TableSelect',
+    'table-select-multiple': 'TableSelectMultiple',
+    'text-input': 'Input',
+  };
+  const normalized = aliasMap[raw] || raw;
+  return supportedSearchComponents.has(normalized) ? normalized : 'Input';
+}
+
+function normalizeTableDisplayType(value?: string, dataType?: string) {
+  const raw = String(value || '').trim();
+  const aliasMap: Record<string, string> = {
+    editable: 'text',
+    id: 'number',
+    'boolean-tag': 'bool',
+    'json-preview': 'text',
+    'option-tag': 'tag',
+  };
+  const normalized = aliasMap[raw] || raw;
+  if (supportedTableDisplayTypes.has(normalized)) {
+    return normalized;
+  }
+  if (['bigint', 'integer', 'int', 'numeric', 'smallint'].includes(String(dataType || '').toLowerCase())) {
+    return 'number';
+  }
+  return 'text';
+}
+
+function defaultOptionsForColumn(column: Record<string, any>, component: string) {
+  const name = String(column.column_name || '').toLowerCase();
+  if (component === 'Switch' || name.startsWith('is_') || name.startsWith('has_') || name === 'enabled') {
+    return [
+      { label: '否', value: false },
+      { label: '是', value: true },
+    ];
+  }
+  if (name === 'state') {
+    return [
+      { label: '关闭', value: 0 },
+      { label: '开启', value: 1 },
+    ];
+  }
+  if (name === 'status' || name.endsWith('_status')) {
+    return [
+      { label: '禁用', value: 0 },
+      { label: '启用', value: 1 },
+    ];
+  }
+  return [];
+}
+
 function normalizeField(column: Record<string, any>, preview?: Record<string, any>): GenApi.FieldConfig {
   const listItem = preview?.list_schema?.find?.((item: Record<string, any>) => item.field === column.column_name);
   const formItem = preview?.form_schema?.find?.((item: Record<string, any>) => item.field === column.column_name);
   const searchItem = preview?.search_schema?.find?.((item: Record<string, any>) => item.field === column.column_name);
   const inferred = preview?.inferred_fields?.find?.((item: Record<string, any>) => item.column_name === column.column_name);
-  const component = formItem?.component ?? inferred?.guessed_form_component ?? column.guessed_form_component ?? 'Input';
+  const component = normalizeFormComponent(formItem?.component ?? inferred?.guessed_form_component ?? column.guessed_form_component ?? 'Input');
+  const searchComponent = normalizeSearchComponent(searchItem?.component ?? (column.guessed_searchable ? inferred?.guessed_form_component ?? column.guessed_form_component ?? 'Input' : ''));
+  const options = formItem?.options ?? searchItem?.options ?? listItem?.options ?? defaultOptionsForColumn(column, component);
+  const formComponentProps: Record<string, any> = {
+    options,
+    placeholder: formItem?.placeholder ?? searchItem?.placeholder ?? '',
+  };
+  if (component === 'TableSelectMultiple' || searchComponent === 'TableSelectMultiple') {
+    formComponentProps.multiple = true;
+    formComponentProps.config = {
+      labelField: 'name',
+      multiple: true,
+      valueField: 'id',
+    };
+  }
+  if (component === 'TableSelect' || searchComponent === 'TableSelect') {
+    formComponentProps.config = {
+      labelField: 'name',
+      valueField: 'id',
+    };
+  }
   return {
     column_comment: column.column_comment ?? '',
     column_name: column.column_name ?? '',
@@ -124,10 +270,7 @@ function normalizeField(column: Record<string, any>, preview?: Record<string, an
     field_name: column.column_name ?? '',
     field_type: column.data_type ?? '',
     form_component: component,
-    form_component_props: {
-      options: formItem?.options ?? searchItem?.options ?? listItem?.options ?? [],
-      placeholder: formItem?.placeholder ?? searchItem?.placeholder ?? '',
-    },
+    form_component_props: formComponentProps,
     gorm_tag: '',
     in_create: true,
     in_update: true,
@@ -149,10 +292,11 @@ function normalizeField(column: Record<string, any>, preview?: Record<string, an
       column.data_type,
     ),
     json_tag: column.column_name ?? '',
-    search_form_type: searchItem?.component ?? (column.guessed_searchable ? 'Input' : ''),
+    options,
+    search_form_type: searchComponent,
     show_in_form: Boolean(formItem),
     show_in_table: Boolean(listItem),
-    table_display_type: listItem?.display ?? column.guessed_list_display ?? 'text',
+    table_display_type: normalizeTableDisplayType(listItem?.display ?? column.guessed_list_display ?? 'text', column.data_type ?? column.column_type),
     table_search_type: searchItem?.operator ?? (column.guessed_searchable ? 'input' : ''),
     table_searchable: Boolean(searchItem?.searchable ?? inferred?.guessed_searchable ?? column.guessed_searchable),
     table_sortable: Boolean(listItem?.sortable ?? inferred?.guessed_sortable ?? column.guessed_sortable),

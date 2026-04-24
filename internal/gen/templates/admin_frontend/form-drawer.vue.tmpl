@@ -62,6 +62,59 @@ const schema: VbenFormSchema[] = [
         checkedChildren: '是',
         unCheckedChildren: '否',
       },
+[[- else if eq (formComponent .) "DatePicker" ]]
+      componentProps: {
+        class: 'w-full',
+        placeholder: [[ quote (labelPlaceholder .) ]],
+        showTime: true,
+        valueFormat: 'YYYY-MM-DD HH:mm:ss',
+      },
+[[- else if eq (formComponent .) "RangePicker" ]]
+      componentProps: {
+        class: 'w-full',
+        format: 'YYYY-MM-DD HH:mm:ss',
+        placeholder: ['开始时间', '结束时间'],
+        showTime: true,
+        timestampFormat: true,
+      },
+[[- else if eq (formComponent .) "TimePicker" ]]
+      componentProps: {
+        class: 'w-full',
+        placeholder: [[ quote (labelPlaceholder .) ]],
+      },
+[[- else if eq (formComponent .) "TableSelect" ]]
+      componentProps: {
+        class: 'w-full',
+        config: {
+          labelField: 'name',
+          valueField: 'id',
+        },
+        placeholder: [[ quote (labelPlaceholder .) ]],
+      },
+[[- else if eq (formComponent .) "TableSelectMultiple" ]]
+      componentProps: {
+        class: 'w-full',
+        config: {
+          labelField: 'name',
+          multiple: true,
+          valueField: 'id',
+        },
+        multiple: true,
+        placeholder: [[ quote (labelPlaceholder .) ]],
+      },
+[[- else if eq (formComponent .) "Upload" ]]
+      componentProps: {
+        maxCount: 1,
+      },
+[[- else if eq (formComponent .) "IconPicker" ]]
+      componentProps: {
+        class: 'w-full',
+      },
+[[- else if eq (formComponent .) "JsonTextarea" ]]
+      componentProps: {
+        placeholder: [[ quote (labelPlaceholder .) ]],
+        rows: 6,
+      },
 [[- else ]]
       componentProps: {
         placeholder: [[ quote (labelPlaceholder .) ]],

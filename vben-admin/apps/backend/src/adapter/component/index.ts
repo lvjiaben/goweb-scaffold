@@ -156,6 +156,7 @@ export type ComponentType =
   | 'Input'
   | 'InputNumber'
   | 'InputPassword'
+  | 'JsonTextarea'
   | 'Mentions'
   | 'PrimaryButton'
   | 'Radio'
@@ -167,6 +168,7 @@ export type ComponentType =
   | 'Space'
   | 'Switch'
   | 'TableSelect'
+  | 'TableSelectMultiple'
   | 'Textarea'
   | 'TimePicker'
   | 'TreeSelect'
@@ -225,6 +227,9 @@ async function initComponentAdapter() {
     Input: withDefaultPlaceholder(Input, 'input'),
     InputNumber: withDefaultPlaceholder(InputNumber, 'input'),
     InputPassword: withDefaultPlaceholder(InputPassword, 'input'),
+    JsonTextarea: withDefaultPlaceholder(Textarea, 'input', {
+      rows: 6,
+    }),
     Mentions: withDefaultPlaceholder(Mentions, 'input'),
     // 自定义主要按钮
     PrimaryButton: (props, { attrs, slots }) => {
@@ -314,6 +319,9 @@ async function initComponentAdapter() {
     Space,
     Switch,
     TableSelect,
+    TableSelectMultiple: (props, { attrs, slots }) => {
+      return h(TableSelect, { ...props, ...attrs, multiple: true }, slots);
+    },
     Textarea: withDefaultPlaceholder(Textarea, 'input'),
     TimePicker,
     TreeSelect: withDefaultPlaceholder(TreeSelect, 'select'),

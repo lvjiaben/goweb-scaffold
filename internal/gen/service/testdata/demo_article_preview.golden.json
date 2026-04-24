@@ -26,8 +26,8 @@
       "is_nullable": false,
       "is_primary_key": true,
       "guessed_label": "ID",
-      "guessed_form_component": "readonly-text",
-      "guessed_list_display": "id",
+      "guessed_form_component": "Input",
+      "guessed_list_display": "number",
       "guessed_searchable": false,
       "guessed_sortable": true
     },
@@ -38,7 +38,7 @@
       "is_primary_key": false,
       "column_comment": "文章标题",
       "guessed_label": "文章标题",
-      "guessed_form_component": "text-input",
+      "guessed_form_component": "Input",
       "guessed_list_display": "text",
       "guessed_searchable": true,
       "guessed_sortable": true
@@ -50,7 +50,7 @@
       "is_primary_key": false,
       "column_comment": "文章摘要",
       "guessed_label": "文章摘要",
-      "guessed_form_component": "textarea",
+      "guessed_form_component": "Textarea",
       "guessed_list_display": "text",
       "guessed_searchable": true,
       "guessed_sortable": false
@@ -62,8 +62,8 @@
       "is_primary_key": false,
       "column_comment": "状态",
       "guessed_label": "状态",
-      "guessed_form_component": "select",
-      "guessed_list_display": "option-tag",
+      "guessed_form_component": "RadioGroup",
+      "guessed_list_display": "tag",
       "guessed_searchable": true,
       "guessed_sortable": true
     },
@@ -74,8 +74,8 @@
       "is_primary_key": false,
       "column_comment": "排序值",
       "guessed_label": "排序值",
-      "guessed_form_component": "number-input",
-      "guessed_list_display": "text",
+      "guessed_form_component": "InputNumber",
+      "guessed_list_display": "number",
       "guessed_searchable": false,
       "guessed_sortable": true
     },
@@ -86,7 +86,7 @@
       "is_primary_key": false,
       "column_comment": "创建时间",
       "guessed_label": "创建时间",
-      "guessed_form_component": "readonly-datetime",
+      "guessed_form_component": "DatePicker",
       "guessed_list_display": "datetime",
       "guessed_searchable": true,
       "guessed_sortable": true
@@ -98,7 +98,7 @@
       "is_primary_key": false,
       "column_comment": "更新时间",
       "guessed_label": "更新时间",
-      "guessed_form_component": "readonly-datetime",
+      "guessed_form_component": "DatePicker",
       "guessed_list_display": "datetime",
       "guessed_searchable": true,
       "guessed_sortable": true
@@ -109,7 +109,7 @@
       "is_nullable": true,
       "is_primary_key": false,
       "guessed_label": "删除时间",
-      "guessed_form_component": "hidden",
+      "guessed_form_component": "Input",
       "guessed_list_display": "datetime",
       "guessed_searchable": false,
       "guessed_sortable": false
@@ -119,7 +119,7 @@
     {
       "field": "title",
       "label": "文章标题",
-      "component": "text-input",
+      "component": "Input",
       "required": true,
       "placeholder": "请输入文章标题",
       "width": "220px",
@@ -128,7 +128,7 @@
     {
       "field": "summary",
       "label": "文章摘要",
-      "component": "textarea",
+      "component": "Textarea",
       "required": true,
       "placeholder": "请输入文章摘要，用于列表简介",
       "default_value": ""
@@ -136,7 +136,7 @@
     {
       "field": "status",
       "label": "状态",
-      "component": "select",
+      "component": "Select",
       "required": true,
       "placeholder": "请选择状态",
       "width": "120px",
@@ -159,7 +159,7 @@
     {
       "field": "sort",
       "label": "排序值",
-      "component": "number-input",
+      "component": "InputNumber",
       "required": true,
       "placeholder": "请输入数字",
       "width": "100px",
@@ -170,15 +170,15 @@
     {
       "field": "id",
       "label": "ID",
-      "component": "readonly-text",
-      "display": "id",
+      "component": "Input",
+      "display": "number",
       "sortable": true,
       "default_value": ""
     },
     {
       "field": "title",
       "label": "文章标题",
-      "component": "text-input",
+      "component": "Input",
       "display": "text",
       "searchable": true,
       "sortable": true,
@@ -188,7 +188,7 @@
     {
       "field": "summary",
       "label": "文章摘要",
-      "component": "textarea",
+      "component": "Textarea",
       "display": "text",
       "searchable": true,
       "default_value": ""
@@ -196,8 +196,8 @@
     {
       "field": "status",
       "label": "状态",
-      "component": "select",
-      "display": "option-tag",
+      "component": "Select",
+      "display": "tag",
       "searchable": true,
       "sortable": true,
       "width": "120px",
@@ -220,8 +220,8 @@
     {
       "field": "sort",
       "label": "排序值",
-      "component": "number-input",
-      "display": "text",
+      "component": "InputNumber",
+      "display": "number",
       "sortable": true,
       "width": "100px",
       "default_value": 0
@@ -229,7 +229,7 @@
     {
       "field": "created_at",
       "label": "创建时间",
-      "component": "readonly-datetime",
+      "component": "DatePicker",
       "display": "datetime",
       "searchable": true,
       "sortable": true,
@@ -238,7 +238,7 @@
     {
       "field": "updated_at",
       "label": "更新时间",
-      "component": "readonly-datetime",
+      "component": "DatePicker",
       "display": "datetime",
       "searchable": true,
       "sortable": true,
@@ -249,7 +249,7 @@
     {
       "field": "title",
       "label": "文章标题",
-      "component": "text-input",
+      "component": "Input",
       "operator": "like",
       "searchable": true,
       "placeholder": "请输入文章标题",
@@ -259,7 +259,7 @@
     {
       "field": "status",
       "label": "状态",
-      "component": "select",
+      "component": "Select",
       "operator": "eq",
       "searchable": true,
       "placeholder": "请选择状态",
@@ -308,7 +308,7 @@
       },
       "status": {
         "label": "状态",
-        "component": "select",
+        "component": "Select",
         "width": "120px",
         "options": [
           {

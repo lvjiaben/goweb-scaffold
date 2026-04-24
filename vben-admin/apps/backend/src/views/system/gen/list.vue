@@ -94,7 +94,178 @@ const componentPropsForm = ref({
   api: '',
   labelField: 'label',
   valueField: 'value',
+  multiple: false,
 });
+
+const supportedTableDisplayTypes = new Set([
+  'text',
+  'tag',
+  'datetime',
+  'image',
+  'link',
+  'links',
+  'bool',
+  'number',
+]);
+
+const configurableComponents = new Set([
+  'Select',
+  'RadioGroup',
+  'Switch',
+  'TableSelect',
+  'TableSelectMultiple',
+]);
+
+const normalizeTableDisplayType = (value?: string, columnType?: string) => {
+  const raw = String(value || '').trim();
+  const aliasMap: Record<string, string> = {
+    editable: 'text',
+    id: 'number',
+    'json-preview': 'text',
+    'boolean-tag': 'bool',
+    'option-tag': 'tag',
+  };
+  const normalized = aliasMap[raw] || raw;
+  if (supportedTableDisplayTypes.has(normalized)) {
+    return normalized;
+  }
+  if (['bigint', 'integer', 'int', 'numeric', 'smallint'].includes(String(columnType || '').toLowerCase())) {
+    return 'number';
+  }
+  return 'text';
+};
+
+const normalizeFormComponent = (value?: string) => {
+  const raw = String(value || '').trim();
+  const aliasMap: Record<string, string> = {
+    hidden: 'Input',
+    radio: 'RadioGroup',
+    select: 'Select',
+    switch: 'Switch',
+    textarea: 'Textarea',
+    'datetime-picker': 'DatePicker',
+    'json-editor': 'JsonTextarea',
+    'number-input': 'InputNumber',
+    'readonly-datetime': 'DatePicker',
+    'readonly-text': 'Input',
+    'table-select': 'TableSelect',
+    'table-select-multiple': 'TableSelectMultiple',
+    'text-input': 'Input',
+    upload: 'Upload',
+  };
+  const normalized = aliasMap[raw] || raw;
+  const supported = new Set(formComponentOptions.map((item) => item.value));
+  return supported.has(normalized) ? normalized : 'Input';
+};
+
+const normalizeSearchFormType = (value?: string) => {
+  const raw = String(value || '').trim();
+  if (!raw || raw === 'hidden') {
+    return '';
+  }
+  const aliasMap: Record<string, string> = {
+    radio: 'RadioGroup',
+    select: 'Select',
+    switch: 'Switch',
+    'datetime-picker': 'DatePicker',
+    'datetime-range': 'RangePicker',
+    'number-input': 'InputNumber',
+    'readonly-datetime': 'DatePicker',
+    'table-select': 'TableSelect',
+    'table-select-multiple': 'TableSelectMultiple',
+    'text-input': 'Input',
+  };
+  const normalized = aliasMap[raw] || raw;
+  const supported = new Set(searchFormTypeOptions.map((item) => item.value));
+  return supported.has(normalized) ? normalized : 'Input';
+};
+
+const defaultOptionsForField = (field: GenApi.FieldConfig) => {
+  const name = field.column_name.toLowerCase();
+  if (name.startsWith('is_') || name.startsWith('has_') || name === 'enabled' || field.form_component === 'Switch') {
+    return [
+      { label: '否', value: false },
+      { label: '是', value: true },
+    ];
+  }
+  if (name === 'state') {
+    return [
+      { label: '关闭', value: 0 },
+      { label: '开启', value: 1 },
+    ];
+  }
+  if (name === 'status' || name.endsWith('_status')) {
+    return [
+      { label: '禁用', value: 0 },
+      { label: '启用', value: 1 },
+    ];
+  }
+  return [];
+};
+
+const normalizeFieldVisualConfig = (field: GenApi.FieldConfig) => {
+  field.form_component = normalizeFormComponent(field.form_component);
+  field.search_form_type = normalizeSearchFormType(field.search_form_type);
+  field.table_display_type = normalizeTableDisplayType(field.table_display_type, field.column_type);
+
+  const props = field.form_component_props || {};
+  const options = props.options || (field as any).options || defaultOptionsForField(field);
+  if (Array.isArray(options) && options.length > 0) {
+    props.options = options;
+    (field as any).options = options;
+  }
+
+  if (field.form_component === 'TableSelectMultiple' || field.search_form_type === 'TableSelectMultiple') {
+    props.multiple = true;
+    props.config = {
+      ...(props.config || {}),
+      labelField: props.config?.labelField || props.labelField || 'name',
+      multiple: true,
+      valueField: props.config?.valueField || props.valueField || 'id',
+    };
+  }
+
+  if ((field.form_component === 'TableSelect' || field.search_form_type === 'TableSelect') && !props.config) {
+    props.config = {
+      api: props.api || '',
+      labelField: props.labelField || 'name',
+      valueField: props.valueField || 'id',
+    };
+  }
+
+  field.form_component_props = props;
+  return field;
+};
+
+const hasComponentConfig = (field: GenApi.FieldConfig) => {
+  normalizeFieldVisualConfig(field);
+  const props = field.form_component_props || {};
+  return (
+    configurableComponents.has(field.form_component) ||
+    configurableComponents.has(field.search_form_type) ||
+    Object.keys(props).length > 0 ||
+    Array.isArray((field as any).options)
+  );
+};
+
+const shouldShowOptionsEditor = (field?: GenApi.FieldConfig | null) => {
+  if (!field) return false;
+  return (
+    ['Select', 'RadioGroup', 'Switch'].includes(field.form_component) ||
+    ['Select', 'RadioGroup', 'Switch'].includes(field.search_form_type) ||
+    Array.isArray(field.form_component_props?.options) ||
+    Array.isArray((field as any).options)
+  );
+};
+
+const shouldShowTableSelectEditor = (field?: GenApi.FieldConfig | null) => {
+  if (!field) return false;
+  return (
+    ['TableSelect', 'TableSelectMultiple'].includes(field.form_component) ||
+    ['TableSelect', 'TableSelectMultiple'].includes(field.search_form_type) ||
+    Boolean(field.form_component_props?.config?.api || field.form_component_props?.api)
+  );
+};
 
 // 加载表列表
 const loadTables = async () => {
@@ -130,6 +301,7 @@ const selectTable = async (tableName: string) => {
     // 自动为 _id/_ids 结尾的字段设置表格显示类型
     // 同时设置图片、排序、富文本、text类型、desc/description/content结尾字段默认不可搜索
     res.fields.forEach((field) => {
+      normalizeFieldVisualConfig(field);
       const columnName = field.column_name.toLowerCase();
       // 设置表格显示类型
       if (!field.table_display_type || field.table_display_type === 'text') {
@@ -157,12 +329,13 @@ const selectTable = async (tableName: string) => {
 // 表格显示类型选项
 const tableDisplayTypeOptions = [
   { label: '普通文本', value: 'text' },
-  { label: '双击编辑', value: 'editable' },
   { label: 'Tag标签', value: 'tag' },
   { label: '时间格式化', value: 'datetime' },
   { label: '图片显示', value: 'image' },
   { label: '参数跳转', value: 'link' },
   { label: '多参数跳转', value: 'links' },
+  { label: '布尔显示', value: 'bool' },
+  { label: '数字', value: 'number' },
 ];
 
 // 搜索表单类型选项（与表单组件一致）
@@ -173,7 +346,9 @@ const searchFormTypeOptions = [
   { label: 'RangePicker', value: 'RangePicker' },
   { label: 'Switch', value: 'Switch' },
   { label: 'Select', value: 'Select' },
+  { label: 'RadioGroup', value: 'RadioGroup' },
   { label: 'TableSelect', value: 'TableSelect' },
+  { label: 'TableSelectMultiple', value: 'TableSelectMultiple' },
 ];
 
 // 表单组件选项
@@ -181,17 +356,17 @@ const formComponentOptions = [
   { label: 'Input', value: 'Input' },
   { label: 'Textarea', value: 'Textarea' },
   { label: 'InputNumber', value: 'InputNumber' },
-  { label: 'DatePicker', value: 'DatePicker' },
-  { label: 'TimePicker', value: 'TimePicker' },
-  { label: 'Switch', value: 'Switch' },
-  { label: 'Checkbox', value: 'Checkbox' },
-  { label: 'Radio', value: 'Radio' },
   { label: 'Select', value: 'Select' },
+  { label: 'RadioGroup', value: 'RadioGroup' },
+  { label: 'Switch', value: 'Switch' },
+  { label: 'DatePicker', value: 'DatePicker' },
+  { label: 'RangePicker', value: 'RangePicker' },
+  { label: 'TimePicker', value: 'TimePicker' },
   { label: 'TableSelect', value: 'TableSelect' },
+  { label: 'TableSelectMultiple', value: 'TableSelectMultiple' },
   { label: 'Upload', value: 'Upload' },
   { label: 'IconPicker', value: 'IconPicker' },
-  { label: 'ImageUpload', value: 'ImageUpload' },
-  { label: 'RichTextEditor', value: 'RichTextEditor' },
+  { label: 'JsonTextarea', value: 'JsonTextarea' },
 ];
 
 // 字段表格列
@@ -242,16 +417,18 @@ const operateFieldOptions = computed(() => {
 
 // 打开组件配置Modal
 const openComponentPropsModal = (field: GenApi.FieldConfig) => {
-  currentField.value = field;
+  currentField.value = normalizeFieldVisualConfig(field);
   // 解析已有配置
-  const props = field.form_component_props || {};
+  const props = currentField.value.form_component_props || {};
   // 兼容新的 config 格式和旧格式
   const configData = props.config || props;
+  const options = props.options || (currentField.value as any).options || defaultOptionsForField(currentField.value);
   componentPropsForm.value = {
-    options: props.options ? JSON.stringify(props.options, null, 2) : '',
+    options: Array.isArray(options) && options.length > 0 ? JSON.stringify(options, null, 2) : '',
     api: configData.api || '',
     labelField: configData.labelField || 'name',
     valueField: configData.valueField || 'id',
+    multiple: Boolean(configData.multiple || props.multiple || currentField.value.form_component === 'TableSelectMultiple' || currentField.value.search_form_type === 'TableSelectMultiple'),
   };
   componentPropsModalVisible.value = true;
 };
@@ -277,11 +454,18 @@ const saveComponentProps = () => {
     props.config = {
       api: componentPropsForm.value.api,
       labelField: componentPropsForm.value.labelField || 'name',
+      multiple: componentPropsForm.value.multiple,
       valueField: componentPropsForm.value.valueField || 'id',
     };
   }
+  if (componentPropsForm.value.multiple) {
+    props.multiple = true;
+  }
 
   currentField.value.form_component_props = props;
+  if (props.options) {
+    (currentField.value as any).options = props.options;
+  }
   componentPropsModalVisible.value = false;
   message.success('配置已保存');
 };
@@ -484,15 +668,11 @@ loadHistory();
               </template>
               <template v-else-if="column.dataIndex === 'component_props'">
                 <VbenButton
-                  v-if="
-                    record.form_component === 'Select' ||
-                    record.form_component === 'TableSelect' ||
-                    record.search_form_type === 'Select' ||
-                    record.search_form_type === 'TableSelect'
-                  "
+                  :disabled="!hasComponentConfig(record as GenApi.FieldConfig)"
+                  size="small"
                   @click="openComponentPropsModal(record as GenApi.FieldConfig)"
                 >
-                  {{ $t('system.gen.fieldConfig.config') }}
+                  {{ hasComponentConfig(record as GenApi.FieldConfig) ? $t('system.gen.fieldConfig.config') : '无配置' }}
                 </VbenButton>
               </template>
               <template v-else-if="column.dataIndex === 'is_required'">
@@ -736,7 +916,7 @@ loadHistory();
       @ok="saveComponentProps"
     >
       <div class="space-y-4">
-        <div v-if="currentField?.form_component === 'Select' || currentField?.search_form_type === 'Select'">
+        <div v-if="shouldShowOptionsEditor(currentField)">
           <label class="mb-1 block">{{ $t('system.gen.componentConfig.options') }}</label>
           <Textarea
             v-model:value="componentPropsForm.options"
@@ -748,7 +928,7 @@ loadHistory();
           </div>
         </div>
 
-        <div v-if="currentField?.form_component === 'TableSelect' || currentField?.search_form_type === 'TableSelect'">
+        <div v-if="shouldShowTableSelectEditor(currentField)">
           <div class="mb-3">
             <label class="mb-1 block">{{ $t('system.gen.componentConfig.apiPath') }}</label>
             <Input
@@ -781,9 +961,18 @@ loadHistory();
               {{ $t('system.gen.componentConfig.valueFieldTip') }}
             </div>
           </div>
+
+          <div class="mt-3">
+            <Checkbox v-model:checked="componentPropsForm.multiple">
+              多选
+            </Checkbox>
+          </div>
+        </div>
+
+        <div v-if="!shouldShowOptionsEditor(currentField) && !shouldShowTableSelectEditor(currentField)" class="text-sm text-gray-500">
+          当前字段没有可配置组件参数。
         </div>
       </div>
     </Modal>
   </Page>
 </template>
-
