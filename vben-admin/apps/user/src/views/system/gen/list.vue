@@ -95,6 +95,8 @@ const componentPropsForm = ref({
   labelField: 'label',
   valueField: 'value',
 });
+const optionsExample =
+  '[{"label": "启用", "value": 1}, {"label": "禁用", "value": 0}]';
 
 // 加载表列表
 const loadTables = async () => {
@@ -744,7 +746,7 @@ loadHistory();
             placeholder='[{"label": "选项1", "value": "1"}, {"label": "选项2", "value": "2"}]'
           />
           <div class="mt-1 text-xs text-gray-500">
-            {{ $t('system.gen.componentConfig.optionsTip') }}：[{"label": "启用", "value": "1"}, {"label": "禁用", "value": "0"}]
+            {{ $t('system.gen.componentConfig.optionsTip') }}：{{ optionsExample }}
           </div>
         </div>
 
@@ -786,4 +788,3 @@ loadHistory();
     </Modal>
   </Page>
 </template>
-

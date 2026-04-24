@@ -98,7 +98,6 @@ const [Grid, gridApi] = useVbenVxeGrid({
     checkboxConfig: {
       highlight: true,
       reserve: true,
-      trigger: 'row',
     },
   } as VxeTableGridOptions,
   gridEvents: {

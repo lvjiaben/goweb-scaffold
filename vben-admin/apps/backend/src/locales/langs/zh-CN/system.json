@@ -207,7 +207,7 @@
     "componentConfig": {
       "title": "组件配置",
       "options": "Options (JSON 数组)",
-      "optionsTip": "示例：[{\"label\": \"启用\", \"value\": \"1\"}, {\"label\": \"禁用\", \"value\": \"0\"}]",
+      "optionsTip": "示例",
       "optionsError": "Options 格式错误，请输入有效的 JSON 数组",
       "apiPath": "API 路径",
       "apiPathTip": "示例：/api/user/list（后端列表接口路径）",
