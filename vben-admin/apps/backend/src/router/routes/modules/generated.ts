@@ -3,24 +3,6 @@
 import type { RouteRecordRaw } from 'vue-router';
 
 const routes: RouteRecordRaw[] = [
-  {
-    path: "/system/demo-article",
-    name: "DemoArticleList",
-    component: () => import("#/views/demo_article/list.vue"),
-    meta: {
-      title: "演示文章",
-      authority: ["demo_article.list"],
-    },
-  },
-  {
-    path: "/system/demo-notice",
-    name: "DemoNoticeList",
-    component: () => import("#/views/demo_notice/list.vue"),
-    meta: {
-      title: "演示公告",
-      authority: ["demo_notice.list"],
-    },
-  },
 ];
 
 export default routes;

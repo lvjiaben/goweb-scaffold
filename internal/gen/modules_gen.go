@@ -2,16 +2,8 @@
 
 package gen
 
-import (
-	"github.com/lvjiaben/goweb-scaffold/internal/bootstrap"
-	demo_article "github.com/lvjiaben/goweb-scaffold/internal/modules/app/demo_article"
-	demo_notice "github.com/lvjiaben/goweb-scaffold/internal/modules/app/demo_notice"
-)
+import "github.com/lvjiaben/goweb-scaffold/internal/bootstrap"
 
 func RegisterGeneratedModules(runtime *bootstrap.Runtime) error {
-	return bootstrap.RegisterAll(
-		runtime,
-		demo_article.Module{},
-		demo_notice.Module{},
-	)
+	return bootstrap.RegisterAll(runtime)
 }
