@@ -27,6 +27,13 @@ const emit = defineEmits<{
 }>();
 
 const formData = ref<AdminMenuApi.AdminMenu>();
+const defaultValues = {
+  pid: 0,
+  sort: 0,
+  status: 1,
+  type: 'menu',
+  visible: 1,
+};
 
 const schema: VbenFormSchema[] = [
   {
@@ -231,16 +238,18 @@ const [Drawer, drawerApi] = useVbenDrawer({
   onConfirm: onSubmit,
   async onOpenChange(isOpen) {
     if (isOpen) {
-      const data = drawerApi.getData<AdminMenuApi.AdminMenu>();
+      const data = drawerApi.getData<Partial<AdminMenuApi.AdminMenu>>();
       formApi.resetForm();
-      formData.value = data?.id ? data : undefined;
+      formData.value = data?.id ? (data as AdminMenuApi.AdminMenu) : undefined;
       await nextTick();
-      if (data) {
-        formApi.setValues({
-          ...data,
-          pid: data.pid || undefined,
-        });
-      }
+      const values = {
+        ...defaultValues,
+        ...(data ?? {}),
+      };
+      formApi.setValues({
+        ...values,
+        pid: values.pid || undefined,
+      });
     }
   },
 });

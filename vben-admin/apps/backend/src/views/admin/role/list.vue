@@ -129,14 +129,7 @@ const onEdit = async (row: AdminRoleApi.AdminRole) => {
 };
 
 const onCreate = () => {
-  formDrawerApi
-    .setData({
-      code: '',
-      menu_ids: [],
-      name: '',
-      status: 1,
-    })
-    .open();
+  formDrawerApi.setData({}).open();
 };
 
 const onDelete = (row?: AdminRoleApi.AdminRole) => {

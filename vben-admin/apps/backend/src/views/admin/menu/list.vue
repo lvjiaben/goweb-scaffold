@@ -50,12 +50,12 @@ const updateSelectedCount = () => {
 
 const onClearSearch = () => {
   searchValue.value = '';
-  onRefresh();
+  void onRefresh();
 };
 
 const onSearch = (value: string) => {
   searchValue.value = value;
-  onRefresh();
+  void onRefresh();
 };
 
 const [FormDrawer, formDrawerApi] = useVbenDrawer({
@@ -78,29 +78,9 @@ const [Grid, gridApi] = useVbenVxeGrid({
     pagerConfig: {
       enabled: false,
     },
-    proxyConfig: {
-      ajax: {
-        query: async (params, formValues) => {
-          const sort = params?.sort as { field?: string; order?: string } | undefined;
-          return await getMenuList({
-            filter: JSON.stringify(formValues ?? {}),
-            page: 1,
-            page_size: 0,
-            search: searchValue.value || undefined,
-            sort_by: sort?.field ? String(sort.field) : 'sort',
-            sort_order: sort?.order === 'asc' ? 'asc' : 'desc',
-          });
-        },
-      },
-      sort: true,
-    },
     rowConfig: {
       isHover: true,
       keyField: 'id',
-    },
-    sortConfig: {
-      remote: true,
-      trigger: 'cell',
     },
     stripe: false,
     treeConfig: {
@@ -124,6 +104,11 @@ const [Grid, gridApi] = useVbenVxeGrid({
   gridEvents: {
     checkboxAll: updateSelectedCount,
     checkboxChange: updateSelectedCount,
+    toolbarToolClick: ({ code }) => {
+      if (code === 'refresh') {
+        void onRefresh();
+      }
+    },
   },
 });
 
@@ -139,9 +124,18 @@ const getVisibleOption = (value: number) => {
   return visibleOptions.find((item) => item.value === value);
 };
 
-const onRefresh = () => {
+const onRefresh = async () => {
   gridApi.grid?.clearCheckboxRow();
-  gridApi.query();
+  const formValues = await gridApi.formApi.getValues();
+  const result = await getMenuList({
+    filter: JSON.stringify(formValues ?? {}),
+    page: 1,
+    page_size: 0,
+    search: searchValue.value || undefined,
+    sort_by: 'sort',
+    sort_order: 'desc',
+  });
+  gridApi.grid?.loadData(result.list);
   selectedCount.value = 0;
 };
 
@@ -151,45 +145,11 @@ const onEdit = async (row: AdminMenuApi.AdminMenu) => {
 };
 
 const onCreate = () => {
-  formDrawerApi
-    .setData({
-      component: '',
-      enname: '',
-      external: '',
-      icon: '',
-      iframe: '',
-      name: '',
-      path: '',
-      permission: '',
-      pid: 0,
-      sort: 0,
-      status: 1,
-      title: '',
-      type: 'menu',
-      visible: 1,
-    })
-    .open();
+  formDrawerApi.setData({}).open();
 };
 
 const onCreateChild = (row: AdminMenuApi.AdminMenu) => {
-  formDrawerApi
-    .setData({
-      component: '',
-      enname: '',
-      external: '',
-      icon: '',
-      iframe: '',
-      name: '',
-      path: '',
-      permission: '',
-      pid: row.id,
-      sort: 0,
-      status: 1,
-      title: '',
-      type: 'menu',
-      visible: 1,
-    })
-    .open();
+  formDrawerApi.setData({ pid: row.id }).open();
 };
 
 const onDelete = (row?: AdminMenuApi.AdminMenu) => {
@@ -217,14 +177,14 @@ const onDelete = (row?: AdminMenuApi.AdminMenu) => {
         content: $t('ui.actionMessage.deleteSuccess'),
         key: 'action_process_msg',
       });
-      onRefresh();
+      void onRefresh();
     })
     .catch(() => {
       hideLoading();
     });
 };
 
-onMounted(() => {
+onMounted(async () => {
   const formValues: Record<string, any> = {};
   for (const [key, value] of Object.entries(route.query)) {
     if (searchFormFields.includes(key) && value) {
@@ -233,8 +193,8 @@ onMounted(() => {
   }
   if (Object.keys(formValues).length > 0) {
     gridApi.formApi.setValues(formValues);
-    gridApi.query();
   }
+  await onRefresh();
 });
 </script>
 

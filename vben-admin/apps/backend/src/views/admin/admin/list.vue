@@ -130,15 +130,7 @@ const onEdit = async (row: AdminAdminApi.Admin) => {
 };
 
 const onCreate = () => {
-  formDrawerApi
-    .setData({
-      password: '',
-      realname: '',
-      role_ids: [],
-      status: 1,
-      username: '',
-    })
-    .open();
+  formDrawerApi.setData({}).open();
 };
 
 const onDelete = (row?: AdminAdminApi.Admin) => {
