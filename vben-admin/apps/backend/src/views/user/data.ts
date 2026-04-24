@@ -33,7 +33,7 @@ export function useSearchFormSchema(): VbenFormProps['schema'] {
       componentProps:{
         multiple:false,
         config: {
-          api: '/user/list',
+          api: '/app/user/list',
           labelField: 'username',
           valueField: 'id',
           imageField: 'avatar',
@@ -49,7 +49,7 @@ export function useSearchFormSchema(): VbenFormProps['schema'] {
       componentProps:{
         multiple:false,
         config: {
-          api: '/user/list',
+          api: '/app/user/list',
           labelField: 'username',
           valueField: 'id',
           imageField: 'avatar',
@@ -200,4 +200,3 @@ export function useColumns(): VxeTableGridOptions<UserApi.User>['columns'] {
     }
   ];
 }
-

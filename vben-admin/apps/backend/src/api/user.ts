@@ -87,7 +87,7 @@ export namespace UserApi {
  * 获取用户表列表
  */
 async function getUserList(params: UserApi.ListParams) {
-	return requestClient.get<UserApi.ListResponse>('/user/list', { params });
+	return requestClient.get<UserApi.ListResponse>('/app/user/list', { params });
 }
 
 /**
@@ -96,7 +96,7 @@ async function getUserList(params: UserApi.ListParams) {
 async function createUser(
 	data: Omit<UserApi.User, 'id' | 'created_at' | 'updated_at'>,
 ) {
-	return requestClient.post('/user/create', data);
+	return requestClient.post('/app/user/create', data);
 }
 
 /**
@@ -105,35 +105,35 @@ async function createUser(
 async function updateUser(
 	data: Partial<UserApi.User> & { id: number },
 ) {
-	return requestClient.post('/user/update', data);
+	return requestClient.post('/app/user/update', data);
 }
 
 /**
  * 删除用户表
  */
 async function deleteUser(data: any) {
-	return requestClient.post('/user/delete', data);
+	return requestClient.post('/app/user/delete', data);
 }
 
 /**
  * 操作用户表字段
  */
 async function operateUser(data: UserApi.OperateParams) {
-	return requestClient.post('/user/operate', data);
+	return requestClient.post('/app/user/operate', data);
 }
 
 /**
  * 调整用户余额
  */
 async function updateUserMoney(data: UserApi.UpdateMoneyScoreParams) {
-	return requestClient.post('/user/money', data);
+	return requestClient.post('/app/user/money', data);
 }
 
 /**
  * 调整用户积分
  */
 async function updateUserScore(data: UserApi.UpdateMoneyScoreParams) {
-	return requestClient.post('/user/score', data);
+	return requestClient.post('/app/user/score', data);
 }
 
 export {
