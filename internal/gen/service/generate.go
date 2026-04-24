@@ -380,7 +380,10 @@ func (s GeneratorService) prepareBundle(input GenerateInput) (generationBundle, 
 	if err := appendTemplateArtifact(paths["module"], "backend/module.go.tmpl", moduleData); err != nil {
 		return bundle, err
 	}
-	if err := appendTemplateArtifact(paths["handler"], "backend/handler.go.tmpl", moduleData); err != nil {
+	if err := appendTemplateArtifact(paths["backend_handler"], "backend/backend_handler.go.tmpl", moduleData); err != nil {
+		return bundle, err
+	}
+	if err := appendTemplateArtifact(paths["api_handler"], "backend/api_handler.go.tmpl", moduleData); err != nil {
 		return bundle, err
 	}
 	if err := appendTemplateArtifact(paths["service"], "backend/service.go.tmpl", moduleData); err != nil {
@@ -389,7 +392,10 @@ func (s GeneratorService) prepareBundle(input GenerateInput) (generationBundle, 
 	if err := appendTemplateArtifact(paths["repo"], "backend/repo.go.tmpl", moduleData); err != nil {
 		return bundle, err
 	}
-	if err := appendTemplateArtifact(paths["dto"], "backend/dto.go.tmpl", typesData); err != nil {
+	if err := appendTemplateArtifact(paths["backend_dto"], "backend/backend_dto.go.tmpl", typesData); err != nil {
+		return bundle, err
+	}
+	if err := appendTemplateArtifact(paths["api_dto"], "backend/api_dto.go.tmpl", typesData); err != nil {
 		return bundle, err
 	}
 	if err := appendTemplateArtifact(paths["model"], "backend/model.go.tmpl", modelData); err != nil {

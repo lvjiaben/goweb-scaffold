@@ -199,19 +199,21 @@ func FileHeader() string {
 func ModulePaths(moduleName string) map[string]string {
 	moduleDir := filepath.Join("internal/modules/app", moduleName)
 	return map[string]string{
-		"module":       filepath.ToSlash(filepath.Join(moduleDir, "module.go")),
-		"handler":      filepath.ToSlash(filepath.Join(moduleDir, "handler.go")),
-		"service":      filepath.ToSlash(filepath.Join(moduleDir, "service.go")),
-		"repo":         filepath.ToSlash(filepath.Join(moduleDir, "repo.go")),
-		"dto":          filepath.ToSlash(filepath.Join(moduleDir, "dto.go")),
-		"model":        filepath.ToSlash(filepath.Join(moduleDir, "model.go")),
-		"meta":         filepath.ToSlash(filepath.Join(moduleDir, "meta.go")),
-		"lock":         filepath.ToSlash(filepath.Join(moduleDir, "codegen.lock.json")),
-		"api":          filepath.ToSlash(filepath.Join("vben-admin/apps/backend/src/api", moduleName+".ts")),
-		"view_list":    filepath.ToSlash(filepath.Join("vben-admin/apps/backend/src/views", moduleName, "list.vue")),
-		"view_data":    filepath.ToSlash(filepath.Join("vben-admin/apps/backend/src/views", moduleName, "data.ts")),
-		"view_form":    filepath.ToSlash(filepath.Join("vben-admin/apps/backend/src/views", moduleName, "modules", "form-drawer.vue")),
-		"route_module": filepath.ToSlash(filepath.Join("vben-admin/apps/backend/src/router/routes/modules", "generated.ts")),
+		"module":          filepath.ToSlash(filepath.Join(moduleDir, "module.go")),
+		"backend_handler": filepath.ToSlash(filepath.Join(moduleDir, "backend_handler.go")),
+		"api_handler":     filepath.ToSlash(filepath.Join(moduleDir, "api_handler.go")),
+		"service":         filepath.ToSlash(filepath.Join(moduleDir, "service.go")),
+		"repo":            filepath.ToSlash(filepath.Join(moduleDir, "repo.go")),
+		"backend_dto":     filepath.ToSlash(filepath.Join(moduleDir, "backend_dto.go")),
+		"api_dto":         filepath.ToSlash(filepath.Join(moduleDir, "api_dto.go")),
+		"model":           filepath.ToSlash(filepath.Join(moduleDir, "model.go")),
+		"meta":            filepath.ToSlash(filepath.Join(moduleDir, "meta.go")),
+		"lock":            filepath.ToSlash(filepath.Join(moduleDir, "codegen.lock.json")),
+		"api":             filepath.ToSlash(filepath.Join("vben-admin/apps/backend/src/api", moduleName+".ts")),
+		"view_list":       filepath.ToSlash(filepath.Join("vben-admin/apps/backend/src/views", moduleName, "list.vue")),
+		"view_data":       filepath.ToSlash(filepath.Join("vben-admin/apps/backend/src/views", moduleName, "data.ts")),
+		"view_form":       filepath.ToSlash(filepath.Join("vben-admin/apps/backend/src/views", moduleName, "modules", "form-drawer.vue")),
+		"route_module":    filepath.ToSlash(filepath.Join("vben-admin/apps/backend/src/router/routes/modules", "generated.ts")),
 	}
 }
 

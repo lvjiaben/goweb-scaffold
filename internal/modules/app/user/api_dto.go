@@ -1,4 +1,4 @@
-package app_user_auth
+package app_user
 
 import "time"
 
@@ -6,6 +6,8 @@ type RegisterRequest struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
 	Nickname string `json:"nickname"`
+	Email    string `json:"email"`
+	Mobile   string `json:"mobile"`
 }
 
 type CaptchaRequest struct {
@@ -47,13 +49,32 @@ type LogoutResult struct {
 	Logout bool `json:"logout"`
 }
 
-type validationError string
-
-func (e validationError) Error() string {
-	return string(e)
+type ProfileSaveRequest struct {
+	Nickname string `json:"nickname"`
+	Email    string `json:"email"`
+	Mobile   string `json:"mobile"`
+	Avatar   string `json:"avatar"`
 }
 
-func isValidationError(err error) bool {
-	_, ok := err.(validationError)
-	return ok
+type PasswordChangeRequest struct {
+	OldPassword string `json:"old_password"`
+	NewPassword string `json:"new_password"`
+}
+
+type ProfileResponse struct {
+	ID        int64     `json:"id"`
+	Username  string    `json:"username"`
+	Nickname  string    `json:"nickname"`
+	Email     string    `json:"email"`
+	Mobile    string    `json:"mobile"`
+	Avatar    string    `json:"avatar"`
+	Money     float64   `json:"money"`
+	Score     float64   `json:"score"`
+	Status    int       `json:"status"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+type PasswordChangeResult struct {
+	Changed bool `json:"changed"`
 }

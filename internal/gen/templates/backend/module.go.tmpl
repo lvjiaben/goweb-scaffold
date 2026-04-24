@@ -3,7 +3,6 @@
 package {{.PackageName}}
 
 import (
-	"github.com/lvjiaben/goweb-core/httpx"
 	"github.com/lvjiaben/goweb-scaffold/internal/bootstrap"
 )
 
@@ -12,10 +11,11 @@ type Module struct{}
 func (Module) Name() string { return GeneratedModuleName }
 
 func (Module) Register(runtime *bootstrap.Runtime) error {
-	group := runtime.BackendProtectedGroup.Group("/app/{{.ModuleCode}}")
-	group.GET("/list", list(runtime), httpx.WithPermission({{quote .PermissionList}}))
-	group.GET("/detail", detail(runtime), httpx.WithPermission({{quote .PermissionList}}))
-	group.POST("/save", save(runtime), httpx.WithPermission({{quote .PermissionSave}}))
-	group.POST("/delete", deleteRows(runtime), httpx.WithPermission({{quote .PermissionDelete}}))
+	if err := registerBackend(runtime); err != nil {
+		return err
+	}
+	if err := registerAPI(runtime); err != nil {
+		return err
+	}
 	return nil
 }

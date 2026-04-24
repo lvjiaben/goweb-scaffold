@@ -112,12 +112,22 @@ func (AdminSession) TableName() string { return "admin_session" }
 
 type AppUser struct {
 	BaseModel
-	Username     string `gorm:"column:username"`
-	PasswordHash string `gorm:"column:password_hash"`
-	Nickname     string `gorm:"column:nickname"`
-	Email        string `gorm:"column:email"`
-	Mobile       string `gorm:"column:mobile"`
-	Status       int    `gorm:"column:status"`
+	PID           int64   `gorm:"column:pid"`
+	TID           int64   `gorm:"column:tid"`
+	Username      string  `gorm:"column:username"`
+	PasswordHash  string  `gorm:"column:password_hash"`
+	Nickname      string  `gorm:"column:nickname"`
+	Email         string  `gorm:"column:email"`
+	Mobile        string  `gorm:"column:mobile"`
+	Avatar        string  `gorm:"column:avatar"`
+	Code          string  `gorm:"column:code"`
+	Status        int     `gorm:"column:status"`
+	StatusText    string  `gorm:"column:status_text"`
+	Money         float64 `gorm:"column:money"`
+	Score         float64 `gorm:"column:score"`
+	WechatUnionID string  `gorm:"column:wechat_unionid"`
+	WechatOpenID  string  `gorm:"column:wechat_openid"`
+	Version       int     `gorm:"column:version"`
 }
 
 func (AppUser) TableName() string { return "app_user" }

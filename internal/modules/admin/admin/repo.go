@@ -1,4 +1,4 @@
-package admin_user
+package admin_admin
 
 import (
 	"github.com/lvjiaben/goweb-scaffold/internal/bootstrap"
