@@ -22,8 +22,14 @@ export namespace AuthApi {
 type BackendMenu = {
   children?: BackendMenu[];
   component?: string;
+  external?: string;
+  iframe?: string;
+  iframeSrc?: string;
   icon?: string;
   id: number;
+  keepAlive?: boolean;
+  link?: string;
+  menu_type?: string;
   name: string;
   path: string;
   title: string;
@@ -91,10 +97,27 @@ function normalizeMenu(item: BackendMenu): any | null {
     .map((child) => normalizeMenu(child))
     .filter(Boolean);
 
+  if (item.menu_type === 'iframe' || item.menu_type === 'link') {
+    return {
+      component: 'IFrameView',
+      meta: {
+        iframeSrc: item.iframeSrc || item.iframe || item.link || item.external,
+        icon: item.icon || undefined,
+        keepAlive: item.keepAlive ?? true,
+        link: item.link || item.external || undefined,
+        title: item.title,
+      },
+      name: toRouteName(item.name || item.path),
+      path: item.path,
+      children,
+    };
+  }
+
   if (item.path === '/system') {
     return {
       component: 'BasicLayout',
       meta: {
+        keepAlive: item.keepAlive ?? true,
         icon: item.icon || 'mdi:cog-outline',
         order: 10,
         title: item.title,
@@ -114,7 +137,10 @@ function normalizeMenu(item: BackendMenu): any | null {
   return {
     component: viewPath,
     meta: {
+      iframeSrc: item.iframeSrc || item.iframe || undefined,
       icon: item.icon || undefined,
+      keepAlive: item.keepAlive ?? true,
+      link: item.link || item.external || undefined,
       title: item.title,
     },
     name: toRouteName(item.name || viewPath),

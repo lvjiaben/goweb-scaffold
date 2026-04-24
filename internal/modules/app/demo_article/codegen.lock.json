@@ -2,7 +2,7 @@
   "generated_by": "goweb-scaffold",
   "module_name": "demo_article",
   "table_name": "demo_article",
-  "generated_at": "2026-04-24T15:18:42+08:00",
+  "generated_at": "2026-04-24T22:10:05+08:00",
   "template_version": "v7",
   "payload": {
     "list_fields": [
@@ -147,7 +147,7 @@
         "guessed_label": "创建时间",
         "guessed_form_component": "readonly-datetime",
         "guessed_list_display": "datetime",
-        "guessed_searchable": false,
+        "guessed_searchable": true,
         "guessed_sortable": true
       },
       {
@@ -159,7 +159,7 @@
         "guessed_label": "更新时间",
         "guessed_form_component": "readonly-datetime",
         "guessed_list_display": "datetime",
-        "guessed_searchable": false,
+        "guessed_searchable": true,
         "guessed_sortable": true
       },
       {
@@ -290,6 +290,7 @@
         "label": "创建时间",
         "component": "readonly-datetime",
         "display": "datetime",
+        "searchable": true,
         "sortable": true,
         "default_value": ""
       },
@@ -298,6 +299,7 @@
         "label": "更新时间",
         "component": "readonly-datetime",
         "display": "datetime",
+        "searchable": true,
         "sortable": true,
         "default_value": ""
       }
@@ -342,9 +344,9 @@
   "snapshot": {
     "preview_hash": "ff671f0243031740449085d59a4bc53e2974639e005bd7dbaea7fb073f030010",
     "schema_hashes": {
-      "inferred_fields": "a9aa609cd9ba081493cfc6f655b7b6a3df1ed11364f6102407734952886e58fc",
+      "inferred_fields": "ef97ee7b0c579cd9006ffc4cd8d939a6d57f8554c3fc48fddb3e75c7e9020f76",
       "form_schema": "4072576f8571cccbf1f3fd68d0ebde650868d949b6f0d21dcd0298e7a6f54eda",
-      "list_schema": "1c03cb9adec91ab583f770982b57d9125e75066da5d7837135ada95eebba5349",
+      "list_schema": "97aaa09b1d36490b7772d1114c46d87626f3b41663af919d151369a2cd595186",
       "search_schema": "ec9c95c1ef964daee1c824b2164645daf74e12688fa87723c3136cf94882f91f"
     },
     "generated_files": [
@@ -355,13 +357,13 @@
       },
       {
         "path": "internal/modules/app/demo_article/dto.go",
-        "sha256": "7b16a9dac048987e30c6819c4b649b956d297e17009a7f8705f4864876680d3c",
-        "bytes": 697
+        "sha256": "5fe34f207e728f085251ae5343214040dc775b3b5d6fc8a812da16cb57603556",
+        "bytes": 737
       },
       {
         "path": "internal/modules/app/demo_article/handler.go",
-        "sha256": "774d3647762fef2f43837e07d9fbd4a9fee2c5ebb1368fb5a3391177a59a65fd",
-        "bytes": 1816
+        "sha256": "0a9e0c72476a3c09ab53d56d297d711f115fd263d9df2364d02ef96d10545d45",
+        "bytes": 1891
       },
       {
         "path": "internal/modules/app/demo_article/meta.go",
@@ -380,13 +382,13 @@
       },
       {
         "path": "internal/modules/app/demo_article/repo.go",
-        "sha256": "f64bb1d582440238d415bcfa804c2b0bf5aa45122d84ac445d4ab95f2f86d5ba",
-        "bytes": 1676
+        "sha256": "62a1a7cd844f392b7818a08261e938548782e9c4cc2d212e5d44a5a747bb410d",
+        "bytes": 2456
       },
       {
         "path": "internal/modules/app/demo_article/service.go",
-        "sha256": "14a72c0a175e2f010bce92807ae59655e08ad0f1ed67c44bdef7374bfb74317a",
-        "bytes": 3204
+        "sha256": "b27dc858ccc4b406ab8401270a69d5e38befebfc296f40fd1a9f54666c9107dd",
+        "bytes": 3301
       },
       {
         "path": "vben-admin/apps/backend/src/api/demo_article.ts",
@@ -400,13 +402,13 @@
       },
       {
         "path": "vben-admin/apps/backend/src/views/demo_article/data.ts",
-        "sha256": "5346e3b924a34bdc92a19b512bb678b32c300f2b7a35695955aea7545a5ac0e8",
-        "bytes": 2829
+        "sha256": "2fa539e514259ba7031f052772d98f49723790f232cc45928846c1fc5262c575",
+        "bytes": 2890
       },
       {
         "path": "vben-admin/apps/backend/src/views/demo_article/list.vue",
-        "sha256": "2d41892111003d687b4bd675a3a9be50ad7104745ae25714d7dc97c06e53e377",
-        "bytes": 5815
+        "sha256": "eefc34ba280c2998fe2b3cd783c8caa377596d4ad9317664aaf5a3fc4860eb81",
+        "bytes": 6182
       },
       {
         "path": "vben-admin/apps/backend/src/views/demo_article/modules/form-drawer.vue",

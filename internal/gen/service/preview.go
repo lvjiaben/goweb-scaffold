@@ -74,7 +74,9 @@ func parsePayload(rawPayload json.RawMessage, columns []ColumnInfo) PayloadConfi
 		if name == "deleted_at" {
 			continue
 		}
-		defaultList = append(defaultList, name)
+		if shouldDefaultList(column) {
+			defaultList = append(defaultList, name)
+		}
 
 		if !isReadonlyField(name, column.IsPrimaryKey) && !isSoftDeleteField(name) {
 			defaultForm = append(defaultForm, name)
@@ -251,11 +253,15 @@ func guessFormComponent(column ColumnInfo) string {
 		return "switch"
 	case name == "status" || name == "state":
 		return "select"
-	case name == "sort":
+	case name == "sort" || name == "weight" || name == "weigh":
 		return "number-input"
+	case strings.HasSuffix(name, "_ids"):
+		return "table-select-multiple"
+	case strings.HasSuffix(name, "_id"):
+		return "table-select"
 	case strings.HasSuffix(name, "_at") || isTimestampType(column.DataType):
 		return "datetime-picker"
-	case strings.EqualFold(strings.TrimSpace(column.DataType), "jsonb"):
+	case strings.EqualFold(strings.TrimSpace(column.DataType), "jsonb") || strings.EqualFold(strings.TrimSpace(column.DataType), "json"):
 		return "json-editor"
 	case isLongTextField(name, column.DataType):
 		return "textarea"
@@ -289,12 +295,12 @@ func guessedListDisplay(column ColumnInfo, component string, options []FieldOpti
 
 func canGuessSearchable(column ColumnInfo) bool {
 	name := strings.ToLower(strings.TrimSpace(column.ColumnName))
-	if column.IsPrimaryKey || isSoftDeleteField(name) || name == "created_at" || name == "updated_at" {
+	if column.IsPrimaryKey || isSoftDeleteField(name) {
 		return false
 	}
 	switch {
 	case isTextType(column.DataType):
-		return true
+		return !isLongTextField(name, column.DataType) || name == "title" || name == "name" || name == "summary"
 	case isBigIntegerType(column.DataType), isIntegerType(column.DataType):
 		return strings.HasSuffix(name, "_id") || strings.Contains(name, "status") || strings.Contains(name, "state") || strings.Contains(name, "type")
 	case isBooleanType(column.DataType):
@@ -317,6 +323,24 @@ func canGuessSortable(column ColumnInfo) bool {
 		return false
 	}
 	return true
+}
+
+func shouldDefaultList(column ColumnInfo) bool {
+	name := strings.ToLower(strings.TrimSpace(column.ColumnName))
+	switch {
+	case isSoftDeleteField(name):
+		return false
+	case column.IsPrimaryKey:
+		return true
+	case name == "created_at" || name == "updated_at":
+		return true
+	case strings.EqualFold(strings.TrimSpace(column.DataType), "jsonb") || strings.EqualFold(strings.TrimSpace(column.DataType), "json"):
+		return false
+	case isLongTextField(name, column.DataType):
+		return name == "title" || name == "name" || name == "summary"
+	default:
+		return true
+	}
 }
 
 func guessSearchComponent(column ColumnInfo, formComponent string, options []FieldOption) string {
@@ -347,7 +371,7 @@ func guessSearchOperator(component string) string {
 
 func isTextType(dataType string) bool {
 	switch strings.ToLower(strings.TrimSpace(dataType)) {
-	case "character varying", "varchar", "text":
+	case "character varying", "varchar", "text", "enum":
 		return true
 	default:
 		return false
@@ -448,14 +472,20 @@ func buildOptions(column ColumnInfo, component string, override FieldOverride) [
 	switch {
 	case component == "switch" || isBooleanType(column.DataType) || strings.HasPrefix(name, "is_") || strings.HasPrefix(name, "has_"):
 		return []FieldOption{
-			{Label: "是", Value: true},
 			{Label: "否", Value: false},
+			{Label: "是", Value: true},
 		}
 	case component == "select" || component == "radio":
-		if name == "status" || name == "state" {
+		if name == "status" {
 			return []FieldOption{
+				{Label: "禁用", Value: 0},
 				{Label: "启用", Value: 1},
-				{Label: "禁用", Value: 2},
+			}
+		}
+		if name == "state" || name == "enabled" {
+			return []FieldOption{
+				{Label: "关闭", Value: 0},
+				{Label: "开启", Value: 1},
 			}
 		}
 	}

@@ -91,7 +91,7 @@ func (s *PermissionService) GetMenus(ctx context.Context, identity *corerbac.Ide
 	query := s.db.WithContext(ctx).
 		Model(&AdminMenu{}).
 		Where("menu_type = ? AND status = ?", MenuTypeMenu, 1).
-		Order("sort ASC, id ASC")
+		Order("sort DESC, id DESC")
 
 	if !identity.IsSuper {
 		if len(identity.RoleIDs) == 0 {

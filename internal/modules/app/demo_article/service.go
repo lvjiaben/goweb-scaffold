@@ -84,13 +84,15 @@ func (s *Service) DeleteRows(ids []int64) (DeleteResult, error) {
 
 func (s *Service) buildListFilter(params ListParams) (ListFilter, error) {
 	filter := ListFilter{
-		Keyword: bootstrap.LikeKeyword(params.Keyword),
-		Like:    map[string]string{},
-		Exact:   map[string]any{},
-		Range:   map[string]timeRange{},
+		Keyword:   strings.TrimSpace(params.Keyword),
+		Like:      map[string]string{},
+		Exact:     map[string]any{},
+		Range:     map[string]timeRange{},
+		SortBy:    strings.TrimSpace(params.SortBy),
+		SortOrder: strings.TrimSpace(params.SortOrder),
 	}
 	if value := bootstrap.FilterString(params.Filters, "title"); value != "" {
-		filter.Like["title"] = bootstrap.LikeKeyword(value)
+		filter.Like["title"] = strings.TrimSpace(value)
 	}
 	if raw := bootstrap.FilterString(params.Filters, "status"); raw != "" {
 		value, err := strconv.Atoi(raw)

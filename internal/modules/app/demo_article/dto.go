@@ -3,10 +3,12 @@
 package demo_article
 
 type ListParams struct {
-	Page     int
-	PageSize int
-	Keyword  string
-	Filters  map[string]any
+	Page      int
+	PageSize  int
+	Keyword   string
+	Filters   map[string]any
+	SortBy    string
+	SortOrder string
 }
 
 type SaveRequest struct {

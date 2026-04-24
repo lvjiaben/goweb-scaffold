@@ -1,6 +1,8 @@
 package admin_auth
 
 import (
+	"strconv"
+
 	"github.com/lvjiaben/goweb-core/httpx"
 	corerbac "github.com/lvjiaben/goweb-core/rbac"
 	"github.com/lvjiaben/goweb-scaffold/internal/bootstrap"
@@ -70,13 +72,98 @@ func menus(runtime *bootstrap.Runtime) httpx.HandlerFunc {
 	service := NewService(runtime)
 	return func(c *httpx.Context) {
 		identity, _ := corerbac.GetIdentity(c)
-		result, err := service.Menus(c.Request.Context(), identity)
+		result, err := service.Menus(c.Request.Context(), identity, c.Request.Header.Get("Accept-Language"))
 		if err != nil {
 			c.Error(err)
 			return
 		}
 		c.Success(result)
 	}
+}
+
+func profile(runtime *bootstrap.Runtime) httpx.HandlerFunc {
+	service := NewService(runtime)
+	return func(c *httpx.Context) {
+		user, ok := bootstrap.CurrentAdminUser(c)
+		if !ok {
+			c.Unauthorized("admin user missing")
+			return
+		}
+		var req ProfileRequest
+		if err := c.BindJSON(&req); err != nil {
+			c.Error(err)
+			return
+		}
+		result, err := service.UpdateProfile(user.ID, req)
+		if err != nil {
+			respondServiceError(c, err)
+			return
+		}
+		c.Success(result)
+	}
+}
+
+func password(runtime *bootstrap.Runtime) httpx.HandlerFunc {
+	service := NewService(runtime)
+	return func(c *httpx.Context) {
+		user, ok := bootstrap.CurrentAdminUser(c)
+		if !ok {
+			c.Unauthorized("admin user missing")
+			return
+		}
+		var req PasswordRequest
+		if err := c.BindJSON(&req); err != nil {
+			c.Error(err)
+			return
+		}
+		result, err := service.ChangePassword(user.ID, req)
+		if err != nil {
+			respondServiceError(c, err)
+			return
+		}
+		c.Success(result)
+	}
+}
+
+func logs(runtime *bootstrap.Runtime) httpx.HandlerFunc {
+	service := NewService(runtime)
+	return func(c *httpx.Context) {
+		user, ok := bootstrap.CurrentAdminUser(c)
+		if !ok {
+			c.Unauthorized("admin user missing")
+			return
+		}
+		params := LogParams{
+			Page:     queryInt(c.Query("page"), 1),
+			PageSize: queryInt(prefer(c.Query("page_size"), c.Query("limit")), 20),
+		}
+		result, err := service.Logs(user.ID, params)
+		if err != nil {
+			c.Error(err)
+			return
+		}
+		c.Success(result)
+	}
+}
+
+func queryInt(value string, fallback int) int {
+	if value == "" {
+		return fallback
+	}
+	parsed, err := strconv.Atoi(value)
+	if err != nil {
+		return fallback
+	}
+	return parsed
+}
+
+func prefer(values ...string) string {
+	for _, value := range values {
+		if value != "" {
+			return value
+		}
+	}
+	return ""
 }
 
 func respondServiceError(c *httpx.Context, err error) {

@@ -3,10 +3,12 @@ package admin_role
 import "time"
 
 type ListParams struct {
-	Page     int
-	PageSize int
-	Keyword  string
-	Filters  map[string]any
+	Page      int
+	PageSize  int
+	Keyword   string
+	Filters   map[string]any
+	SortBy    string
+	SortOrder string
 }
 
 type SaveRequest struct {
@@ -54,8 +56,10 @@ type DeleteResult struct {
 }
 
 type roleListFilter struct {
-	Keyword string
-	Name    string
-	Code    string
-	Status  *int64
+	KeywordPlain string
+	NamePlain    string
+	CodePlain    string
+	Status       *int64
+	SortBy       string
+	SortOrder    string
 }

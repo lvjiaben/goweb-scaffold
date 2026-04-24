@@ -3,7 +3,8 @@
 import type { VxeTableGridOptions } from '#/adapter/vxe-table';
 import type { [[.PascalName]]Api } from '#/api/[[.ModuleName]]';
 
-import { ref } from 'vue';
+import { onMounted, ref } from 'vue';
+import { useRoute } from 'vue-router';
 
 import { Page, VbenButton, VbenButtonGroup, useVbenDrawer } from '@vben/common-ui';
 import { Check, Plus, Eraser, X } from '@vben/icons';
@@ -24,11 +25,13 @@ import {
 [[- end ]]
   useColumns,
   useSearchFormSchema,
+  searchFormFields,
 } from './data';
 import FormDrawerComponent from './modules/form-drawer.vue';
 
 const selectedCount = ref(0);
 const searchValue = ref('');
+const route = useRoute();
 
 [[- range .ListFields ]]
 [[- if taggableField . ]]
@@ -110,8 +113,8 @@ const [Grid, gridApi] = useVbenVxeGrid({
     },
     checkboxConfig: {
       highlight: true,
-      reserve: false,
-      trigger: 'cell',
+      reserve: true,
+      trigger: 'row',
     },
   } as VxeTableGridOptions,
   gridEvents: {
@@ -166,6 +169,19 @@ const onDelete = (row?: [[.PascalName]]Api.[[.PascalName]]) => {
       hideLoading();
     });
 };
+
+onMounted(() => {
+  const formValues: Record<string, any> = {};
+  for (const [key, value] of Object.entries(route.query)) {
+    if (searchFormFields.includes(key) && value) {
+      formValues[key] = Array.isArray(value) ? value[0] : value;
+    }
+  }
+  if (Object.keys(formValues).length > 0) {
+    gridApi.formApi.setValues(formValues);
+    gridApi.query();
+  }
+});
 </script>
 
 <template>
@@ -182,46 +198,43 @@ const onDelete = (row?: [[.PascalName]]Api.[[.PascalName]]) => {
 [[- end ]]
 [[- end ]]
       <template #operation="{ row }">
-        <VbenButtonGroup>
-          <VbenButton size="small" @click="onEdit(row)">
+        <VbenButtonGroup border>
+          <VbenButton variant="icon" @click="onEdit(row)">
             编辑
           </VbenButton>
           <Popconfirm title="确认删除这条数据吗？" @confirm="onDelete(row)">
-            <VbenButton size="small" status="danger">
+            <VbenButton variant="icon" status="danger">
               删除
             </VbenButton>
           </Popconfirm>
         </VbenButtonGroup>
       </template>
-      <template #toolbar-tools>
-        <div class="flex items-center gap-3">
-          <VbenButton type="primary" @click="onCreate">
-            <Plus class="size-5" />
-            新增[[.Title]]
-          </VbenButton>
+      <template #toolbar-actions>
+        <VbenButton class="mr-3" size="sm" variant="outline" @click="onCreate">
+          <Plus class="size-3" />
+          新增[[.Title]]
+        </VbenButton>
+        <VbenButtonGroup v-show="selectedCount > 0" border>
           <Popconfirm title="确认删除选中的数据吗？" @confirm="onDelete()">
-            <VbenButton :disabled="selectedCount === 0" status="danger">
+            <VbenButton variant="icon" status="danger">
               <Eraser class="size-4" />
-              删除选中
             </VbenButton>
           </Popconfirm>
-          <VbenButtonGroup>
-            <VbenButton :disabled="selectedCount === 0" @click="gridApi.grid?.setAllCheckboxRow(true)">
-              <Check class="size-4" />
-              全选
-            </VbenButton>
-            <VbenButton :disabled="selectedCount === 0" @click="gridApi.grid?.clearCheckboxRow()">
-              <X class="size-4" />
-              清空
-            </VbenButton>
-          </VbenButtonGroup>
-          <InputSearch
-            allow-clear
-            placeholder="请输入关键词"
-            @clear="onClearSearch"
-            @search="onSearch"
-          />
-        </div>
+          <VbenButton variant="icon" @click="gridApi.grid?.setAllCheckboxRow(true)">
+            <Check class="size-4" />
+          </VbenButton>
+          <VbenButton variant="icon" @click="gridApi.grid?.clearCheckboxRow()">
+            <X class="size-4" />
+          </VbenButton>
+        </VbenButtonGroup>
+      </template>
+      <template #toolbar-tools>
+        <InputSearch
+          allow-clear
+          placeholder="请输入关键词"
+          @clear="onClearSearch"
+          @search="onSearch"
+        />
       </template>
     </Grid>
   </Page>

@@ -2,6 +2,7 @@ package bootstrap
 
 import (
 	"errors"
+	"net/http"
 	"strings"
 	"time"
 
@@ -23,27 +24,27 @@ func (r *Runtime) AdminAuthMiddleware() httpx.Middleware {
 		return func(c *httpx.Context) {
 			token := bearerToken(c)
 			if token == "" {
-				c.Unauthorized("missing admin token")
+				authExpired(c, "missing admin token")
 				return
 			}
 
 			claims, err := r.AdminJWT.Parse(token)
 			if err != nil || claims.UserType != "admin" {
-				c.Unauthorized("invalid admin token")
+				authExpired(c, "invalid admin token")
 				return
 			}
 
 			var session AdminSession
 			if err := r.DB.Where("id = ? AND admin_user_id = ? AND expires_at > ?", claims.SessionID, claims.UserID, time.Now()).
 				First(&session).Error; err != nil {
-				c.Unauthorized("admin session expired")
+				authExpired(c, "admin session expired")
 				return
 			}
 
 			var user AdminUser
 			if err := r.DB.Where("id = ? AND status = ?", claims.UserID, 1).First(&user).Error; err != nil {
 				if errors.Is(err, gorm.ErrRecordNotFound) {
-					c.Unauthorized("admin user not found")
+					authExpired(c, "admin user not found")
 					return
 				}
 				c.Error(err)
@@ -76,27 +77,27 @@ func (r *Runtime) AppUserAuthMiddleware() httpx.Middleware {
 		return func(c *httpx.Context) {
 			token := bearerToken(c)
 			if token == "" {
-				c.Unauthorized("missing app token")
+				authExpired(c, "missing app token")
 				return
 			}
 
 			claims, err := r.AppJWT.Parse(token)
 			if err != nil || claims.UserType != "app_user" {
-				c.Unauthorized("invalid app token")
+				authExpired(c, "invalid app token")
 				return
 			}
 
 			var session AppUserSession
 			if err := r.DB.Where("id = ? AND app_user_id = ? AND expires_at > ?", claims.SessionID, claims.UserID, time.Now()).
 				First(&session).Error; err != nil {
-				c.Unauthorized("app session expired")
+				authExpired(c, "app session expired")
 				return
 			}
 
 			var user AppUser
 			if err := r.DB.Where("id = ? AND status = ?", claims.UserID, 1).First(&user).Error; err != nil {
 				if errors.Is(err, gorm.ErrRecordNotFound) {
-					c.Unauthorized("app user not found")
+					authExpired(c, "app user not found")
 					return
 				}
 				c.Error(err)
@@ -150,4 +151,8 @@ func CurrentAppClaims(c *httpx.Context) (*coreauth.Claims, bool) {
 
 func bearerToken(c *httpx.Context) string {
 	return strings.TrimSpace(c.Request.Header.Get("Authorization"))
+}
+
+func authExpired(c *httpx.Context, message string) {
+	c.JSON(http.StatusOK, http.StatusUnauthorized, message, map[string]any{})
 }

@@ -88,7 +88,7 @@
       "guessed_label": "创建时间",
       "guessed_form_component": "readonly-datetime",
       "guessed_list_display": "datetime",
-      "guessed_searchable": false,
+      "guessed_searchable": true,
       "guessed_sortable": true
     },
     {
@@ -100,7 +100,7 @@
       "guessed_label": "更新时间",
       "guessed_form_component": "readonly-datetime",
       "guessed_list_display": "datetime",
-      "guessed_searchable": false,
+      "guessed_searchable": true,
       "guessed_sortable": true
     },
     {
@@ -231,6 +231,7 @@
       "label": "创建时间",
       "component": "readonly-datetime",
       "display": "datetime",
+      "searchable": true,
       "sortable": true,
       "default_value": ""
     },
@@ -239,6 +240,7 @@
       "label": "更新时间",
       "component": "readonly-datetime",
       "display": "datetime",
+      "searchable": true,
       "sortable": true,
       "default_value": ""
     }

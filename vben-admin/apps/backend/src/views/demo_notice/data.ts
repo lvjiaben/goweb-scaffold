@@ -69,6 +69,11 @@ export function useSearchFormSchema(): VbenFormProps['schema'] {
   ];
 }
 
+export const searchFormFields = [
+  "title",
+  "status",
+];
+
 export function useColumns(): VxeTableGridOptions<DemoNoticeApi.DemoNotice>['columns'] {
   return [
     {

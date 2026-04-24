@@ -77,6 +77,7 @@ type backendModuleTemplateData struct {
 	PermissionList   string
 	PermissionSave   string
 	PermissionDelete string
+	Fields           []templateField
 	SaveFields       []templateField
 	SearchFields     []templateField
 	LikeFields       []templateField
@@ -317,6 +318,7 @@ func (s GeneratorService) prepareBundle(input GenerateInput) (generationBundle, 
 		PermissionList:   meta.PermissionCodes[0],
 		PermissionSave:   meta.PermissionCodes[1],
 		PermissionDelete: meta.PermissionCodes[2],
+		Fields:           fields,
 		SaveFields:       selectFields(fields, func(item templateField) bool { return item.IsSaveField }),
 		SearchFields:     selectFields(fields, func(item templateField) bool { return item.IsSearchField }),
 		LikeFields:       selectFields(fields, func(item templateField) bool { return item.IsSearchField && item.SearchOperator == "like" }),
@@ -325,11 +327,7 @@ func (s GeneratorService) prepareBundle(input GenerateInput) (generationBundle, 
 		RequiredFields: selectFields(fields, func(item templateField) bool {
 			return item.IsSaveField && item.Required && (item.RequestKind == "string" || item.RequestKind == "time" || item.RequestKind == "json")
 		}),
-		UsesStrings: anyField(fields, func(item templateField) bool {
-			return item.IsSaveField && item.RequestKind == "string" ||
-				item.IsSaveField && item.Required && item.RequestKind == "time" ||
-				item.IsSearchField && (item.SearchOperator == "like" || item.SearchOperator == "between")
-		}),
+		UsesStrings: true,
 		UsesStrconv: anyField(fields, func(item templateField) bool {
 			return item.IsSearchField && item.SearchOperator == "eq" && (item.IsBoolean || item.IsInteger || item.IsBigInteger)
 		}),
@@ -860,6 +858,7 @@ func (s GeneratorService) upsertMenus(meta ModuleMeta) (MenuUpsertResult, []stri
 		menuRecord, err := upsertAdminMenuRecord(tx, AdminMenu{
 			ParentID:  parentID,
 			Name:      ToKebab(meta.ModuleName),
+			EnName:    ToPascal(meta.ModuleName),
 			Title:     meta.Title,
 			Path:      meta.RoutePath,
 			Component: meta.ModuleName + "/list",
@@ -879,6 +878,7 @@ func (s GeneratorService) upsertMenus(meta ModuleMeta) (MenuUpsertResult, []stri
 			{
 				ParentID:       menuID,
 				Name:           ToKebab(meta.ModuleName) + "-list",
+				EnName:         ToPascal(meta.ModuleName) + "List",
 				Title:          meta.Title + "列表",
 				MenuType:       MenuTypeButton,
 				PermissionCode: meta.PermissionCodes[0],
@@ -889,6 +889,7 @@ func (s GeneratorService) upsertMenus(meta ModuleMeta) (MenuUpsertResult, []stri
 			{
 				ParentID:       menuID,
 				Name:           ToKebab(meta.ModuleName) + "-save",
+				EnName:         ToPascal(meta.ModuleName) + "Save",
 				Title:          meta.Title + "保存",
 				MenuType:       MenuTypeButton,
 				PermissionCode: meta.PermissionCodes[1],
@@ -899,6 +900,7 @@ func (s GeneratorService) upsertMenus(meta ModuleMeta) (MenuUpsertResult, []stri
 			{
 				ParentID:       menuID,
 				Name:           ToKebab(meta.ModuleName) + "-delete",
+				EnName:         ToPascal(meta.ModuleName) + "Delete",
 				Title:          meta.Title + "删除",
 				MenuType:       MenuTypeButton,
 				PermissionCode: meta.PermissionCodes[2],
@@ -946,6 +948,7 @@ func ensureSystemParentMenu(tx *gorm.DB) (int64, error) {
 	systemMenu = AdminMenu{
 		ParentID:  0,
 		Name:      "system",
+		EnName:    "System",
 		Title:     "系统管理",
 		Path:      "/system",
 		Component: "layout",
@@ -978,11 +981,14 @@ func upsertAdminMenuRecord(tx *gorm.DB, payload AdminMenu, lookupField string, l
 		if err := tx.Model(&row).Updates(map[string]any{
 			"parent_id":       payload.ParentID,
 			"name":            payload.Name,
+			"enname":          payload.EnName,
 			"title":           payload.Title,
 			"path":            payload.Path,
 			"component":       payload.Component,
 			"menu_type":       payload.MenuType,
 			"permission_code": payload.PermissionCode,
+			"iframe":          payload.Iframe,
+			"external":        payload.External,
 			"icon":            payload.Icon,
 			"sort":            payload.Sort,
 			"visible":         payload.Visible,
@@ -1002,6 +1008,7 @@ func upsertAdminMenuRecord(tx *gorm.DB, payload AdminMenu, lookupField string, l
 	return map[string]any{
 		"id":              row.ID,
 		"name":            payload.Name,
+		"enname":          payload.EnName,
 		"title":           payload.Title,
 		"path":            payload.Path,
 		"menu_type":       payload.MenuType,

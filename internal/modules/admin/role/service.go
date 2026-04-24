@@ -34,9 +34,11 @@ func (s *Service) Options() (map[string]any, error) {
 
 func (s *Service) List(params ListParams) (map[string]any, error) {
 	filter := roleListFilter{
-		Keyword: bootstrap.LikeKeyword(params.Keyword),
-		Name:    bootstrap.LikeKeyword(bootstrap.FilterString(params.Filters, "name")),
-		Code:    bootstrap.LikeKeyword(bootstrap.FilterString(params.Filters, "code", "description")),
+		KeywordPlain: strings.TrimSpace(params.Keyword),
+		NamePlain:    strings.TrimSpace(bootstrap.FilterString(params.Filters, "name")),
+		CodePlain:    strings.TrimSpace(bootstrap.FilterString(params.Filters, "code", "description")),
+		SortBy:       strings.TrimSpace(params.SortBy),
+		SortOrder:    strings.TrimSpace(params.SortOrder),
 	}
 	if status, ok := bootstrap.FilterInt64(params.Filters, "status"); ok {
 		filter.Status = &status

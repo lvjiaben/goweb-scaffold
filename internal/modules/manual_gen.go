@@ -12,6 +12,7 @@ import (
 	system_codegen "github.com/lvjiaben/goweb-scaffold/internal/modules/system/codegen"
 	system_common "github.com/lvjiaben/goweb-scaffold/internal/modules/system/common"
 	system_config "github.com/lvjiaben/goweb-scaffold/internal/modules/system/config"
+	system_home "github.com/lvjiaben/goweb-scaffold/internal/modules/system/home"
 )
 
 func RegisterManualModules(runtime *bootstrap.Runtime) error {
@@ -19,6 +20,7 @@ func RegisterManualModules(runtime *bootstrap.Runtime) error {
 		runtime,
 		admin_auth.Module{},
 		system_common.Module{},
+		system_home.Module{},
 		admin_user.Module{},
 		admin_role.Module{},
 		admin_menu.Module{},

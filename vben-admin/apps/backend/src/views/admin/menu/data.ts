@@ -18,6 +18,8 @@ export function getMenuTypeOptions() {
   return [
     { color: 'default', label: $t('admin.menu.typeMenu'), value: 'menu' },
     { color: 'error', label: $t('admin.menu.typeButton'), value: 'button' },
+    { color: 'warning', label: 'Iframe', value: 'iframe' },
+    { color: 'success', label: 'Link', value: 'link' },
   ];
 }
 
@@ -60,6 +62,8 @@ export function useSearchFormSchema(): VbenFormProps['schema'] {
           { label: $t('common.all'), value: '' },
           { label: $t('admin.menu.typeMenu'), value: 'menu' },
           { label: $t('admin.menu.typeButton'), value: 'button' },
+          { label: 'Iframe', value: 'iframe' },
+          { label: 'Link', value: 'link' },
         ],
       },
       fieldName: 'type',
@@ -108,6 +112,12 @@ export function useColumns(): VxeTableGridOptions<AdminMenuApi.AdminMenu>['colum
       align: 'left',
       field: 'name',
       title: $t('admin.menu.menuName'),
+      minWidth: 160,
+    },
+    {
+      align: 'left',
+      field: 'enname',
+      title: $t('admin.menu.menuNameEn'),
       minWidth: 160,
     },
     {

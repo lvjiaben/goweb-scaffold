@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/lvjiaben/goweb-scaffold/internal/bootstrap"
+	sharedquery "github.com/lvjiaben/goweb-scaffold/internal/shared/query"
 	"gorm.io/gorm"
 )
 
@@ -19,17 +20,14 @@ func NewRepo(runtime *bootstrap.Runtime) *Repo {
 
 func (r *Repo) Count(filter ListFilter) (int64, error) {
 	var total int64
-	err := r.applyListFilter(r.db.Model(&Entity{}), filter).Count(&total).Error
+	err := r.applyListFilter(r.db.Model(&Entity{}), filter).Count.Count(&total).Error
 	return total, err
 }
 
 func (r *Repo) List(filter ListFilter, page int, pageSize int) ([]Entity, error) {
 	var rows []Entity
-	err := r.applyListFilter(r.db.Model(&Entity{}), filter).
-		Order("id DESC").
-		Offset((page - 1) * pageSize).
-		Limit(pageSize).
-		Find(&rows).Error
+	result := r.applyListFilter(r.db.Model(&Entity{}), filter)
+	err := result.Query.Offset((page - 1) * pageSize).Limit(pageSize).Find(&rows).Error
 	return rows, err
 }
 
@@ -51,29 +49,51 @@ func (r *Repo) DeleteByIDs(ids []int64) error {
 	return r.db.Where("id IN ?", ids).Delete(&Entity{}).Error
 }
 
-func (r *Repo) applyListFilter(query *gorm.DB, filter ListFilter) *gorm.DB {
-	if filter.Keyword != "" {
-		query = query.Where("title ILIKE ?",
-			filter.Keyword,
-		)
-	}
-	if value := filter.Like["title"]; value != "" {
-		query = query.Where("title ILIKE ?", value)
-	}
-	if value, ok := filter.Exact["status"]; ok {
-		query = query.Where("status = ?", value)
-	}
-	return query
+func (r *Repo) applyListFilter(query *gorm.DB, filter ListFilter) sharedquery.Result {
+	return sharedquery.Apply(query, sharedquery.Params{
+		Search:    filter.Keyword,
+		Filters:   filter.ToFilters(),
+		SortBy:    filter.SortBy,
+		SortOrder: filter.SortOrder,
+	}, sharedquery.Options{
+		SearchFields: []string{"title"},
+		LikeFields:   []string{"title"},
+		ExactFields:  []string{"status"},
+		RangeFields:  []string{},
+		AllowedSorts: []string{"id", "title", "summary", "status", "sort", "created_at", "updated_at", "deleted_at"},
+		DefaultSorts: sharedquery.DefaultSorts("id", "title", "summary", "status", "sort", "created_at", "updated_at", "deleted_at"),
+	})
 }
 
 type ListFilter struct {
-	Keyword string
-	Like    map[string]string
-	Exact   map[string]any
-	Range   map[string]timeRange
+	Keyword   string
+	Like      map[string]string
+	Exact     map[string]any
+	Range     map[string]timeRange
+	SortBy    string
+	SortOrder string
 }
 
 type timeRange struct {
 	Start *time.Time
 	End   *time.Time
+}
+
+func (f ListFilter) ToFilters() map[string]any {
+	result := map[string]any{}
+	for k, v := range f.Like {
+		result[k] = v
+	}
+	for k, v := range f.Exact {
+		result[k] = v
+	}
+	for k, v := range f.Range {
+		if v.Start != nil {
+			result[k+"_from"] = v.Start.Format(time.RFC3339)
+		}
+		if v.End != nil {
+			result[k+"_to"] = v.End.Format(time.RFC3339)
+		}
+	}
+	return result
 }

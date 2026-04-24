@@ -2,7 +2,7 @@
   "generated_by": "goweb-scaffold",
   "module_name": "demo_notice",
   "table_name": "demo_notice",
-  "generated_at": "2026-04-24T15:18:42+08:00",
+  "generated_at": "2026-04-24T22:10:05+08:00",
   "template_version": "v7",
   "payload": {
     "list_fields": [
@@ -112,7 +112,7 @@
         "guessed_label": "公告内容",
         "guessed_form_component": "textarea",
         "guessed_list_display": "text",
-        "guessed_searchable": true,
+        "guessed_searchable": false,
         "guessed_sortable": false
       },
       {
@@ -148,7 +148,7 @@
         "guessed_label": "创建时间",
         "guessed_form_component": "readonly-datetime",
         "guessed_list_display": "datetime",
-        "guessed_searchable": false,
+        "guessed_searchable": true,
         "guessed_sortable": true
       },
       {
@@ -160,7 +160,7 @@
         "guessed_label": "更新时间",
         "guessed_form_component": "readonly-datetime",
         "guessed_list_display": "datetime",
-        "guessed_searchable": false,
+        "guessed_searchable": true,
         "guessed_sortable": true
       },
       {
@@ -284,6 +284,7 @@
         "label": "创建时间",
         "component": "readonly-datetime",
         "display": "datetime",
+        "searchable": true,
         "sortable": true,
         "default_value": ""
       },
@@ -292,6 +293,7 @@
         "label": "更新时间",
         "component": "readonly-datetime",
         "display": "datetime",
+        "searchable": true,
         "sortable": true,
         "default_value": ""
       }
@@ -336,9 +338,9 @@
   "snapshot": {
     "preview_hash": "d9500ccbb185361b093712c045c2ddecd13a79d506456ad66d19500768ff85d6",
     "schema_hashes": {
-      "inferred_fields": "24249e219ad9e42c0294e10f311444416c772f0d417c614b17b996997d353daa",
+      "inferred_fields": "a023d6b768b97058951f971ada20f026590fa8783417dc9555b3bae26197cc88",
       "form_schema": "f0ec3445a3ae95743aec1fcbfb84810f1766b58af9021be3bc9a0fdee38beae7",
-      "list_schema": "62519355766e47ecfd480336b824e52ee93488c16c21faa785bfacd2dd272cfb",
+      "list_schema": "d1f3d3adc8bba6949ef48107d8cfc0c56e23ca97fdcf850c9000420da7b5133e",
       "search_schema": "7754df6d4cf31d13e98b7d04ccff2a97474bf22c0ceb2f24c61fac59781eed71"
     },
     "generated_files": [
@@ -349,13 +351,13 @@
       },
       {
         "path": "internal/modules/app/demo_notice/dto.go",
-        "sha256": "4c571843e7479dbd3bdbb273db3e5151baad29cb3f123e74c9c5ea2c59e2ae36",
-        "bytes": 696
+        "sha256": "c521e62715159199b74f01e43372a8a02bc84f263690f60df9840c64ad6bf922",
+        "bytes": 736
       },
       {
         "path": "internal/modules/app/demo_notice/handler.go",
-        "sha256": "80c3279bc375656a43570e21f7dee461b09949c879ff82d0783623d97e231cf3",
-        "bytes": 1815
+        "sha256": "df03f3625ad81e40e044dfcbcf3856aa820292deb6e9c3812116300ea9a768f5",
+        "bytes": 1890
       },
       {
         "path": "internal/modules/app/demo_notice/meta.go",
@@ -374,13 +376,13 @@
       },
       {
         "path": "internal/modules/app/demo_notice/repo.go",
-        "sha256": "dd96f29faf68b11536f8d2c38a012b0dd99fb3778f1bc431b779f5da69d27efc",
-        "bytes": 1675
+        "sha256": "1375d12e6bd62f3f24d87bd5c9076fc498dc3469976e782b3cac06d1c84a1b6f",
+        "bytes": 2455
       },
       {
         "path": "internal/modules/app/demo_notice/service.go",
-        "sha256": "a400634520010d45588bdecde05a4b2c22c9384f07d754372d7177d8381ac00f",
-        "bytes": 3203
+        "sha256": "a05018daa220ba27d65e70893e2774e789f8bccfaa095647af16a5c28e0315b7",
+        "bytes": 3300
       },
       {
         "path": "vben-admin/apps/backend/src/api/demo_notice.ts",
@@ -394,13 +396,13 @@
       },
       {
         "path": "vben-admin/apps/backend/src/views/demo_notice/data.ts",
-        "sha256": "16e59b45de1ea30159cae747215c0c7d3df7ba33624e9432ca85d2015f34e5c0",
-        "bytes": 2716
+        "sha256": "4f606b471b16c95c5d39e98997b038a8c93c07f497de4c8410f0056c9150222f",
+        "bytes": 2777
       },
       {
         "path": "vben-admin/apps/backend/src/views/demo_notice/list.vue",
-        "sha256": "b27ac2f4e7f96e89c70594360eeae8076747cbb181878216158a38e32cd339d4",
-        "bytes": 5796
+        "sha256": "a9d9651d2891f86d90611fce6f9eee6d870d8c6f7f587963154f7bebeab5ebdd",
+        "bytes": 6163
       },
       {
         "path": "vben-admin/apps/backend/src/views/demo_notice/modules/form-drawer.vue",

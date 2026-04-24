@@ -93,10 +93,19 @@ const schema: VbenFormSchema[] = [
   {
     component: 'Input',
     componentProps: {
+      placeholder: $t('admin.menu.menuNameEnPlaceholder'),
+    },
+    fieldName: 'enname',
+    label: $t('admin.menu.menuNameEn'),
+    rules: z.string().optional().or(z.literal('')),
+  },
+  {
+    component: 'Input',
+    componentProps: {
       placeholder: $t('admin.menu.pathPlaceholder'),
     },
     dependencies: {
-      show: (values) => values.type === 'menu',
+      show: (values) => ['menu', 'iframe', 'link'].includes(values.type),
       triggerFields: ['type'],
     },
     fieldName: 'path',
@@ -122,6 +131,32 @@ const schema: VbenFormSchema[] = [
     },
     fieldName: 'component',
     label: $t('admin.menu.component'),
+  },
+  {
+    component: 'Input',
+    componentProps: {
+      placeholder: $t('admin.menu.iframePlaceholder'),
+    },
+    dependencies: {
+      show: (values) => values.type === 'iframe',
+      triggerFields: ['type'],
+    },
+    fieldName: 'iframe',
+    label: $t('admin.menu.linkSrc'),
+    rules: z.string().optional().or(z.literal('')),
+  },
+  {
+    component: 'Input',
+    componentProps: {
+      placeholder: 'HTTP外部链接地址',
+    },
+    dependencies: {
+      show: (values) => values.type === 'link',
+      triggerFields: ['type'],
+    },
+    fieldName: 'external',
+    label: $t('admin.menu.linkSrc'),
+    rules: z.string().optional().or(z.literal('')),
   },
   {
     component: 'Input',

@@ -3,10 +3,12 @@ package admin_menu
 import "time"
 
 type ListParams struct {
-	Page     int
-	PageSize int
-	Keyword  string
-	Filters  map[string]any
+	Page      int
+	PageSize  int
+	Keyword   string
+	Filters   map[string]any
+	SortBy    string
+	SortOrder string
 }
 
 type SaveRequest struct {
@@ -14,6 +16,7 @@ type SaveRequest struct {
 	ParentID       int64  `json:"parent_id"`
 	PID            int64  `json:"pid"`
 	Name           string `json:"name"`
+	EnName         string `json:"enname"`
 	Title          string `json:"title"`
 	Path           string `json:"path"`
 	Component      string `json:"component"`
@@ -21,6 +24,8 @@ type SaveRequest struct {
 	Type           string `json:"type"`
 	PermissionCode string `json:"permission_code"`
 	Permission     string `json:"permission"`
+	Iframe         string `json:"iframe"`
+	External       string `json:"external"`
 	Icon           string `json:"icon"`
 	Sort           int    `json:"sort"`
 	Visible        bool   `json:"visible"`
@@ -32,6 +37,7 @@ type DetailResponse struct {
 	ParentID       int64  `json:"parent_id"`
 	PID            int64  `json:"pid"`
 	Name           string `json:"name"`
+	EnName         string `json:"enname"`
 	Title          string `json:"title"`
 	Path           string `json:"path"`
 	Component      string `json:"component"`
@@ -39,6 +45,8 @@ type DetailResponse struct {
 	Type           string `json:"type"`
 	PermissionCode string `json:"permission_code"`
 	Permission     string `json:"permission"`
+	Iframe         string `json:"iframe"`
+	External       string `json:"external"`
 	Icon           string `json:"icon"`
 	Sort           int    `json:"sort"`
 	Visible        bool   `json:"visible"`
@@ -49,11 +57,14 @@ type MenuTreeItem struct {
 	ID             int64          `json:"id"`
 	ParentID       int64          `json:"parent_id"`
 	Name           string         `json:"name"`
+	EnName         string         `json:"enname"`
 	Title          string         `json:"title"`
 	Path           string         `json:"path"`
 	Component      string         `json:"component"`
 	MenuType       string         `json:"menu_type"`
 	PermissionCode string         `json:"permission_code"`
+	Iframe         string         `json:"iframe"`
+	External       string         `json:"external"`
 	Icon           string         `json:"icon"`
 	Sort           int            `json:"sort"`
 	Visible        bool           `json:"visible"`
@@ -79,9 +90,11 @@ type DeleteResult struct {
 }
 
 type menuListFilter struct {
-	Keyword  string
-	Title    string
-	Path     string
-	MenuType string
-	Status   *int64
+	KeywordPlain string
+	TitlePlain   string
+	PathPlain    string
+	MenuType     string
+	Status       *int64
+	SortBy       string
+	SortOrder    string
 }

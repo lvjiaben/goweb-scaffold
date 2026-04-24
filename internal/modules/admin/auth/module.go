@@ -13,5 +13,8 @@ func (Module) Register(runtime *bootstrap.Runtime) error {
 	authed.POST("/logout", logout(runtime))
 	authed.GET("/me", me(runtime))
 	authed.GET("/menus", menus(runtime))
+	authed.POST("/profile", profile(runtime))
+	authed.POST("/password", password(runtime))
+	authed.GET("/log", logs(runtime))
 	return nil
 }

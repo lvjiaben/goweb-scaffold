@@ -19,9 +19,11 @@ func NewService(runtime *bootstrap.Runtime) *Service {
 
 func (s *Service) List(params ListParams) (map[string]any, error) {
 	filter := userListFilter{
-		Keyword:  bootstrap.LikeKeyword(params.Keyword),
-		Username: bootstrap.LikeKeyword(bootstrap.FilterString(params.Filters, "username")),
-		Nickname: bootstrap.LikeKeyword(bootstrap.FilterString(params.Filters, "nickname", "realname")),
+		KeywordPlain:  strings.TrimSpace(params.Keyword),
+		UsernamePlain: strings.TrimSpace(bootstrap.FilterString(params.Filters, "username")),
+		NicknamePlain: strings.TrimSpace(bootstrap.FilterString(params.Filters, "nickname", "realname")),
+		SortBy:        strings.TrimSpace(params.SortBy),
+		SortOrder:     strings.TrimSpace(params.SortOrder),
 	}
 	if status, ok := bootstrap.FilterInt64(params.Filters, "status"); ok {
 		filter.Status = &status

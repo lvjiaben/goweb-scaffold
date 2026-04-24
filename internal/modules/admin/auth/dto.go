@@ -47,6 +47,32 @@ type MeResponse struct {
 	AccessCodes []string `json:"access_codes"`
 }
 
+type ProfileRequest struct {
+	Avatar   string `json:"avatar"`
+	Email    string `json:"email"`
+	Nickname string `json:"nickname"`
+	RealName string `json:"realName"`
+}
+
+type PasswordRequest struct {
+	OldPassword string `json:"old_password"`
+	NewPassword string `json:"new_password"`
+}
+
+type LogParams struct {
+	Page     int
+	PageSize int
+}
+
+type LogItem struct {
+	ID        int64  `json:"id"`
+	Username  string `json:"username"`
+	IP        string `json:"ip"`
+	Status    int    `json:"status"`
+	Remark    string `json:"remark"`
+	CreatedAt int64  `json:"created_at"`
+}
+
 type LogoutResult struct {
 	Logout bool `json:"logout"`
 }

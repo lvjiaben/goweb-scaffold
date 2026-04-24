@@ -1,7 +1,8 @@
 <script lang="ts" setup>
 import type { VxeTableGridOptions } from '#/adapter/vxe-table';
 
-import { ref } from 'vue';
+import { onMounted, ref } from 'vue';
+import { useRoute } from 'vue-router';
 
 import { Page, VbenButton, VbenButtonGroup, useVbenDrawer } from '@vben/common-ui';
 import { Check, Eraser, Plus, X } from '@vben/icons';
@@ -29,6 +30,9 @@ import FormDrawerComponent from './modules/form-drawer.vue';
 
 const selectedCount = ref(0);
 const searchValue = ref('');
+const route = useRoute();
+const searchFormSchema = useSearchFormSchema();
+const searchFormFields = searchFormSchema.map((item) => String(item.fieldName));
 
 const typeOptions = getMenuTypeOptions();
 const statusOptions = getStatusOptions();
@@ -62,7 +66,7 @@ const [FormDrawer, formDrawerApi] = useVbenDrawer({
 const [Grid, gridApi] = useVbenVxeGrid({
   formOptions: {
     collapsed: true,
-    schema: useSearchFormSchema(),
+    schema: searchFormSchema,
     showCollapseButton: true,
     submitOnChange: false,
     submitOnEnter: false,
@@ -104,8 +108,8 @@ const [Grid, gridApi] = useVbenVxeGrid({
     },
     checkboxConfig: {
       highlight: true,
-      reserve: false,
-      trigger: 'cell',
+      reserve: true,
+      trigger: 'row',
     },
   } as VxeTableGridOptions,
   gridEvents: {
@@ -141,7 +145,10 @@ const onCreate = () => {
   formDrawerApi
     .setData({
       component: '',
+      enname: '',
+      external: '',
       icon: '',
+      iframe: '',
       name: '',
       path: '',
       permission: '',
@@ -159,7 +166,10 @@ const onCreateChild = (row: AdminMenuApi.AdminMenu) => {
   formDrawerApi
     .setData({
       component: '',
+      enname: '',
+      external: '',
       icon: '',
+      iframe: '',
       name: '',
       path: '',
       permission: '',
@@ -204,6 +214,19 @@ const onDelete = (row?: AdminMenuApi.AdminMenu) => {
       hideLoading();
     });
 };
+
+onMounted(() => {
+  const formValues: Record<string, any> = {};
+  for (const [key, value] of Object.entries(route.query)) {
+    if (searchFormFields.includes(key) && value) {
+      formValues[key] = Array.isArray(value) ? value[0] : value;
+    }
+  }
+  if (Object.keys(formValues).length > 0) {
+    gridApi.formApi.setValues(formValues);
+    gridApi.query();
+  }
+});
 </script>
 
 <template>
@@ -235,49 +258,46 @@ const onDelete = (row?: AdminMenuApi.AdminMenu) => {
         </Tag>
       </template>
       <template #operation="{ row }">
-        <VbenButtonGroup>
-          <VbenButton size="small" @click="onCreateChild(row)">
+        <VbenButtonGroup border>
+          <VbenButton variant="icon" @click="onCreateChild(row)">
             新增下级
           </VbenButton>
-          <VbenButton size="small" @click="onEdit(row)">
+          <VbenButton variant="icon" @click="onEdit(row)">
             编辑
           </VbenButton>
           <Popconfirm :title="`确认删除菜单 ${row.title} 吗？`" @confirm="onDelete(row)">
-            <VbenButton size="small" status="danger">
+            <VbenButton variant="icon" status="danger">
               删除
             </VbenButton>
           </Popconfirm>
         </VbenButtonGroup>
       </template>
-      <template #toolbar-tools>
-        <div class="flex items-center gap-3">
-          <VbenButton type="primary" @click="onCreate">
-            <Plus class="size-5" />
-            {{ $t('ui.actionTitle.create', [$t('admin.menu.name')]) }}
-          </VbenButton>
+      <template #toolbar-actions>
+        <VbenButton class="mr-3" size="sm" variant="outline" @click="onCreate">
+          <Plus class="size-3" />
+          {{ $t('ui.actionTitle.create', [$t('admin.menu.name')]) }}
+        </VbenButton>
+        <VbenButtonGroup v-show="selectedCount > 0" border>
           <Popconfirm title="确认删除选中的菜单吗？" @confirm="onDelete()">
-            <VbenButton :disabled="selectedCount === 0" status="danger">
+            <VbenButton variant="icon" status="danger">
               <Eraser class="size-4" />
-              删除选中
             </VbenButton>
           </Popconfirm>
-          <VbenButtonGroup>
-            <VbenButton :disabled="selectedCount === 0" @click="gridApi.grid?.setAllCheckboxRow(true)">
-              <Check class="size-4" />
-              全选
-            </VbenButton>
-            <VbenButton :disabled="selectedCount === 0" @click="gridApi.grid?.clearCheckboxRow()">
-              <X class="size-4" />
-              清空
-            </VbenButton>
-          </VbenButtonGroup>
-          <InputSearch
-            allow-clear
-            :placeholder="$t('common.fuzzySearch')"
-            @clear="onClearSearch"
-            @search="onSearch"
-          />
-        </div>
+          <VbenButton variant="icon" @click="gridApi.grid?.setAllCheckboxRow(true)">
+            <Check class="size-4" />
+          </VbenButton>
+          <VbenButton variant="icon" @click="gridApi.grid?.clearCheckboxRow()">
+            <X class="size-4" />
+          </VbenButton>
+        </VbenButtonGroup>
+      </template>
+      <template #toolbar-tools>
+        <InputSearch
+          allow-clear
+          :placeholder="$t('common.fuzzySearch')"
+          @clear="onClearSearch"
+          @search="onSearch"
+        />
       </template>
     </Grid>
   </Page>

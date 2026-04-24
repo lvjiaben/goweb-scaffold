@@ -17,6 +17,10 @@
 - [Release Checklist](docs/releases/RELEASE_CHECKLIST.md)
 - [Release Notes](docs/releases/v0.9.0-rc.1.md)
 - [Upgrade Guide](docs/upgrade/UPGRADE_v0.9.0-rc.1.md)
+- [AI Guide](docs/AI_GUIDE.md)
+- [Backend Standard](docs/BACKEND_STANDARD.md)
+- [Frontend Standard](docs/FRONTEND_STANDARD.md)
+- [Codegen Standard](docs/CODEGEN_STANDARD.md)
 
 ## 目录
 

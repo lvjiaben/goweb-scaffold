@@ -2,6 +2,7 @@ package admin_user
 
 import (
 	"github.com/lvjiaben/goweb-scaffold/internal/bootstrap"
+	sharedquery "github.com/lvjiaben/goweb-scaffold/internal/shared/query"
 	"gorm.io/gorm"
 )
 
@@ -21,17 +22,14 @@ func (r *Repo) WithTransaction(fn func(tx *Repo) error) error {
 
 func (r *Repo) Count(filter userListFilter) (int64, error) {
 	var total int64
-	err := r.applyListFilter(r.db.Model(&AdminUser{}), filter).Count(&total).Error
+	err := r.applyListFilter(r.db.Model(&AdminUser{}), filter).Count.Count(&total).Error
 	return total, err
 }
 
 func (r *Repo) List(filter userListFilter, page int, pageSize int) ([]AdminUser, error) {
 	var users []AdminUser
-	err := r.applyListFilter(r.db.Model(&AdminUser{}), filter).
-		Order("id DESC").
-		Offset((page - 1) * pageSize).
-		Limit(pageSize).
-		Find(&users).Error
+	result := r.applyListFilter(r.db.Model(&AdminUser{}), filter)
+	err := result.Query.Offset((page - 1) * pageSize).Limit(pageSize).Find(&users).Error
 	return users, err
 }
 
@@ -108,18 +106,24 @@ func (r *Repo) DeleteUsersAndRelations(ids []int64) error {
 	})
 }
 
-func (r *Repo) applyListFilter(query *gorm.DB, filter userListFilter) *gorm.DB {
-	if filter.Keyword != "" {
-		query = query.Where("username ILIKE ? OR nickname ILIKE ?", filter.Keyword, filter.Keyword)
-	}
-	if filter.Username != "" {
-		query = query.Where("username ILIKE ?", filter.Username)
-	}
-	if filter.Nickname != "" {
-		query = query.Where("nickname ILIKE ?", filter.Nickname)
+func (r *Repo) applyListFilter(query *gorm.DB, filter userListFilter) sharedquery.Result {
+	params := sharedquery.Params{
+		Search: filter.KeywordPlain,
+		Filters: map[string]any{
+			"username": filter.UsernamePlain,
+			"nickname": filter.NicknamePlain,
+		},
+		SortBy:    filter.SortBy,
+		SortOrder: filter.SortOrder,
 	}
 	if filter.Status != nil {
-		query = query.Where("status = ?", *filter.Status)
+		params.Filters["status"] = *filter.Status
 	}
-	return query
+	return sharedquery.Apply(query, params, sharedquery.Options{
+		SearchFields: []string{"username", "nickname"},
+		LikeFields:   []string{"username", "nickname"},
+		ExactFields:  []string{"status"},
+		AllowedSorts: []string{"id", "username", "nickname", "status", "created_at", "updated_at"},
+		DefaultSorts: sharedquery.DefaultSorts("id"),
+	})
 }

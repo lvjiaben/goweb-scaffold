@@ -111,15 +111,23 @@ function toPretty(value: any) {
   return JSON.stringify(value ?? {}, null, 2);
 }
 
-function normalizeField(column: Record<string, any>): GenApi.FieldConfig {
+function normalizeField(column: Record<string, any>, preview?: Record<string, any>): GenApi.FieldConfig {
+  const listItem = preview?.list_schema?.find?.((item: Record<string, any>) => item.field === column.column_name);
+  const formItem = preview?.form_schema?.find?.((item: Record<string, any>) => item.field === column.column_name);
+  const searchItem = preview?.search_schema?.find?.((item: Record<string, any>) => item.field === column.column_name);
+  const inferred = preview?.inferred_fields?.find?.((item: Record<string, any>) => item.column_name === column.column_name);
+  const component = formItem?.component ?? inferred?.guessed_form_component ?? column.guessed_form_component ?? 'Input';
   return {
     column_comment: column.column_comment ?? '',
     column_name: column.column_name ?? '',
     column_type: column.data_type ?? column.column_type ?? '',
     field_name: column.column_name ?? '',
     field_type: column.data_type ?? '',
-    form_component: column.guessed_form_component ?? 'Input',
-    form_component_props: {},
+    form_component: component,
+    form_component_props: {
+      options: formItem?.options ?? searchItem?.options ?? listItem?.options ?? [],
+      placeholder: formItem?.placeholder ?? searchItem?.placeholder ?? '',
+    },
     gorm_tag: '',
     in_create: true,
     in_update: true,
@@ -132,22 +140,22 @@ function normalizeField(column: Record<string, any>): GenApi.FieldConfig {
     is_operate_field: false,
     is_primary_key: Boolean(column.is_primary_key),
     is_relation_field: false,
-    is_required: !column.is_nullable && !column.is_primary_key,
+    is_required: Boolean(formItem?.required ?? (!column.is_nullable && !column.is_primary_key)),
     is_search_field: false,
     is_set_field: false,
-    is_sort_field: Boolean(column.guessed_sortable),
+    is_sort_field: Boolean(listItem?.sortable ?? inferred?.guessed_sortable ?? column.guessed_sortable),
     is_text_field: ['text', 'varchar', 'character varying'].includes(column.data_type),
     is_time_field: ['timestamp', 'timestamptz', 'timestamp with time zone'].includes(
       column.data_type,
     ),
     json_tag: column.column_name ?? '',
-    search_form_type: column.guessed_searchable ? 'Input' : '',
-    show_in_form: true,
-    show_in_table: column.guessed_list_display !== false,
-    table_display_type: column.guessed_list_display ?? 'text',
-    table_search_type: column.guessed_searchable ? 'input' : '',
-    table_searchable: Boolean(column.guessed_searchable),
-    table_sortable: Boolean(column.guessed_sortable),
+    search_form_type: searchItem?.component ?? (column.guessed_searchable ? 'Input' : ''),
+    show_in_form: Boolean(formItem),
+    show_in_table: Boolean(listItem),
+    table_display_type: listItem?.display ?? column.guessed_list_display ?? 'text',
+    table_search_type: searchItem?.operator ?? (column.guessed_searchable ? 'input' : ''),
+    table_searchable: Boolean(searchItem?.searchable ?? inferred?.guessed_searchable ?? column.guessed_searchable),
+    table_sortable: Boolean(listItem?.sortable ?? inferred?.guessed_sortable ?? column.guessed_sortable),
     validate_rules: '',
   } as GenApi.FieldConfig;
 }
@@ -156,12 +164,13 @@ function normalizeConfig(
   tableName: string,
   columns: Array<Record<string, any>>,
   tableComment = '',
+  preview?: Record<string, any>,
 ): GenApi.GenConfig {
   const moduleName = tableName;
   return {
     default_sort_field: 'id',
     default_sort_order: 'desc',
-    fields: columns.map(normalizeField),
+    fields: columns.map((column) => normalizeField(column, preview)),
     frontend_src_path: `src/views/${moduleName}`,
     menu_config: {
       menu_icon: 'carbon:table',
@@ -179,9 +188,8 @@ function normalizeConfig(
     module_name: moduleName,
     operate_fields: ['id'],
     package_name: moduleName,
-    search_fields: columns
-      .filter((item) => item.guessed_searchable)
-      .map((item) => item.column_name),
+    search_fields: (preview?.search_schema ?? columns.filter((item) => item.guessed_searchable))
+      .map((item: Record<string, any>) => item.field ?? item.column_name),
     struct_name: moduleName
       .split('_')
       .map((item) => item.slice(0, 1).toUpperCase() + item.slice(1))
@@ -189,6 +197,22 @@ function normalizeConfig(
     table_comment: tableComment,
     table_name: tableName,
   };
+}
+
+function buildFieldOverrides(fields: GenApi.FieldConfig[]) {
+  return Object.fromEntries(
+    fields.map((item) => [
+      item.column_name,
+      {
+        component: item.form_component,
+        options: item.form_component_props?.options ?? [],
+        placeholder: item.form_component_props?.placeholder ?? '',
+        required: item.is_required,
+        searchable: item.table_searchable,
+        sortable: item.table_sortable,
+      },
+    ]),
+  );
 }
 
 /**
@@ -235,10 +259,18 @@ async function getTableConfig(params: { table_name: string }) {
   const tableInfo = (await getTableList()).find(
     (item) => item.table_name === params.table_name,
   );
+  const preview = await requestClient.post<any>('/system/codegen/preview', {
+    module_name: params.table_name,
+    payload: {
+      title: tableInfo?.table_comment ?? params.table_name,
+    },
+    table_name: params.table_name,
+  });
   return normalizeConfig(
     params.table_name,
     response?.list ?? [],
     tableInfo?.table_comment ?? '',
+    preview,
   );
 }
 
@@ -250,7 +282,7 @@ async function previewCode(data: { config: GenApi.GenConfig }) {
   const response = await requestClient.post<any>('/system/codegen/preview', {
     module_name: config.module_name,
     payload: {
-      field_overrides: {},
+      field_overrides: buildFieldOverrides(config.fields),
       form_fields: config.fields.filter((item) => item.show_in_form).map((item) => item.column_name),
       list_fields: config.fields.filter((item) => item.show_in_table).map((item) => item.column_name),
       search_fields: config.search_fields ?? [],
@@ -299,7 +331,7 @@ async function generateCode(data: { config: GenApi.GenConfig }) {
     module_name: config.module_name,
     overwrite: true,
     payload: {
-      field_overrides: {},
+      field_overrides: buildFieldOverrides(config.fields),
       form_fields: config.fields.filter((item) => item.show_in_form).map((item) => item.column_name),
       list_fields: config.fields.filter((item) => item.show_in_table).map((item) => item.column_name),
       search_fields: config.search_fields ?? [],

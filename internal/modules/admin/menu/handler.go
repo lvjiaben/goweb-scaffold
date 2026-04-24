@@ -10,10 +10,12 @@ func list(runtime *bootstrap.Runtime) httpx.HandlerFunc {
 	return func(c *httpx.Context) {
 		page, pageSize := bootstrap.Pagination(c)
 		result, err := service.List(ListParams{
-			Page:     page,
-			PageSize: pageSize,
-			Keyword:  bootstrap.SearchKeyword(c),
-			Filters:  bootstrap.ParseFilter(c),
+			Page:      page,
+			PageSize:  pageSize,
+			Keyword:   bootstrap.SearchKeyword(c),
+			Filters:   bootstrap.ParseFilter(c),
+			SortBy:    c.Query("sort_by"),
+			SortOrder: c.Query("sort_order"),
 		})
 		if err != nil {
 			c.Error(err)

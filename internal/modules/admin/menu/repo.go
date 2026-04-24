@@ -2,6 +2,7 @@ package admin_menu
 
 import (
 	"github.com/lvjiaben/goweb-scaffold/internal/bootstrap"
+	sharedquery "github.com/lvjiaben/goweb-scaffold/internal/shared/query"
 	"gorm.io/gorm"
 )
 
@@ -22,20 +23,20 @@ func (r *Repo) WithTransaction(fn func(tx *Repo) error) error {
 func (r *Repo) List(filter menuListFilter) ([]AdminMenu, error) {
 	var menus []AdminMenu
 	err := r.applyListFilter(r.db.Model(&AdminMenu{}), filter).
-		Order("sort ASC, id ASC").
+		Order("sort DESC, id DESC").
 		Find(&menus).Error
 	return menus, err
 }
 
 func (r *Repo) All() ([]AdminMenu, error) {
 	var menus []AdminMenu
-	err := r.db.Order("sort ASC, id ASC").Find(&menus).Error
+	err := r.db.Order("sort DESC, id DESC").Find(&menus).Error
 	return menus, err
 }
 
 func (r *Repo) MenuNodes() ([]AdminMenu, error) {
 	var menus []AdminMenu
-	err := r.db.Where("menu_type = ?", MenuTypeMenu).Order("sort ASC, id ASC").Find(&menus).Error
+	err := r.db.Where("menu_type = ?", MenuTypeMenu).Order("sort DESC, id DESC").Find(&menus).Error
 	return menus, err
 }
 
@@ -75,15 +76,21 @@ func (r *Repo) DeleteMenusAndRoleLinks(ids []int64) error {
 }
 
 func (r *Repo) applyListFilter(query *gorm.DB, filter menuListFilter) *gorm.DB {
-	if filter.Keyword != "" {
-		query = query.Where("title ILIKE ? OR name ILIKE ? OR path ILIKE ?", filter.Keyword, filter.Keyword, filter.Keyword)
+	params := sharedquery.Params{
+		Search: filter.KeywordPlain,
+		Filters: map[string]any{
+			"title": filter.TitlePlain,
+			"path":  filter.PathPlain,
+		},
+		SortBy:    filter.SortBy,
+		SortOrder: filter.SortOrder,
 	}
-	if filter.Title != "" {
-		query = query.Where("title ILIKE ? OR name ILIKE ?", filter.Title, filter.Title)
-	}
-	if filter.Path != "" {
-		query = query.Where("path ILIKE ?", filter.Path)
-	}
+	result := sharedquery.Apply(query, params, sharedquery.Options{
+		SearchFields: []string{"title", "name", "path"},
+		LikeFields:   []string{"title", "path"},
+		DefaultSorts: sharedquery.DefaultSorts("sort", "id"),
+	})
+	query = result.Query
 	if filter.MenuType != "" {
 		query = query.Where("menu_type = ?", filter.MenuType)
 	}

@@ -151,7 +151,7 @@ const getDrawerTitle = computed(() =>
           <Tree
             :tree-data="permissions"
             bordered
-            checkable
+            multiple
             :default-expanded-level="2"
             label-field="name"
             value-field="id"

@@ -82,6 +82,12 @@ export function useSearchFormSchema(): VbenFormProps['schema'] {
   ];
 }
 
+export const searchFormFields = [
+{{- range .SearchFields }}
+  {{ quote .ColumnName }},
+{{- end }}
+];
+
 export function useColumns(): VxeTableGridOptions<{{.PascalName}}Api.{{.PascalName}}>['columns'] {
   return [
     {

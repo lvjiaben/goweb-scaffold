@@ -2,6 +2,7 @@ package admin_role
 
 import (
 	"github.com/lvjiaben/goweb-scaffold/internal/bootstrap"
+	sharedquery "github.com/lvjiaben/goweb-scaffold/internal/shared/query"
 	"gorm.io/gorm"
 )
 
@@ -21,23 +22,20 @@ func (r *Repo) WithTransaction(fn func(tx *Repo) error) error {
 
 func (r *Repo) ActiveRoles() ([]AdminRole, error) {
 	var roles []AdminRole
-	err := r.db.Where("status = ?", 1).Order("id ASC").Find(&roles).Error
+	err := r.db.Where("status = ?", 1).Order("id DESC").Find(&roles).Error
 	return roles, err
 }
 
 func (r *Repo) Count(filter roleListFilter) (int64, error) {
 	var total int64
-	err := r.applyListFilter(r.db.Model(&AdminRole{}), filter).Count(&total).Error
+	err := r.applyListFilter(r.db.Model(&AdminRole{}), filter).Count.Count(&total).Error
 	return total, err
 }
 
 func (r *Repo) List(filter roleListFilter, page int, pageSize int) ([]AdminRole, error) {
 	var roles []AdminRole
-	err := r.applyListFilter(r.db.Model(&AdminRole{}), filter).
-		Order("id DESC").
-		Offset((page - 1) * pageSize).
-		Limit(pageSize).
-		Find(&roles).Error
+	result := r.applyListFilter(r.db.Model(&AdminRole{}), filter)
+	err := result.Query.Offset((page - 1) * pageSize).Limit(pageSize).Find(&roles).Error
 	return roles, err
 }
 
@@ -101,18 +99,24 @@ func (r *Repo) DeleteRolesAndRelations(ids []int64) error {
 	})
 }
 
-func (r *Repo) applyListFilter(query *gorm.DB, filter roleListFilter) *gorm.DB {
-	if filter.Keyword != "" {
-		query = query.Where("name ILIKE ? OR code ILIKE ?", filter.Keyword, filter.Keyword)
-	}
-	if filter.Name != "" {
-		query = query.Where("name ILIKE ?", filter.Name)
-	}
-	if filter.Code != "" {
-		query = query.Where("code ILIKE ?", filter.Code)
+func (r *Repo) applyListFilter(query *gorm.DB, filter roleListFilter) sharedquery.Result {
+	params := sharedquery.Params{
+		Search: filter.KeywordPlain,
+		Filters: map[string]any{
+			"name": filter.NamePlain,
+			"code": filter.CodePlain,
+		},
+		SortBy:    filter.SortBy,
+		SortOrder: filter.SortOrder,
 	}
 	if filter.Status != nil {
-		query = query.Where("status = ?", *filter.Status)
+		params.Filters["status"] = *filter.Status
 	}
-	return query
+	return sharedquery.Apply(query, params, sharedquery.Options{
+		SearchFields: []string{"name", "code"},
+		LikeFields:   []string{"name", "code"},
+		ExactFields:  []string{"status"},
+		AllowedSorts: []string{"id", "name", "code", "status", "created_at", "updated_at"},
+		DefaultSorts: sharedquery.DefaultSorts("id"),
+	})
 }

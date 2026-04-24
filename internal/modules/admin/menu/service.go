@@ -18,10 +18,12 @@ func NewService(runtime *bootstrap.Runtime) *Service {
 
 func (s *Service) List(params ListParams) (map[string]any, error) {
 	filter := menuListFilter{
-		Keyword:  bootstrap.LikeKeyword(params.Keyword),
-		Title:    bootstrap.LikeKeyword(bootstrap.FilterString(params.Filters, "title", "name")),
-		Path:     bootstrap.LikeKeyword(bootstrap.FilterString(params.Filters, "path")),
-		MenuType: strings.TrimSpace(bootstrap.FilterString(params.Filters, "menu_type", "type")),
+		KeywordPlain: strings.TrimSpace(params.Keyword),
+		TitlePlain:   strings.TrimSpace(bootstrap.FilterString(params.Filters, "title", "name")),
+		PathPlain:    strings.TrimSpace(bootstrap.FilterString(params.Filters, "path")),
+		MenuType:     strings.TrimSpace(bootstrap.FilterString(params.Filters, "menu_type", "type")),
+		SortBy:       strings.TrimSpace(params.SortBy),
+		SortOrder:    strings.TrimSpace(params.SortOrder),
 	}
 	if status, ok := bootstrap.FilterInt64(params.Filters, "status"); ok {
 		filter.Status = &status
@@ -44,6 +46,7 @@ func (s *Service) Detail(id int64) (DetailResponse, error) {
 		ParentID:       menu.ParentID,
 		PID:            menu.ParentID,
 		Name:           menu.Name,
+		EnName:         menu.EnName,
 		Title:          menu.Title,
 		Path:           menu.Path,
 		Component:      menu.Component,
@@ -51,6 +54,8 @@ func (s *Service) Detail(id int64) (DetailResponse, error) {
 		Type:           menu.MenuType,
 		PermissionCode: menu.PermissionCode,
 		Permission:     menu.PermissionCode,
+		Iframe:         menu.Iframe,
+		External:       menu.External,
 		Icon:           bootstrap.NormalizeMenuIcon(menu.Icon),
 		Sort:           menu.Sort,
 		Visible:        menu.Visible,
@@ -88,11 +93,14 @@ func (s *Service) SaveMenu(req SaveRequest) (SaveResult, error) {
 		menu := AdminMenu{
 			ParentID:       req.ParentID,
 			Name:           req.Name,
+			EnName:         req.EnName,
 			Title:          req.Title,
 			Path:           req.Path,
 			Component:      req.Component,
 			MenuType:       req.MenuType,
 			PermissionCode: req.PermissionCode,
+			Iframe:         req.Iframe,
+			External:       req.External,
 			Icon:           req.Icon,
 			Sort:           req.Sort,
 			Visible:        req.Visible,
@@ -111,11 +119,14 @@ func (s *Service) SaveMenu(req SaveRequest) (SaveResult, error) {
 	if err := s.repo.Update(&menu, map[string]any{
 		"parent_id":       req.ParentID,
 		"name":            req.Name,
+		"enname":          req.EnName,
 		"title":           req.Title,
 		"path":            req.Path,
 		"component":       req.Component,
 		"menu_type":       req.MenuType,
 		"permission_code": req.PermissionCode,
+		"iframe":          req.Iframe,
+		"external":        req.External,
 		"icon":            req.Icon,
 		"sort":            req.Sort,
 		"visible":         req.Visible,
@@ -145,9 +156,12 @@ func (s *Service) DeleteMenus(ids []int64) (DeleteResult, error) {
 
 func normalizeSaveRequest(req SaveRequest) SaveRequest {
 	req.Name = strings.TrimSpace(req.Name)
+	req.EnName = strings.TrimSpace(req.EnName)
 	req.Title = strings.TrimSpace(req.Title)
 	req.Path = strings.TrimSpace(req.Path)
 	req.Component = strings.TrimSpace(req.Component)
+	req.Iframe = strings.TrimSpace(req.Iframe)
+	req.External = strings.TrimSpace(req.External)
 	if req.ParentID == 0 && req.PID > 0 {
 		req.ParentID = req.PID
 	}
@@ -187,11 +201,17 @@ func (s *Service) validateMenuSave(req SaveRequest) error {
 		}
 	}
 
-	if req.MenuType != MenuTypeMenu && req.MenuType != MenuTypeButton {
+	if req.MenuType != MenuTypeMenu && req.MenuType != MenuTypeButton && req.MenuType != MenuTypeIframe && req.MenuType != MenuTypeLink {
 		return fmt.Errorf("invalid menu_type")
 	}
 	if req.MenuType == MenuTypeButton && req.PermissionCode == "" {
 		return fmt.Errorf("button menu requires permission_code")
+	}
+	if req.MenuType == MenuTypeIframe && req.Iframe == "" {
+		return fmt.Errorf("iframe menu requires iframe url")
+	}
+	if req.MenuType == MenuTypeLink && req.External == "" {
+		return fmt.Errorf("link menu requires external url")
 	}
 	if req.MenuType == MenuTypeMenu {
 		if req.Name == "" || req.Title == "" || req.Path == "" {
@@ -223,11 +243,14 @@ func buildTree(menus []AdminMenu) []MenuTreeItem {
 			ID:             menu.ID,
 			ParentID:       menu.ParentID,
 			Name:           menu.Name,
+			EnName:         menu.EnName,
 			Title:          menu.Title,
 			Path:           menu.Path,
 			Component:      menu.Component,
 			MenuType:       menu.MenuType,
 			PermissionCode: menu.PermissionCode,
+			Iframe:         menu.Iframe,
+			External:       menu.External,
 			Icon:           bootstrap.NormalizeMenuIcon(menu.Icon),
 			Sort:           menu.Sort,
 			Visible:        menu.Visible,

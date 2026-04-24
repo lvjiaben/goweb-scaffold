@@ -1,15 +1,18 @@
 import { requestClient } from '#/api/request';
 
 export namespace AdminMenuApi {
-  export const MenuTypes = ['menu', 'button'] as const;
+  export const MenuTypes = ['menu', 'button', 'iframe', 'link'] as const;
 
   export interface AdminMenu {
     [key: string]: any;
     children?: AdminMenu[];
     component?: string;
     created_at?: number;
+    enname?: string;
+    external?: string;
     icon?: string;
     id: number;
+    iframe?: string;
     name: string;
     path: string;
     permission?: string;
@@ -57,8 +60,11 @@ function normalizeMenu(row: Record<string, any>): AdminMenuApi.AdminMenu {
       : [],
     component: row.component ?? '',
     created_at: toUnixTimestamp(row.created_at),
+    enname: row.enname ?? '',
+    external: row.external ?? '',
     icon: row.icon ?? '',
     id: Number(row.id ?? row.value ?? 0),
+    iframe: row.iframe ?? '',
     name: row.name ?? row.title ?? row.label ?? '',
     path: row.path ?? '',
     permission: row.permission_code ?? row.permission ?? '',
@@ -113,7 +119,10 @@ async function saveMenu(
 ) {
   const payload: Record<string, any> = {
     component: data.component ?? '',
+    enname: data.enname ?? '',
+    external: data.external ?? '',
     icon: data.icon ?? '',
+    iframe: data.iframe ?? '',
     menu_type: data.type,
     name: data.name,
     parent_id: Number(data.pid ?? 0),

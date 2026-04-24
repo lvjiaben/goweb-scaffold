@@ -224,7 +224,7 @@ onMounted(() => {
 
 <template>
   <Page
-    content-class="flex flex-col"
+    content-class="flex flex-col p-4"
     :description="$t('system.config.description')"
     :title="$t('system.config.title')"
   >
