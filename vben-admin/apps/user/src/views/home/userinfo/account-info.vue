@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import type { VbenFormSchema } from '@vben/common-ui';
 
-import { computed, onMounted, ref } from 'vue';
+import { onMounted, ref } from 'vue';
 
 import { VbenButton, z } from '@vben/common-ui';
 import { $t } from '@vben/locales';
@@ -15,7 +15,7 @@ import { changeMobileApi, sendSmsApi } from '#/api/core/user';
 const userStore = useUserStore();
 const CODE_LENGTH = 6;
 
-const schema = computed((): VbenFormSchema[] => [
+const schema: VbenFormSchema[] = [
   {
     component: 'Input',
     componentProps: {
@@ -62,7 +62,7 @@ const schema = computed((): VbenFormSchema[] => [
         message: $t('userinfo.mobile.mobileFormatError'),
       }),
   },
-]);
+];
 
 const [Form, formApi] = useVbenForm({
   commonConfig: {
@@ -134,4 +134,3 @@ onMounted(() => {
     </div>
   </div>
 </template>
-

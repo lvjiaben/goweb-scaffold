@@ -2,7 +2,7 @@
 import type { VbenFormSchema } from '#/adapter/form';
 import type { UserApi } from '#/api/user';
 
-import { computed, nextTick, reactive, ref } from 'vue';
+import { computed, nextTick, ref } from 'vue';
 
 import { useVbenDrawer } from '@vben/common-ui';
 
@@ -18,81 +18,75 @@ const emit = defineEmits<{
 
 const formData = ref<UserApi.User & { type: 'money' | 'score' }>();
 
-const schema = computed((): VbenFormSchema[] => {
-  const isMoney = formData.value?.type === 'money';
-  
-  return [
-    {
-      component: 'Input',
-      componentProps: {
-        disabled: true,
-      },
-      fieldName: 'username',
-      label: $t('user.username'),
+const schema: VbenFormSchema[] = [
+  {
+    component: 'Input',
+    componentProps: {
+      disabled: true,
     },
-    {
-      component: 'InputNumber',
-      componentProps: {
-        disabled: true,
-        precision: 2,
-      },
-      fieldName: isMoney ? 'money' : 'score',
-      label: isMoney ? $t('user.currentMoney') : $t('user.currentScore'),
+    fieldName: 'username',
+    label: $t('user.username'),
+  },
+  {
+    component: 'InputNumber',
+    componentProps: {
+      disabled: true,
+      precision: 2,
     },
-    {
-      component: 'RadioGroup',
-      componentProps: {
-        options: [
-          { label: $t('user.add'), value: 'add' },
-          { label: $t('user.sub'), value: 'sub' },
-        ],
-      },
-      defaultValue: 'add',
-      fieldName: 'type',
-      label: $t('user.operationType'),
+    fieldName: 'current_value',
+    label: $t('user.currentMoney'),
+  },
+  {
+    component: 'RadioGroup',
+    componentProps: {
+      options: [
+        { label: $t('user.add'), value: 'add' },
+        { label: $t('user.sub'), value: 'sub' },
+      ],
     },
-    {
-      component: 'InputNumber',
-      componentProps: {
-        min: 0.01,
-        placeholder: isMoney ? $t('user.moneyAmountPlaceholder') : $t('user.scoreAmountPlaceholder'),
-        precision: 2,
-        step: 0.01,
-      },
-      fieldName: 'amount',
-      label: isMoney ? $t('user.moneyAmount') : $t('user.scoreAmount'),
+    defaultValue: 'add',
+    fieldName: 'type',
+    label: $t('user.operationType'),
+  },
+  {
+    component: 'InputNumber',
+    componentProps: {
+      min: 0.01,
+      placeholder: $t('user.moneyAmountPlaceholder'),
+      precision: 2,
+      step: 0.01,
     },
-    {
-      component: 'Input',
-      componentProps: {
-        placeholder: $t('user.notePlaceholder'),
-      },
-      fieldName: 'note',
-      label: $t('user.note'),
+    fieldName: 'amount',
+    label: $t('user.moneyAmount'),
+  },
+  {
+    component: 'Input',
+    componentProps: {
+      placeholder: $t('user.notePlaceholder'),
     },
-    {
-      component: 'Input',
-      componentProps: {
-        placeholder: $t('user.sourcePlaceholder'),
-      },
-      fieldName: 'source',
-      label: $t('user.source'),
+    fieldName: 'note',
+    label: $t('user.note'),
+  },
+  {
+    component: 'Input',
+    componentProps: {
+      placeholder: $t('user.sourcePlaceholder'),
     },
-  ];
-});
+    fieldName: 'source',
+    label: $t('user.source'),
+  },
+];
 
 const breakpoints = useBreakpoints(breakpointsTailwind);
 const isHorizontal = computed(() => breakpoints.greaterOrEqual('md').value);
 
-const [Form, formApi] = useVbenForm(
-  reactive({
-    commonConfig: {
-      colon: true,
-    },
-    schema,
-    showDefaultActions: false,
-  }),
-);
+const [Form, formApi] = useVbenForm({
+  commonConfig: {
+    colon: true,
+  },
+  schema,
+  showDefaultActions: false,
+});
 
 const [Drawer, drawerApi] = useVbenDrawer({
   onConfirm: onSubmit,
@@ -101,13 +95,31 @@ const [Drawer, drawerApi] = useVbenDrawer({
       const data = drawerApi.getData<UserApi.User & { type: 'money' | 'score' }>();
       formApi.resetForm();
       formData.value = data;
+      const isMoney = data?.type === 'money';
+      formApi.updateSchema([
+        {
+          fieldName: 'current_value',
+          label: isMoney ? $t('user.currentMoney') : $t('user.currentScore'),
+        },
+        {
+          componentProps: {
+            min: 0.01,
+            placeholder: isMoney
+              ? $t('user.moneyAmountPlaceholder')
+              : $t('user.scoreAmountPlaceholder'),
+            precision: 2,
+            step: 0.01,
+          },
+          fieldName: 'amount',
+          label: isMoney ? $t('user.moneyAmount') : $t('user.scoreAmount'),
+        },
+      ]);
 
       await nextTick();
       if (data) {
         formApi.setValues({
           username: data.username,
-          money: data.money,
-          score: data.score,
+          current_value: isMoney ? data.money : data.score,
           type: 'add',
           amount: undefined,
           note: '',

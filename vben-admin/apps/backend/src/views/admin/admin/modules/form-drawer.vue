@@ -12,6 +12,8 @@ import { saveAdmin } from '#/api/admin/admin';
 import { getRoleOptions } from '#/api/admin/role';
 import { $t } from '#/locales';
 
+import { message } from 'ant-design-vue';
+
 import type { AdminAdminApi } from '#/api/admin/admin';
 
 import { getAdminStatusOptions } from '../data';
@@ -22,8 +24,7 @@ const emit = defineEmits<{
 
 const formData = ref<AdminAdminApi.Admin>();
 
-const schema = computed((): VbenFormSchema[] => {
-  const isEdit = !!formData.value?.id;
+function buildSchema(isEdit: boolean): VbenFormSchema[] {
   return [
     {
       component: 'RadioGroup',
@@ -65,21 +66,16 @@ const schema = computed((): VbenFormSchema[] => {
       componentProps: {
         placeholder: isEdit
           ? '编辑时留空则不修改密码'
-          : $t('admin.admin.passwordPlaceholder'),
+          : `${$t('admin.admin.passwordPlaceholder')}（必填）`,
       },
       fieldName: 'password',
       label: $t('admin.admin.password'),
-      rules: isEdit
-        ? z
-            .string()
-            .min(6, $t('ui.formRules.minLength', [$t('admin.admin.password'), 6]))
-            .max(32, $t('ui.formRules.maxLength', [$t('admin.admin.password'), 32]))
-            .optional()
-            .or(z.literal(''))
-        : z
-            .string()
-            .min(6, $t('ui.formRules.minLength', [$t('admin.admin.password'), 6]))
-            .max(32, $t('ui.formRules.maxLength', [$t('admin.admin.password'), 32])),
+      rules: z
+        .string()
+        .min(6, $t('ui.formRules.minLength', [$t('admin.admin.password'), 6]))
+        .max(32, $t('ui.formRules.maxLength', [$t('admin.admin.password'), 32]))
+        .optional()
+        .or(z.literal('')),
     },
     {
       component: 'ApiSelect',
@@ -97,7 +93,7 @@ const schema = computed((): VbenFormSchema[] => {
       label: $t('admin.admin.roles'),
     },
   ];
-});
+}
 
 const breakpoints = useBreakpoints(breakpointsTailwind);
 const isHorizontal = computed(() => breakpoints.greaterOrEqual('md').value);
@@ -107,7 +103,7 @@ const [Form, formApi] = useVbenForm({
     colon: true,
     formItemClass: 'col-span-2 md:col-span-1',
   },
-  schema,
+  schema: buildSchema(false),
   showDefaultActions: false,
   wrapperClass: 'grid-cols-2 gap-x-4',
 });
@@ -119,6 +115,16 @@ const [Drawer, drawerApi] = useVbenDrawer({
       const data = drawerApi.getData<AdminAdminApi.Admin>();
       formApi.resetForm();
       formData.value = data?.id ? data : undefined;
+      formApi.updateSchema([
+        {
+          componentProps: {
+            placeholder: formData.value?.id
+              ? '编辑时留空则不修改密码'
+              : `${$t('admin.admin.passwordPlaceholder')}（必填）`,
+          },
+          fieldName: 'password',
+        },
+      ]);
       await nextTick();
       if (data) {
         formApi.setValues({
@@ -145,6 +151,10 @@ async function onSubmit() {
           'created_at' | 'id' | 'is_super' | 'role_names' | 'updated_at'
         >
       >();
+    if (!formData.value?.id && !values.password) {
+      message.warning(`${$t('admin.admin.password')}必填`);
+      return;
+    }
     if (formData.value?.id && !values.password) {
       delete values.password;
     }

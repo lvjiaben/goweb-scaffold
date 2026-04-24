@@ -30,8 +30,7 @@ const [[ .ColumnName ]]Options = [[ optionFuncName $.PascalName . ]]();
 [[- end ]]
 [[- end ]]
 
-const schema = computed((): VbenFormSchema[] => {
-  return [
+const schema: VbenFormSchema[] = [
 [[- range .FormFields ]]
     {
       component: [[ quote (formComponent .) ]],
@@ -79,8 +78,7 @@ const schema = computed((): VbenFormSchema[] => {
 [[- end ]]
     },
 [[- end ]]
-  ];
-});
+];
 
 const breakpoints = useBreakpoints(breakpointsTailwind);
 const isHorizontal = computed(() => breakpoints.greaterOrEqual('md').value);

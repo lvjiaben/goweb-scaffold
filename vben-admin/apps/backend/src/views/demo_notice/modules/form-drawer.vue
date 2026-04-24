@@ -20,8 +20,7 @@ const emit = defineEmits<{
 const formData = ref<DemoNoticeApi.DemoNotice>();
 const statusOptions = getDemoNoticeStatusOptions();
 
-const schema = computed((): VbenFormSchema[] => {
-  return [
+const schema: VbenFormSchema[] = [
     {
       component: "Input",
       componentProps: {
@@ -65,8 +64,7 @@ const schema = computed((): VbenFormSchema[] => {
       formItemClass: 'col-span-2 md:col-span-1',
       label: "排序值",
     },
-  ];
-});
+];
 
 const breakpoints = useBreakpoints(breakpointsTailwind);
 const isHorizontal = computed(() => breakpoints.greaterOrEqual('md').value);

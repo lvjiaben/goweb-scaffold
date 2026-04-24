@@ -2,7 +2,7 @@
   "generated_by": "goweb-scaffold",
   "module_name": "demo_article",
   "table_name": "demo_article",
-  "generated_at": "2026-04-24T05:31:00+08:00",
+  "generated_at": "2026-04-24T15:18:42+08:00",
   "template_version": "v7",
   "payload": {
     "list_fields": [
@@ -410,8 +410,8 @@
       },
       {
         "path": "vben-admin/apps/backend/src/views/demo_article/modules/form-drawer.vue",
-        "sha256": "456b878bd37dde35f333ec8be924e98013497e6eec75a76dc1169af7bfe7106a",
-        "bytes": 3280
+        "sha256": "abc08b2dd624ee299de1874bffb89fc77647a13575eb4e380c8535d775cebe5e",
+        "bytes": 3248
       }
     ]
   },
